@@ -9,6 +9,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
+    <style>
+      /* Dashboard-only refinements. Kept here intentionally to avoid touching other modules. */
+      .dashboard-page { --dashboard-surface: #f7fafc; --dashboard-line: rgba(219, 231, 235, .9); }
+      .dashboard-page .dashboard-main { min-height: 100vh; display: flex; flex-direction: column; }
+      .dashboard-page .dashboard-content { flex: 1; }
+      .dashboard-page .dashboard-sidebar { box-shadow: 18px 0 45px rgba(3, 52, 60, .16); }
+      .dashboard-page .dashboard-brand { margin-bottom: 4px; }
+      .dashboard-page .doctor-profile { border-bottom: 1px solid rgba(255, 255, 255, .12); }
+      .dashboard-page .sidebar__nav { padding-top: 4px; }
+      .dashboard-page .dashboard-shell-footer { display: flex; justify-content: space-between; gap: 16px; padding: 0 32px 24px; color: #637681; font-size: .86rem; }
+      .dashboard-page .sidebar-logout { display: flex; align-items: center; gap: 12px; margin-top: auto; padding: 24px 8px 4px; color: rgba(255,255,255,.92); font-weight: 800; }
+      .dashboard-page .dashboard-card-row { position: relative; isolation: isolate; }
+      .dashboard-page .dashboard-card-row::before { content: ""; position: absolute; inset: -8px; z-index: -1; border-radius: 28px; background: linear-gradient(135deg, rgba(47, 183, 166, .08), rgba(255,255,255,0)); }
+      .dashboard-page .dashboard-stat, .dashboard-page .panel { transition: transform 180ms ease, box-shadow 180ms ease; }
+      .dashboard-page .dashboard-stat:hover, .dashboard-page .panel:hover { transform: translateY(-2px); box-shadow: 0 18px 42px rgba(15, 76, 92, .11); }
+      @media (max-width: 720px) { .dashboard-page .dashboard-shell-footer { flex-direction: column; padding: 0 22px 22px; } }
+    </style>
   </head>
   <body class="app-body dashboard-page">
     <div class="app-shell">
@@ -41,6 +58,7 @@
           <p>Sistema preparado para políticas, roles y respaldo con Supabase.</p>
           <em>✓ Backup automático</em>
         </div>
+        <a class="sidebar-logout" href="../index.html"><span>↪</span>Cerrar sesión</a>
       </aside>
       <main class="main-area dashboard-main">
         <header class="topbar dashboard-topbar">
@@ -71,7 +89,7 @@
             <article class="dashboard-stat dashboard-stat--amber"><span>◷</span><div><small>Citas programadas</small><strong>28</strong><em>Para hoy</em></div></article>
           </section>
 
-          <section class="dashboard-grid dashboard-grid--primary">
+          <section class="dashboard-grid dashboard-grid--primary dashboard-card-row">
             <article class="card panel chart-panel">
               <div class="panel__header"><h2>Atenciones por mes</h2><button class="btn btn--secondary" type="button">Este año ⌄</button></div>
               <div class="line-chart" role="img" aria-label="Gráfico de atenciones por mes">
@@ -99,7 +117,7 @@
             </article>
           </section>
 
-          <section class="dashboard-grid dashboard-grid--secondary">
+          <section class="dashboard-grid dashboard-grid--secondary dashboard-card-row">
             <article class="card panel quick-actions-panel">
               <div class="panel__header"><h2>Accesos rápidos</h2></div>
               <div class="quick-actions-grid">
@@ -122,6 +140,7 @@
             </article>
           </section>
         </section>
+        <footer class="dashboard-shell-footer"><span>© 2025 Med Solution · Sistema Médico Integral.</span><span>Versión 1.0.0 ✚</span></footer>
       </main>
     </div>
     <script type="module" src="../assets/js/main.js"></script>
