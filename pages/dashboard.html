@@ -125,6 +125,78 @@
           </section>
         </section>
         <footer class="dashboard-shell-footer"><span>© 2025 Med Solution · Sistema Médico Integral.</span><span>Versión 1.0.0 ✚</span></footer>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input type="search" placeholder="Buscar paciente, cita o historia clínica" />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Dashboard</span>
+              <h1>Panel clínico principal</h1>
+              <p>Resumen ejecutivo del consultorio, actividad diaria, próximas citas y accesos operativos.</p>
+            </div>
+            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+          </div>
+          <div class="stats-grid">
+            <article class="card stat-card"><span>Pacientes activos</span><strong>1,248</strong><small>+12% este mes</small></article>
+            <article class="card stat-card"><span>Citas de hoy</span><strong>32</strong><small>8 pendientes</small></article>
+            <article class="card stat-card"><span>Atenciones</span><strong>186</strong><small>Semana actual</small></article>
+            <article class="card stat-card"><span>Historias clínicas</span><strong>942</strong><small>Actualizadas</small></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="card panel">
+              <div class="panel__header"><h2>Próximas citas</h2><a class="text-link" href="appointments.html">Ver agenda</a></div>
+              <div class="appointment-list">
+                <div class="appointment-item"><span class="appointment-time">09:30</span><div><strong>Mariana Torres</strong><p>Control general · Consultorio 1</p></div><span class="badge">Confirmada</span></div>
+                <div class="appointment-item"><span class="appointment-time">10:15</span><div><strong>Javier Medina</strong><p>Historia clínica estética · Consultorio 2</p></div><span class="badge">En espera</span></div>
+                <div class="appointment-item"><span class="appointment-time">11:40</span><div><strong>Camila Rojas</strong><p>Evaluación podológica · Consultorio 1</p></div><span class="badge">Nueva</span></div>
+              </div>
+            </article>
+            <aside>
+              <article class="card panel">
+                <div class="panel__header"><h2>Accesos rápidos</h2></div>
+                <div class="quick-grid">
+                  <a class="quick-card" href="patients.html"><span>＋</span>Registrar paciente</a>
+                  <a class="quick-card" href="medical-records.html"><span>▣</span>Historia clínica</a>
+                  <a class="quick-card" href="schedule.html"><span>□</span>Agenda</a>
+                  <a class="quick-card" href="settings.html"><span>⚙</span>Configuración</a>
+                </div>
+              </article>
+              <a class="btn btn--primary cta-new-care" href="appointments.html">Nueva Atención</a>
+            </aside>
+          </div>
+        </section>
       </main>
     </div>
     <script type="module" src="../assets/js/main.js"></script>
