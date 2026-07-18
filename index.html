@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <title>Med Solution | Acceso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="auth-hero" aria-label="Presentación de Med Solution">
+        <div class="brand brand--light">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </div>
+        <div class="auth-hero__content">
+          <span class="eyebrow">Consultorio médico inteligente</span>
+          <h1>Gestión clínica elegante, segura y preparada para crecer.</h1>
+          <p>
+            Una interfaz moderna para centralizar atenciones, agenda, historias clínicas y pacientes desde una experiencia profesional.
+          </p>
+        </div>
+        <div class="auth-hero__card glass-card">
+          <span class="status-dot"></span>
+          <div>
+            <strong>v1.0 Base comercial</strong>
+            <p>Arquitectura modular lista para Supabase.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="auth-panel" aria-label="Formulario de acceso">
+        <div class="auth-panel__header">
+          <div class="brand">
+            <span class="brand__mark">MS</span>
+            <span class="brand__text">Med Solution</span>
+          </div>
+          <span class="secure-badge">Acceso seguro</span>
+        </div>
+
+        <form class="login-form" data-login-form>
+          <div>
+            <span class="eyebrow">Bienvenido</span>
+            <h2>Ingresa a tu consultorio</h2>
+            <p>Administra tu operación médica diaria desde un panel claro y eficiente.</p>
+          </div>
+
+          <label class="form-field">
+            <span>Correo profesional</span>
+            <input type="email" name="email" placeholder="doctor@consultorio.com" autocomplete="email" required />
+          </label>
+
+          <label class="form-field">
+            <span>Contraseña</span>
+            <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+          </label>
+
+          <div class="form-row">
+            <label class="check-field">
+              <input type="checkbox" name="remember" />
+              <span>Recordarme</span>
+            </label>
+            <a href="#" class="text-link">Recuperar acceso</a>
+          </div>
+
+          <button class="btn btn--primary btn--full" type="submit">Entrar al sistema</button>
+          <p class="form-note">La autenticación quedará conectada a Supabase en la siguiente etapa.</p>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="assets/js/main.js"></script>
+  </body>
+</html>
