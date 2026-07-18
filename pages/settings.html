@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <title>Med Solution | Configuración</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input type="search" placeholder="Buscar paciente, cita o historia clínica" />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Configuración</span>
+              <h1>Configuración del consultorio</h1>
+              <p>Centro de ajustes para perfiles, seguridad, especialidades y parámetros de operación.</p>
+            </div>
+            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+          </div>
+          <div class="module-grid">
+            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
+            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
+            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="../assets/js/main.js"></script>
+  </body>
+</html>
