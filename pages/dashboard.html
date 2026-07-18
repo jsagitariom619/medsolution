@@ -7,6 +7,124 @@
     <title>Med Solution | Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  </head>
+  <body class="app-body dashboard-page">
+    <div class="app-shell">
+      <aside class="sidebar dashboard-sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light dashboard-brand" href="dashboard.html">
+          <span class="brand__mark">✚</span>
+          <span class="brand__text">Med Solution <small>Sistema Médico Integral</small></span>
+        </a>
+        <section class="doctor-profile" aria-label="Perfil médico activo">
+          <span class="doctor-profile__avatar">JF</span>
+          <div>
+            <strong>Dr. Jeason Flores</strong>
+            <span>Médico general</span>
+            <small>● En línea</small>
+          </div>
+        </section>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👥</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">✚</span>Nueva Atención</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias Clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">◷</span>Agenda</a>
+          <a class="nav-link" href="#reports"><span class="nav-link__icon">◫</span>Reportes</a>
+          <a class="nav-link" href="#prescriptions"><span class="nav-link__icon">Rx</span>Recetas e Impresiones</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar-security-card">
+          <span>☁</span>
+          <strong>Tus datos están seguros</strong>
+          <p>Sistema preparado para políticas, roles y respaldo con Supabase.</p>
+          <em>✓ Backup automático</em>
+        </div>
+        <a class="sidebar-logout" href="../index.html"><span>↪</span>Cerrar sesión</a>
+      </aside>
+      <main class="main-area dashboard-main">
+        <header class="topbar dashboard-topbar">
+          <button class="menu-trigger" type="button" aria-label="Abrir menú">☰</button>
+          <label class="search-box dashboard-search">
+            <span>⌕</span>
+            <input type="search" placeholder="Buscar paciente..." />
+            <kbd>Ctrl + K</kbd>
+          </label>
+          <div class="topbar__actions">
+            <button class="notification-button" type="button" aria-label="Notificaciones">♢<span>3</span></button>
+            <div class="user-chip dashboard-user"><span class="avatar">JF</span><div><strong>Dr. Jeason Flores</strong><small>Administrador</small></div><span>⌄</span></div>
+          </div>
+        </header>
+        <section class="content dashboard-content">
+          <div class="dashboard-welcome">
+            <div>
+              <h1>¡Bienvenido, Dr. Jeason Flores!</h1>
+              <p>Aquí tienes un resumen general de tu consultorio médico.</p>
+            </div>
+            <a class="btn btn--primary dashboard-care-button" href="appointments.html"><span>👥</span>Nueva Atención</a>
+          </div>
+
+          <section class="dashboard-stats" aria-label="Indicadores del consultorio">
+            <article class="dashboard-stat dashboard-stat--green"><span>👥</span><div><small>Pacientes registrados</small><strong>248</strong><em>+12 este mes ↗</em></div></article>
+            <article class="dashboard-stat dashboard-stat--blue"><span>▣</span><div><small>Atenciones (este mes)</small><strong>156</strong><em>+18% vs mes anterior ↗</em></div></article>
+            <article class="dashboard-stat dashboard-stat--purple"><span>▭</span><div><small>Historias clínicas</small><strong>302</strong><em>Total en el sistema</em></div></article>
+            <article class="dashboard-stat dashboard-stat--amber"><span>◷</span><div><small>Citas programadas</small><strong>28</strong><em>Para hoy</em></div></article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid--primary dashboard-card-row">
+            <article class="card panel chart-panel">
+              <div class="panel__header"><h2>Atenciones por mes</h2><button class="btn btn--secondary" type="button">Este año ⌄</button></div>
+              <div class="line-chart" role="img" aria-label="Gráfico de atenciones por mes">
+                <svg viewBox="0 0 640 260" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="careGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2fb7a6" stop-opacity="0.28"/><stop offset="1" stop-color="#2fb7a6" stop-opacity="0.02"/></linearGradient></defs>
+                  <path class="chart-gridline" d="M0 40H640M0 95H640M0 150H640M0 205H640" />
+                  <path class="chart-area" d="M20 190 L95 154 L170 172 L245 136 L320 118 L395 72 L470 112 L545 82 L620 106 L620 236 L20 236 Z" />
+                  <path class="chart-line" d="M20 190 L95 154 L170 172 L245 136 L320 118 L395 72 L470 112 L545 82 L620 106" />
+                  <g class="chart-points"><circle cx="20" cy="190" r="5"/><circle cx="95" cy="154" r="5"/><circle cx="170" cy="172" r="5"/><circle cx="245" cy="136" r="5"/><circle cx="395" cy="72" r="5"/><circle cx="545" cy="82" r="5"/><circle cx="620" cy="106" r="7"/></g>
+                </svg>
+                <div class="chart-tooltip"><strong>Junio</strong><span>156 atenciones</span></div>
+                <div class="chart-labels"><span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span></div>
+              </div>
+            </article>
+
+            <article class="card panel appointments-panel">
+              <div class="panel__header"><h2>Próximas citas de hoy</h2><a class="btn btn--secondary" href="schedule.html">Ver agenda</a></div>
+              <div class="appointment-table">
+                <div class="appointment-row"><time>09:00</time><span class="patient-initials">ML</span><div><strong>María Fernanda López</strong><small>Control general</small></div><span class="badge badge--success">Confirmada</span><button type="button" aria-label="Opciones">⋮</button></div>
+                <div class="appointment-row"><time>10:00</time><span class="patient-initials patient-initials--violet">CR</span><div><strong>Carlos Alberto Rojas</strong><small>Dolor lumbar</small></div><span class="badge badge--info">En consulta</span><button type="button" aria-label="Opciones">⋮</button></div>
+                <div class="appointment-row"><time>11:30</time><span class="patient-initials">AM</span><div><strong>Ana Gabriela Méndez</strong><small>Control prenatal</small></div><span class="badge badge--success">Confirmada</span><button type="button" aria-label="Opciones">⋮</button></div>
+                <div class="appointment-row"><time>14:30</time><span class="patient-initials patient-initials--pink">LV</span><div><strong>Luis Miguel Vargas</strong><small>Revisión resultados</small></div><span class="badge badge--warning">Pendiente</span><button type="button" aria-label="Opciones">⋮</button></div>
+                <div class="appointment-row"><time>16:00</time><span class="patient-initials">ET</span><div><strong>Eliana Suárez Torres</strong><small>Evaluación dermatológica</small></div><span class="badge badge--info">En consulta</span><button type="button" aria-label="Opciones">⋮</button></div>
+              </div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid--secondary dashboard-card-row">
+            <article class="card panel quick-actions-panel">
+              <div class="panel__header"><h2>Accesos rápidos</h2></div>
+              <div class="quick-actions-grid">
+                <a class="quick-action-card" href="patients.html"><span>✚</span><strong>Nuevo Paciente</strong></a>
+                <a class="quick-action-card" href="patients.html"><span>⌕</span><strong>Buscar Paciente</strong></a>
+                <a class="quick-action-card" href="medical-records.html"><span>▣</span><strong>Nueva Historia</strong></a>
+                <a class="quick-action-card" href="medical-records.html"><span>Rx</span><strong>Nueva Receta</strong></a>
+                <a class="quick-action-card" href="medical-records.html"><span>▤</span><strong>Impresiones</strong></a>
+              </div>
+            </article>
+
+            <article class="card panel patients-panel">
+              <div class="panel__header"><h2>Pacientes recientes</h2><a class="btn btn--secondary" href="patients.html">Ver todos</a></div>
+              <div class="recent-patients-table">
+                <div class="recent-patients-head"><span>Paciente</span><span>Última atención</span><span>Acciones</span></div>
+                <div class="recent-patient-row"><div><span class="patient-photo">MF</span><p><strong>María Fernanda López</strong><small>CI: 12345678</small></p></div><time>17/06/2025</time><span><button type="button" aria-label="Ver paciente">◉</button><button type="button" aria-label="Imprimir ficha">▤</button></span></div>
+                <div class="recent-patient-row"><div><span class="patient-photo">CR</span><p><strong>Carlos Alberto Rojas</strong><small>CI: 87654321</small></p></div><time>16/06/2025</time><span><button type="button" aria-label="Ver paciente">◉</button><button type="button" aria-label="Imprimir ficha">▤</button></span></div>
+                <div class="recent-patient-row"><div><span class="patient-photo">AM</span><p><strong>Ana Gabriela Méndez</strong><small>CI: 11223344</small></p></div><time>15/06/2025</time><span><button type="button" aria-label="Ver paciente">◉</button><button type="button" aria-label="Imprimir ficha">▤</button></span></div>
+              </div>
+            </article>
+          </section>
+        </section>
+        <footer class="dashboard-shell-footer"><span>© 2025 Med Solution · Sistema Médico Integral.</span><span>Versión 1.0.0 ✚</span></footer>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
   </head>
