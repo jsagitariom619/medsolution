@@ -1,5 +1,3 @@
-import { renderApp } from './components.js';
-
 const routes = {
   login: 'index.html',
   dashboard: 'pages/dashboard.html',
@@ -20,15 +18,13 @@ const handleLogin = () => {
   });
 };
 
-const registerShortcuts = () => {
-  document.addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      document.querySelector('.search-box input')?.focus();
-    }
+const setActiveNavigation = () => {
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('[data-nav-link]').forEach((link) => {
+    const targetPage = link.getAttribute('href')?.split('/').pop();
+    link.classList.toggle('nav-link--active', targetPage === currentPage);
   });
 };
 
-renderApp();
 handleLogin();
-registerShortcuts();
+setActiveNavigation();
