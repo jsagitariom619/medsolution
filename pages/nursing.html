@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <title>Med Solution | Enfermería</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input type="search" placeholder="Buscar paciente, registro o profesional" id="globalSearch" />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Enfermería</span>
+              <h1>Módulo de Enfermería</h1>
+              <p>Gestión integral de procedimientos de enfermería: inyecciones, curaciones, nebulizaciones, anticonceptivos, sueroterapias y fisioterapia.</p>
+            </div>
+            <button class="btn btn--primary" type="button" id="newRecordBtn">Nuevo Registro</button>
+          </div>
+
+          <!-- Tabs Navigation -->
+          <div class="nursing-tabs">
+            <button class="nursing-tab nursing-tab--active" data-tab="injectables">
+              <span class="nursing-tab__icon">💉</span>
+              <span>Inyectables</span>
+            </button>
+            <button class="nursing-tab" data-tab="dressings">
+              <span class="nursing-tab__icon">🩹</span>
+              <span>Curaciones</span>
+            </button>
+            <button class="nursing-tab" data-tab="nebulizations">
+              <span class="nursing-tab__icon">☁️</span>
+              <span>Nebulizaciones</span>
+            </button>
+            <button class="nursing-tab" data-tab="contraceptives">
+              <span class="nursing-tab__icon">📋</span>
+              <span>Anticonceptivos</span>
+            </button>
+            <button class="nursing-tab" data-tab="serotherapy">
+              <span class="nursing-tab__icon">🧪</span>
+              <span>Sueroterapias</span>
+            </button>
+            <button class="nursing-tab" data-tab="physiotherapy">
+              <span class="nursing-tab__icon">🏥</span>
+              <span>Fisioterapia</span>
+            </button>
+          </div>
+
+          <!-- Tab Content Container -->
+          <div class="nursing-content">
+            <!-- INYECTABLES -->
+            <div class="nursing-tab-content nursing-tab-content--active" data-content="injectables">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="injectableFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="injectableToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="injectablePatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="injectableNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Medicamento</th>
+                    <th>Dosis</th>
+                    <th>Vía</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="injectablesTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>María Fernanda López</td>
+                    <td>Amoxicilina</td>
+                    <td>500mg</td>
+                    <td>IM</td>
+                    <td>Lic. Ana García</td>
+                    <td>Sin reacciones adversas</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>16/07/2025</td>
+                    <td>Carlos Alberto Rojas</td>
+                    <td>Ibuprofeno</td>
+                    <td>400mg</td>
+                    <td>IV</td>
+                    <td>Lic. Patricia Ruiz</td>
+                    <td>Paciente refiere alivio</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- CURACIONES -->
+            <div class="nursing-tab-content" data-content="dressings">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="dressingFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="dressingToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="dressingPatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="dressingNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Herida</th>
+                    <th>Localización</th>
+                    <th>Material Utilizado</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="dressingsTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>Ana Gabriela Méndez</td>
+                    <td>Úlcera diabética</td>
+                    <td>Pie izquierdo</td>
+                    <td>Gasa estéril, antiséptico</td>
+                    <td>Lic. Ana García</td>
+                    <td>En cicatrización</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>15/07/2025</td>
+                    <td>Luis Miguel Vargas</td>
+                    <td>Herida quirúrgica</td>
+                    <td>Abdomen</td>
+                    <td>Apósito transparente</td>
+                    <td>Lic. Patricia Ruiz</td>
+                    <td>Cicatrizando bien</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- NEBULIZACIONES -->
+            <div class="nursing-tab-content" data-content="nebulizations">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="nebulizationFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="nebulizationToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="nebulizationPatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="nebulizationNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Medicamento</th>
+                    <th>Dosis</th>
+                    <th>Duración (min)</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="nebulizationsTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>Eliana Suárez Torres</td>
+                    <td>Salbutamol</td>
+                    <td>2.5mg</td>
+                    <td>15</td>
+                    <td>Lic. María Santos</td>
+                    <td>Toleró bien, sin disnea</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>14/07/2025</td>
+                    <td>Roberto Flores</td>
+                    <td>Ipratropio</td>
+                    <td>0.5mg</td>
+                    <td>20</td>
+                    <td>Lic. Ana García</td>
+                    <td>Paciente con asma alérgica</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ANTICONCEPTIVOS -->
+            <div class="nursing-tab-content" data-content="contraceptives">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="contraceptiveFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="contraceptiveToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="contraceptivePatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="contraceptiveNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo</th>
+                    <th>Medicamento</th>
+                    <th>Frecuencia</th>
+                    <th>Próxima Aplicación</th>
+                    <th>Responsable</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="contraceptivesTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>Sofía Martínez</td>
+                    <td>Inyectable</td>
+                    <td>Medroxiprogesterona</td>
+                    <td>Trimestral</td>
+                    <td class="next-date">16/10/2025</td>
+                    <td>Lic. Patricia Ruiz</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>12/07/2025</td>
+                    <td>Valentina Ortiz</td>
+                    <td>Inyectable</td>
+                    <td>Enantato de Noretisterona</td>
+                    <td>Mensual</td>
+                    <td class="next-date">11/08/2025</td>
+                    <td>Lic. Ana García</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- SUEROTERAPIAS -->
+            <div class="nursing-tab-content" data-content="serotherapy">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="serotherapyFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="serotherapyToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="serotherapyPatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="serotherapyNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Suero</th>
+                    <th>Volumen (mL)</th>
+                    <th>Velocidad (mL/h)</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="serotherapyTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>Javier Medina</td>
+                    <td>Suero fisiológico</td>
+                    <td>1000</td>
+                    <td>125</td>
+                    <td>Lic. María Santos</td>
+                    <td>Hidratación preoperatoria</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>16/07/2025</td>
+                    <td>Camila Rojas</td>
+                    <td>Dextrosa 5%</td>
+                    <td>500</td>
+                    <td>100</td>
+                    <td>Lic. Patricia Ruiz</td>
+                    <td>Control electrolítico</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- FISIOTERAPIA -->
+            <div class="nursing-tab-content" data-content="physiotherapy">
+              <div class="nursing-filters">
+                <input type="date" class="nursing-filter-input" placeholder="Desde" id="physiotherapyFromDate" />
+                <input type="date" class="nursing-filter-input" placeholder="Hasta" id="physiotherapyToDate" />
+                <input type="text" class="nursing-filter-input" placeholder="Buscar paciente..." id="physiotherapyPatient" />
+                <input type="text" class="nursing-filter-input" placeholder="Responsable..." id="physiotherapyNurse" />
+              </div>
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Terapia</th>
+                    <th>Área</th>
+                    <th>Duración (min)</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="physiotherapyTable">
+                  <tr>
+                    <td>17/07/2025</td>
+                    <td>Mariana Torres</td>
+                    <td>Masaje terapéutico</td>
+                    <td>Espalda inferior</td>
+                    <td>45</td>
+                    <td>Lic. Carlos Mendez</td>
+                    <td>Paciente mejoró movilidad</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                  <tr>
+                    <td>15/07/2025</td>
+                    <td>Diego Hernández</td>
+                    <td>Ejercicios de movilidad</td>
+                    <td>Rodilla derecha</td>
+                    <td>60</td>
+                    <td>Lic. María Santos</td>
+                    <td>Recuperación postquirúrgica</td>
+                    <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal para formularios -->
+    <div class="nursing-modal" id="recordModal">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header">
+          <h2 id="modalTitle">Nuevo Registro</h2>
+          <button class="nursing-modal__close" id="closeModalBtn">✕</button>
+        </div>
+        <form id="recordForm" class="nursing-form">
+          <div class="nursing-form__section">
+            <label class="form-field">
+              <span>Paciente *</span>
+              <input type="text" name="patient" placeholder="Seleccionar paciente" required />
+            </label>
+            <label class="form-field">
+              <span>Fecha *</span>
+              <input type="date" name="date" required />
+            </label>
+            <label class="form-field">
+              <span>Responsable *</span>
+              <input type="text" name="responsible" placeholder="Nombre del profesional" required />
+            </label>
+          </div>
+
+          <!-- Fields específicos por tipo -->
+          <div id="typeSpecificFields"></div>
+
+          <label class="form-field">
+            <span>Observaciones</span>
+            <textarea name="observations" placeholder="Notas adicionales" rows="3"></textarea>
+          </label>
+
+          <div class="nursing-form__actions">
+            <button type="button" class="btn btn--secondary" id="cancelBtn">Cancelar</button>
+            <button type="submit" class="btn btn--primary">Guardar Registro</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/nursing.js"></script>
+  </body>
+</html>
