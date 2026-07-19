@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Módulo de enfermería para gestión de procedimientos clínicos en Med Solution." />
+    <title>Med Solution | Enfermería</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+  </head>
+  <body class="app-body nursing-page">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">🩺</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="global-search" type="search" placeholder="Buscar en enfermería..." aria-label="Buscar en enfermería" />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+          </div>
+        </header>
+
+        <section class="content nursing-content">
+          <div class="page-header nursing-header">
+            <div>
+              <span class="eyebrow">Módulo de Enfermería</span>
+              <h1>Gestión de procedimientos enfermeros</h1>
+              <p>Administra inyectables, curaciones, nebulizaciones, anticonceptivos, sueroterapia y fisioterapia.</p>
+            </div>
+            <button id="new-record-btn" class="btn btn--primary" type="button">Nuevo registro</button>
+          </div>
+
+          <section class="card nursing-filters" aria-label="Filtros de enfermería">
+            <div class="filter-grid">
+              <label>
+                <span>Desde</span>
+                <input id="filter-date-start" type="date" />
+              </label>
+              <label>
+                <span>Hasta</span>
+                <input id="filter-date-end" type="date" />
+              </label>
+              <label>
+                <span>Paciente</span>
+                <input id="filter-patient" type="text" placeholder="Nombre de paciente" />
+              </label>
+              <label>
+                <span>Enfermera</span>
+                <select id="filter-nurse">
+                  <option value="">Todas</option>
+                </select>
+              </label>
+              <button id="clear-filters" class="btn btn--secondary" type="button">Limpiar filtros</button>
+            </div>
+          </section>
+
+          <section class="card nursing-tabs-wrap" aria-label="Especialidades de enfermería">
+            <div id="specialty-tabs" class="nursing-tabs" role="tablist" aria-label="Especialidades"></div>
+          </section>
+
+          <section class="card nursing-table-wrap" aria-label="Registros de enfermería">
+            <div class="table-meta">
+              <h2 id="table-title">Registros</h2>
+              <span id="record-count">0 registros</span>
+            </div>
+            <div class="table-scroller">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Enfermera</th>
+                    <th>Resumen</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="records-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div id="record-modal" class="nursing-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header">
+          <h2 id="modal-title">Nuevo registro</h2>
+          <button id="close-modal" class="icon-btn" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <form id="record-form" class="nursing-form">
+          <input id="record-id" type="hidden" />
+          <label>
+            <span>Especialidad</span>
+            <select id="form-specialty" required></select>
+          </label>
+          <label>
+            <span>Fecha</span>
+            <input id="form-date" type="date" required />
+          </label>
+          <label>
+            <span>Paciente</span>
+            <input id="form-patient" type="text" required />
+          </label>
+          <label>
+            <span>Enfermera</span>
+            <input id="form-nurse" type="text" required />
+          </label>
+          <label>
+            <span>Notas</span>
+            <textarea id="form-notes" rows="3" placeholder="Observaciones clínicas"></textarea>
+          </label>
+          <div id="dynamic-fields" class="dynamic-fields"></div>
+          <div class="nursing-modal__actions">
+            <button class="btn btn--secondary" id="cancel-modal" type="button">Cancelar</button>
+            <button class="btn btn--primary" type="submit">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/nursing.js"></script>
+  </body>
+</html>
