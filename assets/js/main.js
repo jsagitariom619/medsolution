@@ -11,6 +11,7 @@ const routes = {
 
 const STORAGE_KEYS = {
   authUser: 'medsolution.authUser',
+  supabaseSession: 'sb-session',
 };
 
 const FALLBACK_USER = {
@@ -18,6 +19,7 @@ const FALLBACK_USER = {
   role: 'Sin cargo asignado',
   photo: '',
 };
+const FALLBACK_INITIALS = 'MS';
 
 const safeParse = (value) => {
   try {
@@ -30,7 +32,7 @@ const safeParse = (value) => {
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
 
 const toTitleCase = (value) =>
-  value
+  normalizeText(value)
     .split(/[-_.\s]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
@@ -43,7 +45,7 @@ const buildNameFromEmail = (email) => {
 
 const buildInitials = (name) => {
   const words = normalizeText(name).split(/\s+/).filter(Boolean);
-  if (!words.length) return 'MS';
+  if (!words.length) return FALLBACK_INITIALS;
   return words
     .slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase())
@@ -66,7 +68,9 @@ const getAuthenticatedUser = () => {
   const explicitUser = safeParse(localStorage.getItem(STORAGE_KEYS.authUser)) || safeParse(sessionStorage.getItem(STORAGE_KEYS.authUser));
   if (explicitUser) return normalizeUser(explicitUser);
 
-  const supabaseSession = safeParse(localStorage.getItem('sb-session')) || safeParse(sessionStorage.getItem('sb-session'));
+  const supabaseSession =
+    safeParse(localStorage.getItem(STORAGE_KEYS.supabaseSession)) ||
+    safeParse(sessionStorage.getItem(STORAGE_KEYS.supabaseSession));
   if (supabaseSession?.user) return normalizeUser(supabaseSession.user);
 
   return { ...FALLBACK_USER };

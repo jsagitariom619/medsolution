@@ -1,8 +1,7 @@
 const PATIENTS_STORAGE_KEY = 'medsolution.patients';
-
 const basePatients = [
   {
-    id: crypto.randomUUID(),
+    id: 'seed-patient-001',
     firstName: 'María Fernanda',
     lastName: 'López',
     documentId: '12345678',
@@ -21,7 +20,7 @@ const basePatients = [
     photo: '',
   },
   {
-    id: crypto.randomUUID(),
+    id: 'seed-patient-002',
     firstName: 'Carlos Alberto',
     lastName: 'Rojas',
     documentId: 'V-87654321',
@@ -86,6 +85,7 @@ const state = {
   patients: [],
   editingId: null,
   currentPhoto: '',
+  citiesSignature: '',
 };
 
 const dom = {
@@ -108,7 +108,23 @@ const dom = {
   detailHistoryBtn: document.getElementById('detailOpenHistoryBtn'),
 };
 
-const requiredFields = ['firstName', 'lastName', 'documentId', 'birthDate', 'sex', 'maritalStatus', 'occupation', 'phone', 'email', 'address', 'city', 'emergencyContact', 'bloodType', 'allergies', 'medicalHistory'];
+const requiredFields = [
+  'firstName',
+  'lastName',
+  'documentId',
+  'birthDate',
+  'sex',
+  'maritalStatus',
+  'occupation',
+  'phone',
+  'email',
+  'address',
+  'city',
+  'emergencyContact',
+  'bloodType',
+  'allergies',
+  'medicalHistory',
+];
 
 const formatDate = (isoDate) => {
   if (!isoDate) return 'N/D';
@@ -153,12 +169,16 @@ const savePatients = (patients) => {
 const fullName = (patient) => `${patient.firstName} ${patient.lastName}`.trim();
 
 const escapeHtml = (value) =>
-  String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+  String(value ?? '').replace(/[&<>"']/g, (char) => {
+    const entities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    };
+    return entities[char] || char;
+  });
 
 const buildInitials = (patient) =>
   [patient.firstName, patient.lastName]
@@ -207,6 +227,16 @@ const closeModal = (modal) => {
 const updateCityFilter = (patients) => {
   const selected = dom.cityFilter.value;
   const cities = [...new Set(patients.map((patient) => patient.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const signature = cities.join('|');
+
+  if (signature === state.citiesSignature) {
+    if (!cities.includes(selected)) {
+      dom.cityFilter.value = '';
+    }
+    return;
+  }
+
+  state.citiesSignature = signature;
   dom.cityFilter.innerHTML = '<option value="">Todas las ciudades</option>' + cities.map((city) => `<option value="${escapeHtml(city)}">${escapeHtml(city)}</option>`).join('');
   dom.cityFilter.value = cities.includes(selected) ? selected : '';
 };
@@ -324,25 +354,33 @@ const fillForm = (patient) => {
 };
 
 const validateFormData = (data) => {
+  data.documentId = data.documentId.replace(/\s+/g, '');
+
   for (const field of requiredFields) {
     if (!String(data[field] || '').trim()) {
       throw new Error('Completa todos los campos obligatorios del paciente.');
     }
   }
 
-  if (!/^[\w-.]+@[\w-]+\.[A-Za-z]{2,}$/.test(data.email)) {
+  const emailField = dom.form.elements.namedItem('email');
+  if (emailField instanceof HTMLInputElement && !emailField.checkValidity()) {
     throw new Error('Ingresa un correo electrónico válido.');
   }
 
-  if (!/^[A-Za-z0-9-]{5,20}$/.test(data.documentId.replace(/\s+/g, ''))) {
-    throw new Error('Ingresa un CI/Pasaporte válido (5 a 20 caracteres alfanuméricos).');
+  if (!/^(?=.*[A-Za-z0-9])[A-Za-z0-9-]{5,20}$/.test(data.documentId)) {
+    throw new Error('Ingresa un CI/Pasaporte válido (5 a 20 caracteres, alfanumérico con guiones opcionales).');
   }
 
   if (!/^[+()\d\s-]{7,20}$/.test(data.phone)) {
     throw new Error('Ingresa un teléfono válido.');
   }
 
-  const age = Number(calculateAge(data.birthDate));
+  const calculatedAge = calculateAge(data.birthDate);
+  if (calculatedAge === '') {
+    throw new Error('La fecha de nacimiento no es válida.');
+  }
+
+  const age = Number(calculatedAge);
   if (!Number.isFinite(age) || age < 0 || age > 120) {
     throw new Error('La fecha de nacimiento no es válida.');
   }
@@ -466,6 +504,7 @@ const bindEvents = () => {
 };
 
 const init = async () => {
+  dom.birthDate.max = new Date().toISOString().split('T')[0];
   bindEvents();
   await refreshPatients();
   setFeedback('Módulo de pacientes listo para operar en modo local. Preparado para integrar Supabase.', 'info');
