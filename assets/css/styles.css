@@ -189,6 +189,25 @@ button, input { font: inherit; }
 .icon-btn { width: 46px; height: 46px; border: 0; border-radius: 16px; background: var(--white); box-shadow: var(--shadow-card); cursor: pointer; }
 .user-chip { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--white); box-shadow: var(--shadow-card); font-weight: 800; }
 .avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: var(--white); background: linear-gradient(135deg, var(--aqua), var(--medical-blue)); }
+.avatar--image,
+.doctor-profile__avatar--image {
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+.user-chip__meta {
+  display: grid;
+  gap: 2px;
+}
+.user-chip__meta strong {
+  font-size: 0.88rem;
+  line-height: 1;
+}
+.user-chip__meta small {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 .content { padding: 16px 34px 42px; }
 .page-header { display: flex; justify-content: space-between; gap: 22px; align-items: flex-end; margin-bottom: 28px; }
 .page-header h1 { margin: 0; color: var(--petroleum-dark); font-size: clamp(2rem, 4vw, 3.4rem); letter-spacing: -0.055em; }

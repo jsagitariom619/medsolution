@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/patients.css" />
   </head>
   <body class="app-body">
     <div class="app-shell">
@@ -35,30 +36,215 @@
         <header class="topbar">
           <label class="search-box">
             <span>⌕</span>
-            <input type="search" placeholder="Buscar paciente, cita o historia clínica" />
+            <input id="patientSearch" type="search" placeholder="Buscar por nombre, CI/Pasaporte, teléfono o correo" aria-label="Buscar pacientes" />
           </label>
           <div class="topbar__actions">
             <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
-            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+            <div class="user-chip" aria-live="polite">
+              <span class="avatar" data-user-avatar aria-hidden="true"></span>
+              <div class="user-chip__meta">
+                <strong data-user-name></strong>
+                <small data-user-role></small>
+              </div>
+            </div>
           </div>
         </header>
+
         <section class="content">
           <div class="page-header">
             <div>
               <span class="eyebrow">Pacientes</span>
-              <h1>Gestión de pacientes</h1>
-              <p>Módulo preparado para registro, búsqueda y seguimiento de pacientes del consultorio.</p>
+              <h1>Gestión integral de pacientes</h1>
+              <p>Registro clínico profesional con filtros reactivos y estructura lista para futura integración con Supabase.</p>
             </div>
-            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+            <button id="newPatientBtn" class="btn btn--primary" type="button">Nuevo paciente</button>
           </div>
-          <div class="module-grid">
-            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
-            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
-            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
+
+          <div class="patients-toolbar" role="group" aria-label="Filtros de pacientes">
+            <label class="form-field">
+              <span>Sexo</span>
+              <select id="filterSex">
+                <option value="">Todos</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Grupo sanguíneo</span>
+              <select id="filterBloodType">
+                <option value="">Todos</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Ciudad</span>
+              <select id="filterCity">
+                <option value="">Todas las ciudades</option>
+              </select>
+            </label>
           </div>
+
+          <div id="patientsFeedback" class="patients-feedback" role="status" aria-live="polite"></div>
+
+          <article class="card patients-table-card">
+            <div class="patients-table-wrap">
+              <table class="patients-table" aria-label="Listado de pacientes">
+                <thead>
+                  <tr>
+                    <th>Paciente</th>
+                    <th>CI/Pasaporte</th>
+                    <th>Edad</th>
+                    <th>Sexo</th>
+                    <th>Ciudad</th>
+                    <th>Teléfono</th>
+                    <th>Grupo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="patientsTableBody"></tbody>
+              </table>
+            </div>
+            <p id="patientsEmptyState" class="patients-empty" hidden>No hay pacientes que coincidan con los filtros aplicados.</p>
+          </article>
         </section>
       </main>
     </div>
+
+    <div id="patientFormModal" class="patients-modal" aria-hidden="true">
+      <div class="patients-modal__overlay"></div>
+      <div class="patients-modal__content" role="dialog" aria-modal="true" aria-labelledby="patientFormTitle">
+        <div class="patients-modal__header">
+          <h2 id="patientFormTitle">Registrar paciente</h2>
+          <button class="patients-modal__close" type="button" data-close-modal aria-label="Cerrar">✕</button>
+        </div>
+        <form id="patientForm" class="patients-form">
+          <div class="patients-form-grid">
+            <label class="form-field">
+              <span>Nombres *</span>
+              <input type="text" name="firstName" required />
+            </label>
+            <label class="form-field">
+              <span>Apellidos *</span>
+              <input type="text" name="lastName" required />
+            </label>
+            <label class="form-field">
+              <span>CI/Pasaporte *</span>
+              <input type="text" name="documentId" required />
+            </label>
+            <label class="form-field">
+              <span>Fecha de nacimiento *</span>
+              <input id="birthDate" type="date" name="birthDate" required />
+            </label>
+            <label class="form-field">
+              <span>Edad</span>
+              <input id="age" type="text" readonly aria-readonly="true" />
+            </label>
+            <label class="form-field">
+              <span>Sexo *</span>
+              <select name="sex" required>
+                <option value="">Seleccionar</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Estado civil *</span>
+              <select name="maritalStatus" required>
+                <option value="">Seleccionar</option>
+                <option value="Soltero/a">Soltero/a</option>
+                <option value="Casado/a">Casado/a</option>
+                <option value="Divorciado/a">Divorciado/a</option>
+                <option value="Viudo/a">Viudo/a</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Ocupación *</span>
+              <input type="text" name="occupation" required />
+            </label>
+            <label class="form-field">
+              <span>Teléfono *</span>
+              <input type="tel" name="phone" required />
+            </label>
+            <label class="form-field">
+              <span>Correo electrónico *</span>
+              <input type="email" name="email" required />
+            </label>
+            <label class="form-field form-field--wide">
+              <span>Dirección *</span>
+              <input type="text" name="address" required />
+            </label>
+            <label class="form-field">
+              <span>Ciudad *</span>
+              <input type="text" name="city" required />
+            </label>
+            <label class="form-field">
+              <span>Contacto de emergencia *</span>
+              <input type="text" name="emergencyContact" required />
+            </label>
+            <label class="form-field">
+              <span>Grupo sanguíneo *</span>
+              <select name="bloodType" required>
+                <option value="">Seleccionar</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
+            </label>
+            <label class="form-field form-field--wide">
+              <span>Alergias *</span>
+              <textarea name="allergies" required></textarea>
+            </label>
+            <label class="form-field form-field--wide">
+              <span>Antecedentes importantes *</span>
+              <textarea name="medicalHistory" required></textarea>
+            </label>
+            <div class="form-field form-field--wide patient-photo-field">
+              <span>Fotografía del paciente</span>
+              <div class="patient-photo-preview" id="patientPhotoPreview">PA</div>
+              <input id="photo" type="file" name="photoFile" accept="image/*" />
+              <small>Se almacena en modo local para demo; el servicio queda listo para migrar a Supabase Storage.</small>
+            </div>
+          </div>
+          <div class="patients-form-actions">
+            <button type="button" class="btn btn--secondary" data-close-modal>Cancelar</button>
+            <button type="submit" class="btn btn--primary">Guardar paciente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="patientDetailModal" class="patients-modal" aria-hidden="true">
+      <div class="patients-modal__overlay"></div>
+      <div class="patients-modal__content" role="dialog" aria-modal="true" aria-labelledby="patientDetailTitle">
+        <div class="patients-modal__header">
+          <h2 id="patientDetailTitle">Detalle del paciente</h2>
+          <button class="patients-modal__close" type="button" data-close-modal aria-label="Cerrar">✕</button>
+        </div>
+        <div class="patient-detail">
+          <div id="patientDetailBody"></div>
+          <div class="patient-detail-actions">
+            <button id="detailOpenHistoryBtn" type="button" class="btn btn--secondary">Abrir Historia Clínica</button>
+            <button type="button" class="btn btn--primary" data-close-modal>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/patients.js"></script>
   </body>
 </html>
