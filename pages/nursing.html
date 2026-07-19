@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Med Solution - Módulo de Enfermería" />
+    <title>Med Solution | Módulo de Enfermería</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input type="search" id="globalSearch" placeholder="Buscar en registros de enfermería..." />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip"><span class="avatar">DR</span>Doctora Ruiz</div>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Módulo de Enfermería</span>
+              <h1>Gestión de procedimientos enfermeros</h1>
+              <p>Registro y seguimiento de inyectables, curaciones, nebulizaciones, anticonceptivos, sueroterpia y fisioterapia.</p>
+            </div>
+            <button class="btn btn--primary" id="newRecordBtn">Nuevo registro</button>
+          </div>
+
+          <!-- Navigation Tabs -->
+          <div class="nursing-tabs-container">
+            <div class="nursing-tabs">
+              <button class="nursing-tab nursing-tab--active" data-tab="injectables">
+                <span class="nursing-tab__icon">💊</span>
+                <span class="nursing-tab__label">Inyectables</span>
+              </button>
+              <button class="nursing-tab" data-tab="dressings">
+                <span class="nursing-tab__icon">🩹</span>
+                <span class="nursing-tab__label">Curaciones</span>
+              </button>
+              <button class="nursing-tab" data-tab="nebulizations">
+                <span class="nursing-tab__icon">☁️</span>
+                <span class="nursing-tab__label">Nebulizaciones</span>
+              </button>
+              <button class="nursing-tab" data-tab="contraceptives">
+                <span class="nursing-tab__icon">🔬</span>
+                <span class="nursing-tab__label">Anticonceptivos</span>
+              </button>
+              <button class="nursing-tab" data-tab="serotherapy">
+                <span class="nursing-tab__icon">💉</span>
+                <span class="nursing-tab__label">Sueroterapia</span>
+              </button>
+              <button class="nursing-tab" data-tab="physiotherapy">
+                <span class="nursing-tab__icon">🏥</span>
+                <span class="nursing-tab__label">Fisioterapia</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Inyectables Tab -->
+          <div class="nursing-tab-content nursing-tab-content--active" data-content="injectables">
+            <div class="nursing-filters">
+              <input type="date" id="injectablesFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="injectablesToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="injectablesPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="injectablesNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Medicamento</th>
+                    <th>Dosis</th>
+                    <th>Vía</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="injectablesTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Curaciones Tab -->
+          <div class="nursing-tab-content" data-content="dressings">
+            <div class="nursing-filters">
+              <input type="date" id="dressingsFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="dressingsToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="dressingsPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="dressingsNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Herida</th>
+                    <th>Localización</th>
+                    <th>Material</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="dressingsTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Nebulizaciones Tab -->
+          <div class="nursing-tab-content" data-content="nebulizations">
+            <div class="nursing-filters">
+              <input type="date" id="nebulizationsFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="nebulizationsToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="nebulizationsPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="nebulizationsNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Medicamento</th>
+                    <th>Dosis</th>
+                    <th>Duración (min)</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="nebulizationsTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Anticonceptivos Tab -->
+          <div class="nursing-tab-content" data-content="contraceptives">
+            <div class="nursing-filters">
+              <input type="date" id="contraceptivesFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="contraceptivesToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="contraceptivesPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="contraceptivesNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo</th>
+                    <th>Medicamento</th>
+                    <th>Frecuencia</th>
+                    <th>Próx. Dosis</th>
+                    <th>Responsable</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="contraceptivesTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Sueroterapia Tab -->
+          <div class="nursing-tab-content" data-content="serotherapy">
+            <div class="nursing-filters">
+              <input type="date" id="serotherapyFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="serotherapyToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="serotherapyPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="serotherapyNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Suero</th>
+                    <th>Volumen (mL)</th>
+                    <th>Velocidad (mL/h)</th>
+                    <th>Responsable</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="serotherapyTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Fisioterapia Tab -->
+          <div class="nursing-tab-content" data-content="physiotherapy">
+            <div class="nursing-filters">
+              <input type="date" id="physiotherapyFromDate" class="nursing-filter-input" placeholder="Desde" />
+              <input type="date" id="physiotherapyToDate" class="nursing-filter-input" placeholder="Hasta" />
+              <input type="text" id="physiotherapyPatient" class="nursing-filter-input" placeholder="Buscar paciente..." />
+              <input type="text" id="physiotherapyNurse" class="nursing-filter-input" placeholder="Buscar enfermera..." />
+            </div>
+            <div class="nursing-table-wrapper">
+              <table class="nursing-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Tipo de Terapia</th>
+                    <th>Área</th>
+                    <th>Duración (min)</th>
+                    <th>Responsable</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="physiotherapyTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal para nuevo registro -->
+    <div class="nursing-modal" id="recordModal">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header">
+          <h2>Nuevo Registro de Enfermería</h2>
+          <button class="nursing-modal__close" id="closeModalBtn">✕</button>
+        </div>
+        <form id="recordForm" class="nursing-form">
+          <div class="nursing-form__section">
+            <label class="form-field">
+              <span>Paciente *</span>
+              <input type="text" name="patient" required />
+            </label>
+            <label class="form-field">
+              <span>Responsable (Enfermera) *</span>
+              <input type="text" name="responsible" required />
+            </label>
+          </div>
+
+          <div id="typeSpecificFields"></div>
+
+          <div class="nursing-form__section">
+            <label class="form-field">
+              <span>Observaciones</span>
+              <textarea name="observations" rows="3"></textarea>
+            </label>
+          </div>
+
+          <div class="nursing-form__actions">
+            <button type="button" class="btn btn--secondary" id="cancelBtn">Cancelar</button>
+            <button type="submit" class="btn btn--primary">Guardar Registro</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/nursing.js"></script>
+  </body>
+</html>
