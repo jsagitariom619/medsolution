@@ -5,6 +5,7 @@ const routes = {
   appointments: 'pages/appointments.html',
   records: 'pages/medical-records.html',
   schedule: 'pages/schedule.html',
+  nursing: 'pages/nursing.html',
   settings: 'pages/settings.html',
 };
 
