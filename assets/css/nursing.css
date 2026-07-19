@@ -1,0 +1,186 @@
+.nursing-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.nursing-header {
+  align-items: center;
+}
+
+.nursing-filters {
+  padding: 1rem;
+}
+
+.filter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+}
+
+.filter-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #3f4d5a;
+}
+
+.filter-grid input,
+.filter-grid select,
+.nursing-form input,
+.nursing-form select,
+.nursing-form textarea {
+  border: 1px solid #d6dee8;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+
+.nursing-tabs-wrap {
+  padding: 1rem;
+}
+
+.nursing-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nursing-tab {
+  border: 1px solid #d6dee8;
+  background: #f9fbfd;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+}
+
+.nursing-tab[aria-selected='true'] {
+  background: #0f6dff;
+  border-color: #0f6dff;
+  color: #fff;
+}
+
+.nursing-table-wrap {
+  padding: 1rem;
+}
+
+.table-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+}
+
+.table-scroller {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+thead th {
+  text-align: left;
+  background: #f5f8fc;
+  color: #425367;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+th,
+td {
+  border-bottom: 1px solid #ebf0f6;
+  padding: 0.65rem;
+  vertical-align: top;
+}
+
+td small {
+  color: #66798c;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.row-actions button {
+  border: 1px solid #d6dee8;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+
+.nursing-empty {
+  text-align: center;
+  color: #5f7285;
+}
+
+.nursing-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 20;
+  padding: 1rem;
+}
+
+.nursing-modal.is-open {
+  display: flex;
+}
+
+.nursing-modal__content {
+  width: min(700px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.nursing-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.nursing-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.nursing-form label,
+.dynamic-field {
+  display: grid;
+  gap: 0.35rem;
+  color: #3f4d5a;
+  font-size: 0.88rem;
+}
+
+.dynamic-fields {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.nursing-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .table-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
