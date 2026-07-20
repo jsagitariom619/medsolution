@@ -72,7 +72,7 @@ function renderConsultations() {
     );
   });
 
-  visible.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  visible.sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
 
   const emptyRow = document.getElementById('consultEmptyRow');
   if (emptyRow) emptyRow.style.display = visible.length ? 'none' : '';
@@ -252,12 +252,14 @@ function setupAppointmentsModule() {
   renderConsultations();
 
   // Pre-fill patient if redirected from agenda
-  const prePatientId = parseInt(getUrlParam('patientId'), 10) || null;
+  const prePatientId = parseInt(getUrlParam('patientId'), 10);
+  const hasPrePatient = !isNaN(prePatientId) && prePatientId > 0;
 
   document.getElementById('newConsultBtn')?.addEventListener('click', () => {
     openConsultModal('create');
-    if (prePatientId) {
-      populatePatientSelect(prePatientId);
+    if (hasPrePatient) {
+      const select = document.getElementById('consultPatientSelect');
+      if (select) select.value = prePatientId;
     }
   });
 
@@ -283,9 +285,8 @@ function setupAppointmentsModule() {
   });
 
   // Auto-open modal if redirected from agenda with a patient pre-selected
-  if (prePatientId) {
+  if (hasPrePatient) {
     openConsultModal('create');
-    // Set the patient after modal opens (select is populated in openConsultModal)
     const select = document.getElementById('consultPatientSelect');
     if (select) select.value = prePatientId;
   }

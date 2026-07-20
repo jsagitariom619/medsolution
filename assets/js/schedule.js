@@ -75,7 +75,7 @@ function renderSchedule() {
   });
 
   // Sort by date then time
-  visible.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  visible.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
 
   const emptyRow = document.getElementById('scheduleEmptyRow');
   if (emptyRow) emptyRow.style.display = visible.length ? 'none' : '';

@@ -78,7 +78,7 @@ function renderPatientList() {
     if (recordsState.selectedPatientId === p.id) li.classList.add('records-patient-item--active');
     li.dataset.patientId = p.id;
     li.innerHTML = `
-      <span class="patient-photo" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--petroleum),var(--medical-blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;flex-shrink:0">${getInitials(fullName)}</span>
+      <span class="patient-photo">${getInitials(fullName)}</span>
       <div style="flex:1;min-width:0;text-align:left">
         <strong style="display:block;font-size:.93rem;color:var(--gray-700)">${fullName}</strong>
         <small style="color:var(--gray-500)">CI: ${p.ci} &middot; ${consultCount} consulta${consultCount !== 1 ? 's' : ''}</small>
@@ -144,7 +144,7 @@ function renderPatientRecord(patientId) {
 
   panel.innerHTML = `
     <div class="record-patient-header">
-      <span class="patient-photo" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--petroleum),var(--medical-blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0">${getInitials(fullName)}</span>
+    <span class="patient-photo" style="width:52px;height:52px;font-size:1.1rem">${getInitials(fullName)}</span>
       <div>
         <h2 style="margin:0;color:var(--petroleum-dark);letter-spacing:-0.03em">${fullName}</h2>
         <p style="margin:4px 0 0;color:var(--gray-500);font-size:.88rem">CI: ${patient.ci} &middot; ${patient.genero || '—'} &middot; Nac: ${formatDisplayDate(patient.fechaNacimiento)} &middot; Tel: ${patient.telefono || '—'}</p>
@@ -186,9 +186,9 @@ function setupMedicalRecords() {
   });
 
   // Pre-select patient from URL param if provided
-  const prePatientId = parseInt(new URLSearchParams(window.location.search).get('patientId'), 10);
-  if (prePatientId) {
-    selectPatient(prePatientId);
+  const prePatientIdParam = parseInt(new URLSearchParams(window.location.search).get('patientId'), 10);
+  if (!isNaN(prePatientIdParam)) {
+    selectPatient(prePatientIdParam);
   }
 }
 
