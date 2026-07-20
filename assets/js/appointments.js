@@ -11,6 +11,32 @@ const consultState = {
   patientSearchTerm: '',
 };
 
+// ── Auth helper (mirrors auth.js without ES module import) ────────────────────
+
+function getAuthUser() {
+  try {
+    const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function authCan(feature) {
+  const user = getAuthUser();
+  if (!user) return false;
+  const permissions = {
+    'appointments.create':          ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
+    'appointments.edit':            ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
+    'appointments.delete':          ['Administrador', 'Médico'],
+    'appointments.edit-diagnosis':  ['Administrador', 'Médico'],
+    'appointments.edit-treatment':  ['Administrador', 'Médico'],
+    'appointments.edit-physical-exam': ['Administrador', 'Médico'],
+    'appointments.edit-vitals':     ['Administrador', 'Médico', 'Enfermería'],
+  };
+  return Boolean(permissions[feature]?.includes(user.role));
+}
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadConsultations() {
@@ -105,8 +131,8 @@ function renderConsultations() {
       <td>
         <span class="action-links">
           <button class="btn-action" data-action="view" data-id="${c.id}" title="Ver">👁</button>
-          <button class="btn-action" data-action="edit" data-id="${c.id}" title="Editar">✎</button>
-          <button class="btn-action btn-action--delete" data-action="delete" data-id="${c.id}" title="Eliminar">✕</button>
+          ${authCan('appointments.edit') ? `<button class="btn-action" data-action="edit" data-id="${c.id}" title="Editar">✎</button>` : ''}
+          ${authCan('appointments.delete') ? `<button class="btn-action btn-action--delete" data-action="delete" data-id="${c.id}" title="Eliminar">✕</button>` : ''}
         </span>
       </td>
     `;

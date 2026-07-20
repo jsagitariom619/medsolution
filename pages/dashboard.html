@@ -22,20 +22,20 @@
           <span class="doctor-profile__avatar" data-doctor-avatar>JF</span>
           <div>
             <strong data-doctor-name>Dr. Jeason Flores</strong>
-            <span>Médico general</span>
+            <span data-doctor-role>Médico</span>
             <small>● En línea</small>
           </div>
         </section>
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👥</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">✚</span>Nueva Atención</a>
-          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias Clínicas</a>
-          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">◷</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">✚</span>Nueva Atención</a>
+          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias Clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Agenda</a>
           <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
-          <a class="nav-link" href="#reports"><span class="nav-link__icon">◫</span>Reportes</a>
-          <a class="nav-link" href="#prescriptions"><span class="nav-link__icon">Rx</span>Recetas e Impresiones</a>
-          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+          <a class="nav-link" href="#reports" data-requires-role="Administrador,Médico"><span class="nav-link__icon">◫</span>Reportes</a>
+          <a class="nav-link" href="#prescriptions" data-requires-role="Administrador,Médico"><span class="nav-link__icon">Rx</span>Recetas e Impresiones</a>
+          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar-security-card">
           <span>☁</span>
@@ -43,7 +43,7 @@
           <p>Sistema preparado para políticas, roles y respaldo con Supabase.</p>
           <em>✓ Backup automático</em>
         </div>
-        <a class="sidebar-logout" href="../index.html"><span>↪</span>Cerrar sesión</a>
+        <a class="sidebar-logout" href="#" data-logout-btn><span>↪</span>Cerrar sesión</a>
       </aside>
       <main class="main-area dashboard-main">
         <header class="topbar dashboard-topbar">
@@ -55,7 +55,7 @@
           </label>
           <div class="topbar__actions">
             <button class="notification-button" type="button" aria-label="Notificaciones">♢<span>3</span></button>
-            <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>JF</span><div><strong data-user-name>Dr. Jeason Flores</strong><small>Administrador</small></div><span>⌄</span></div>
+            <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>JF</span><div><strong data-user-name>Dr. Jeason Flores</strong><small data-user-role>Médico</small></div><span>⌄</span></div>
           </div>
         </header>
         <section class="content dashboard-content">
@@ -106,10 +106,10 @@
             <article class="card panel quick-actions-panel">
               <div class="panel__header"><h2>Accesos rápidos</h2></div>
               <div class="quick-actions-grid">
-                <a class="quick-action-card" href="patients.html"><span>✚</span><strong>Nuevo Paciente</strong></a>
+                <a class="quick-action-card" href="patients.html" data-requires-role="Administrador,Médico,Auxiliar"><span>✚</span><strong>Nuevo Paciente</strong></a>
                 <a class="quick-action-card" href="patients.html"><span>⌕</span><strong>Buscar Paciente</strong></a>
-                <a class="quick-action-card" href="medical-records.html"><span>▣</span><strong>Nueva Historia</strong></a>
-                <a class="quick-action-card" href="medical-records.html"><span>Rx</span><strong>Nueva Receta</strong></a>
+                <a class="quick-action-card" href="medical-records.html" data-requires-role="Administrador,Médico"><span>▣</span><strong>Nueva Historia</strong></a>
+                <a class="quick-action-card" href="medical-records.html" data-requires-role="Administrador,Médico"><span>Rx</span><strong>Nueva Receta</strong></a>
                 <a class="quick-action-card" href="nursing.html"><span>⊕</span><strong>Enfermería</strong></a>
               </div>
             </article>

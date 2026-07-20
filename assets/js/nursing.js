@@ -1,5 +1,26 @@
 // Nursing Module JavaScript - Gestión de registros de enfermería
 
+// ── Auth helper ───────────────────────────────────────────────────────────────
+
+function getAuthUser() {
+  try {
+    const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function authCan(feature) {
+  const user = getAuthUser();
+  if (!user) return false;
+  const permissions = {
+    'nursing.edit':   ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
+    'nursing.delete': ['Administrador', 'Médico'],
+  };
+  return Boolean(permissions[feature]?.includes(user.role));
+}
+
 // State management
 const nursingState = {
   currentTab: 'injectables',
@@ -455,7 +476,7 @@ function createTableRow(tabType, record) {
       <td>${record.route}</td>
       <td>${record.responsible}</td>
       <td>${record.observations}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `,
     dressings: `
       <td>${record.date}</td>
@@ -465,7 +486,7 @@ function createTableRow(tabType, record) {
       <td>${record.material}</td>
       <td>${record.responsible}</td>
       <td>${record.state}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `,
     nebulizations: `
       <td>${record.date}</td>
@@ -475,7 +496,7 @@ function createTableRow(tabType, record) {
       <td>${record.duration}</td>
       <td>${record.responsible}</td>
       <td>${record.observations}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `,
     contraceptives: `
       <td>${record.date}</td>
@@ -485,7 +506,7 @@ function createTableRow(tabType, record) {
       <td>${record.frequency}</td>
       <td class="next-date">${record.nextDate}</td>
       <td>${record.responsible}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `,
     serotherapy: `
       <td>${record.date}</td>
@@ -495,7 +516,7 @@ function createTableRow(tabType, record) {
       <td>${record.speed}</td>
       <td>${record.responsible}</td>
       <td>${record.observations}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `,
     physiotherapy: `
       <td>${record.date}</td>
@@ -505,7 +526,7 @@ function createTableRow(tabType, record) {
       <td>${record.duration}</td>
       <td>${record.responsible}</td>
       <td>${record.state}</td>
-      <td><button class="btn-action">✎</button><button class="btn-action btn-action--delete">✕</button></td>
+      <td>${authCan('nursing.edit') ? '<button class="btn-action">✎</button>' : ''}${authCan('nursing.delete') ? '<button class="btn-action btn-action--delete">✕</button>' : ''}</td>
     `
   };
 

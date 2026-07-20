@@ -10,6 +10,26 @@ const recordsState = {
   searchTerm: '',
 };
 
+// ── Auth helper ───────────────────────────────────────────────────────────────
+
+function getAuthUser() {
+  try {
+    const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function authCan(feature) {
+  const user = getAuthUser();
+  if (!user) return false;
+  const permissions = {
+    'medical-records.edit': ['Administrador', 'Médico'],
+  };
+  return Boolean(permissions[feature]?.includes(user.role));
+}
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadData() {
@@ -120,7 +140,7 @@ function renderPatientRecord(patientId) {
               <button type="button" class="record-entry__toggle" data-toggle-entry="${c.id}" title="Ver detalle">
                 <span class="record-entry__toggle-icon"></span> ${c.chiefComplaint ? c.chiefComplaint.slice(0, 40) + (c.chiefComplaint.length > 40 ? '…' : '') : 'Ver detalle'}
               </button>
-              <a class="btn btn--secondary" style="padding:8px 14px;font-size:.82rem" href="appointments.html?patientId=${c.patientId}">Editar</a>
+              ${authCan('medical-records.edit') ? `<a class="btn btn--secondary" style="padding:8px 14px;font-size:.82rem" href="appointments.html?patientId=${c.patientId}">Editar</a>` : ''}
             </div>
           </div>
           <div class="record-entry__grid">
@@ -154,7 +174,7 @@ function renderPatientRecord(patientId) {
         <h2 style="margin:0;color:var(--petroleum-dark);letter-spacing:-0.03em">${fullName}</h2>
         <p style="margin:4px 0 0;color:var(--gray-500);font-size:.88rem">CI: ${patient.ci} &middot; ${patient.genero || '—'} &middot; Nac: ${formatDisplayDate(patient.fechaNacimiento)} &middot; Tel: ${patient.telefono || '—'}</p>
       </div>
-      <a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}" style="margin-left:auto;white-space:nowrap">+ Nueva atención</a>
+      ${authCan('medical-records.edit') ? `<a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}" style="margin-left:auto;white-space:nowrap">+ Nueva atención</a>` : ''}
     </div>
     <div class="record-entries">
       <h3 style="color:var(--petroleum-dark);margin:0 0 16px;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Evolución clínica (${consultations.length})</h3>
