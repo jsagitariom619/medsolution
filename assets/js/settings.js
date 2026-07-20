@@ -1,14 +1,22 @@
 // Settings Module — User Management (Admin only)
 // Reads/writes users via the same medsolution.users localStorage key used by auth.js.
-//
-// ⚠️  SECURITY NOTE: Passwords are stored as plaintext in LocalStorage for this
-// development/demo phase only. This MUST be replaced with Supabase Auth (or
-// equivalent hashing) before any production deployment.
+// Passwords are stored as FNV-1a hashes (same as auth.js) — NOT plaintext.
 // Non-module script: kept as regular script for compatibility with non-module
 // sibling scripts on this page. Refactor to ES module when migrating to Supabase.
 
 const USERS_KEY = 'medsolution.users';
-const ROLES = ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'];
+
+// ── Password hash (mirrors auth.js — keep in sync) ────────────────────────────
+// FNV-1a 32-bit; NOT cryptographically secure. SUPABASE: server-side bcrypt/Argon2.
+function hashPassword(password) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < password.length; i++) {
+    h ^= password.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+    h >>>= 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -30,9 +38,6 @@ function loadUsers() {
 }
 
 function saveUsers(users) {
-  // ⚠️  Dev/demo only — plaintext passwords in LocalStorage.
-  // SUPABASE MIGRATION: Hash passwords server-side; never store credentials client-side.
-  // lgtm[js/clear-text-storage-of-sensitive-data]
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 

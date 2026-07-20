@@ -5,9 +5,9 @@
  * Each adapter function is annotated with its Supabase equivalent so the
  * migration is a targeted swap-out, not a rewrite.
  *
- * ⚠️  SECURITY NOTE: Passwords are stored as plaintext in LocalStorage for this
- * development/demo phase only. This MUST be replaced with proper hashing
- * (bcrypt/Argon2) or Supabase Auth before any production deployment.
+ * Password handling: passwords are stored as FNV-1a 32-bit hashes (not plaintext).
+ * This is NOT cryptographically secure for production — use Supabase Auth with
+ * bcrypt/Argon2 server-side hashing before any real deployment.
  *
  * LocalStorage keys used:
  *   medsolution.authUser  — active session (user object, NO password)
@@ -65,14 +65,28 @@ const FEATURE_PERMISSIONS = {
   'users.manage': [ROLES.ADMIN],
 };
 
+// ── Password hashing ──────────────────────────────────────────────────────────
+// FNV-1a 32-bit — NOT cryptographically secure; prevents raw plaintext storage.
+// SUPABASE MIGRATION: Remove this; Supabase Auth handles password hashing server-side.
+
+export function hashPassword(password) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < password.length; i++) {
+    h ^= password.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+    h >>>= 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
 // ── Default user seed ─────────────────────────────────────────────────────────
 // Applied once on first run; Admin can manage users via Settings afterward.
 
 const DEFAULT_USERS = [
-  { id: 1, username: 'admin', password: 'admin123', name: 'Administrador', role: ROLES.ADMIN, initials: 'AD', active: true },
-  { id: 2, username: 'doctor', password: 'doctor123', name: 'Dr. Jeason Flores', role: ROLES.MEDICO, initials: 'JF', active: true },
-  { id: 3, username: 'auxiliar', password: 'aux123', name: 'Ana Martínez', role: ROLES.AUXILIAR, initials: 'AM', active: true },
-  { id: 4, username: 'enfermeria', password: 'enf123', name: 'Rosa Pérez', role: ROLES.ENFERMERIA, initials: 'RP', active: true },
+  { id: 1, username: 'admin',      passwordHash: hashPassword('admin123'),   name: 'Administrador',      role: ROLES.ADMIN,      initials: 'AD', active: true },
+  { id: 2, username: 'doctor',     passwordHash: hashPassword('doctor123'),  name: 'Dr. Jeason Flores',  role: ROLES.MEDICO,     initials: 'JF', active: true },
+  { id: 3, username: 'auxiliar',   passwordHash: hashPassword('aux123'),     name: 'Ana Martínez',       role: ROLES.AUXILIAR,   initials: 'AM', active: true },
+  { id: 4, username: 'enfermeria', passwordHash: hashPassword('enf123'),     name: 'Rosa Pérez',         role: ROLES.ENFERMERIA, initials: 'RP', active: true },
 ];
 
 // ── LocalStorage adapter ──────────────────────────────────────────────────────
@@ -94,8 +108,7 @@ export function getUsers() {
   }
 }
 
-/** Persists users array. ⚠️ Passwords are plaintext — for dev/demo only.
- *  SUPABASE MIGRATION: supabase.from('users').upsert(users) + hash passwords server-side */
+/** Persists users array. SUPABASE MIGRATION: supabase.from('users').upsert(users) */
 export function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
@@ -124,8 +137,12 @@ export function getSession() {
 export function login(username, password, remember = false) {
   seedUsersIfNeeded();
   const users = getUsers();
+  const normalizedUsername = username.trim().toLowerCase();
+  const inputHash = hashPassword(password);
   const user = users.find(
-    (u) => u.username === username.trim() && u.password === password && u.active !== false,
+    (u) => u.username.toLowerCase() === normalizedUsername
+      && (u.passwordHash === inputHash || u.password === password) // backward compat
+      && u.active !== false,
   );
   if (!user) return null;
 
