@@ -3,12 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <meta name="description" content="Med Solution — Historias clínicas y evolución de pacientes." />
     <title>Med Solution | Historias clínicas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <style>
+      .records-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+      .records-sidebar-panel { position: sticky; top: calc(var(--topbar-height) + 16px); }
+      .records-search-wrap { margin-bottom: 14px; }
+      .records-search-wrap input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; font-family: inherit; }
+      .records-search-wrap input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .records-patient-list { display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 240px); overflow-y: auto; }
+      .records-patient-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: none; background: transparent; cursor: pointer; width: 100%; transition: background 140ms ease; }
+      .records-patient-item:hover { background: var(--gray-100); }
+      .records-patient-item--active { background: rgba(47,183,166,.12); }
+      .records-patient-item--active strong { color: var(--petroleum); }
+      .records-detail-panel { min-height: 200px; }
+      .record-patient-header { display: flex; align-items: center; gap: 16px; padding: 20px; border-bottom: 1px solid var(--gray-200); flex-wrap: wrap; }
+      .record-entries { padding: 20px; display: grid; gap: 16px; }
+      .record-entry { border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow: hidden; }
+      .record-entry__header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+      .record-entry__date { font-weight: 700; color: var(--petroleum); font-size: .93rem; }
+      .record-entry__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+      .record-field { padding: 12px 16px; border-bottom: 1px solid rgba(219,231,235,.6); }
+      .record-field:nth-last-child(-n+2):not(:nth-child(odd)) { border-bottom: none; }
+      .record-field:last-child { border-bottom: none; }
+      .record-field span { display: block; font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-500); margin-bottom: 4px; }
+      .record-field p { margin: 0; color: var(--gray-700); font-size: .9rem; line-height: 1.5; }
+      .record-field--highlight { background: rgba(47,183,166,.06); }
+      .record-field--highlight span { color: var(--aqua); }
+      .record-field--full { grid-column: 1 / -1; }
+      .record-field--vitals { grid-column: 1 / -1; }
+      .vitals-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+      .vital-chip { padding: 5px 12px; border-radius: 999px; background: rgba(15,76,92,.08); color: var(--petroleum); font-weight: 700; font-size: .82rem; }
+      @media (max-width: 900px) { .records-layout { grid-template-columns: 1fr; } .records-sidebar-panel { position: static; } .records-patient-list { max-height: 300px; } }
+      @media (max-width: 640px) { .record-entry__grid { grid-template-columns: 1fr; } }
+      /* Accordion for consultation entries */
+      .record-entry--collapsed .record-entry__grid { display: none; }
+      .record-entry__toggle { background: none; border: none; cursor: pointer; font-size: .85rem; color: var(--aqua); font-weight: 700; padding: 4px 10px; border-radius: 8px; transition: background 140ms; }
+      .record-entry__toggle:hover { background: rgba(47,183,166,.12); }
+      .record-entry--collapsed .record-entry__toggle-icon::before { content: '▶'; }
+      .record-entry__toggle-icon::before { content: '▼'; }
+    </style>
   </head>
   <body class="app-body">
     <div class="app-shell">
@@ -47,18 +86,35 @@
             <div>
               <span class="eyebrow">Historias clínicas</span>
               <h1>Historias clínicas</h1>
-              <p>Base modular para historia clínica general, estética y podológica con evolución profesional.</p>
+              <p>Evolución clínica completa por paciente: signos vitales, diagnósticos y tratamientos.</p>
             </div>
-            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+            <a class="btn btn--primary" href="appointments.html">+ Nueva Atención</a>
           </div>
-          <div class="module-grid">
-            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
-            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
-            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
+
+          <div class="records-layout">
+            <!-- Patient list panel -->
+            <div class="records-sidebar-panel">
+              <article class="card" style="padding: 20px;">
+                <h3 style="margin: 0 0 14px; color: var(--petroleum-dark); font-size: .95rem; font-weight: 800;">Pacientes</h3>
+                <div class="records-search-wrap">
+                  <input id="recordsSearch" type="search" placeholder="Buscar paciente…" />
+                </div>
+                <div class="records-patient-list" id="recordsPatientList">
+                  <p style="color:var(--gray-500)">Cargando…</p>
+                </div>
+              </article>
+            </div>
+
+            <!-- Detail panel -->
+            <article class="card records-detail-panel" id="recordsDetailPanel">
+              <!-- Populated by JS -->
+            </article>
           </div>
         </section>
       </main>
     </div>
+
     <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/medical-records.js"></script>
   </body>
 </html>

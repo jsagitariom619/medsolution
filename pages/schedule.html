@@ -3,12 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <meta name="description" content="Med Solution — Agenda médica del consultorio." />
     <title>Med Solution | Agenda</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <style>
+      .schedule-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .schedule-count { font-size: .88rem; color: var(--gray-500); margin-left: auto; }
+      .schedule-table-wrap { overflow-x: auto; margin-top: 20px; }
+      .schedule-table { width: 100%; border-collapse: collapse; font-size: .93rem; }
+      .schedule-table th { text-align: left; padding: 12px 16px; background: var(--gray-50); color: var(--gray-500); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--gray-200); }
+      .schedule-table td { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+      .schedule-table tr:last-child td { border-bottom: none; }
+      .schedule-table tr[data-appt-row]:hover td { background: var(--gray-50); }
+      .schedule-filter { padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; font-family: inherit; outline: none; color: var(--gray-700); }
+      .schedule-filter:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .schedule-filter-wrap { flex: 1; min-width: 140px; }
+      .patient-cell { display: flex; align-items: center; gap: 10px; }
+      .schedule-empty { text-align: center; padding: 40px; color: var(--gray-500); }
+      .badge--confirmed { background: rgba(47,183,166,.14); color: var(--petroleum); }
+      .badge--pending { background: rgba(255,183,77,.18); color: #b45309; }
+      .badge--attended { background: rgba(34,197,94,.14); color: #15803d; }
+      .badge--cancelled { background: rgba(239,61,89,.12); color: #c93047; }
+      .appt-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .appt-form-grid .full-width { grid-column: 1 / -1; }
+      .form-field select { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; font-family: inherit; outline: none; color: var(--gray-700); }
+      .form-field select:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      @media (max-width: 640px) { .appt-form-grid { grid-template-columns: 1fr; } .appt-form-grid .full-width { grid-column: 1; } }
+    </style>
   </head>
   <body class="app-body">
     <div class="app-shell">
@@ -47,18 +72,101 @@
             <div>
               <span class="eyebrow">Agenda</span>
               <h1>Agenda médica</h1>
-              <p>Vista preparada para planificación diaria, semanal y control de disponibilidad del consultorio.</p>
+              <p>Programa, confirma y gestiona las citas del consultorio.</p>
             </div>
-            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+            <button class="btn btn--primary" id="newApptBtn" type="button">+ Nueva Cita</button>
           </div>
-          <div class="module-grid">
-            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
-            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
-            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
-          </div>
+
+          <article class="card" style="padding: 24px;">
+            <div class="schedule-toolbar">
+              <div class="schedule-filter-wrap">
+                <input class="schedule-filter" id="filterDate" type="date" title="Filtrar por fecha" />
+              </div>
+              <div class="schedule-filter-wrap">
+                <input class="schedule-filter" id="filterPatient" type="text" placeholder="Buscar paciente…" />
+              </div>
+              <div class="schedule-filter-wrap">
+                <select class="schedule-filter" id="filterStatus">
+                  <option value="">Todos los estados</option>
+                  <option>Pendiente</option>
+                  <option>Confirmada</option>
+                  <option>Atendida</option>
+                  <option>Cancelada</option>
+                </select>
+              </div>
+              <span class="schedule-count" id="scheduleCount"></span>
+            </div>
+            <div class="schedule-table-wrap">
+              <table class="schedule-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Paciente</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="scheduleTableBody">
+                  <tr id="scheduleEmptyRow" style="display:none;">
+                    <td colspan="6" class="schedule-empty">No se encontraron citas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </main>
     </div>
+
+    <!-- Schedule Modal -->
+    <div class="nursing-modal" id="scheduleModal" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header">
+          <h2 id="scheduleModalTitle">Nueva Cita</h2>
+          <button class="nursing-modal__close" id="closeScheduleModalBtn" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <form class="nursing-form" id="scheduleForm" novalidate>
+          <div class="appt-form-grid">
+            <label class="form-field full-width">
+              <span>Paciente *</span>
+              <select id="apptPatientSelect" name="patient" required>
+                <option value="">Seleccionar paciente…</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Fecha *</span>
+              <input type="date" name="date" required />
+            </label>
+            <label class="form-field">
+              <span>Hora *</span>
+              <input type="time" name="time" required />
+            </label>
+            <label class="form-field full-width">
+              <span>Motivo de la cita *</span>
+              <input type="text" name="reason" placeholder="Ej. Control general, Revisión de resultados…" required />
+            </label>
+            <label class="form-field">
+              <span>Estado</span>
+              <select name="status">
+                <option value="Pendiente">Pendiente</option>
+                <option value="Confirmada">Confirmada</option>
+                <option value="Atendida">Atendida</option>
+                <option value="Cancelada">Cancelada</option>
+              </select>
+            </label>
+          </div>
+          <div class="nursing-form__actions">
+            <button class="btn btn--secondary" id="cancelScheduleModalBtn" type="button">Cancelar</button>
+            <button class="btn btn--primary" type="submit">Guardar Cita</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/schedule.js"></script>
   </body>
 </html>

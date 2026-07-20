@@ -3,12 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
-    <title>Med Solution | Citas</title>
+    <meta name="description" content="Med Solution — Nueva atención y registro de consultas." />
+    <title>Med Solution | Nueva Atención</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <style>
+      .consult-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .consult-count { font-size: .88rem; color: var(--gray-500); margin-left: auto; }
+      .consult-table-wrap { overflow-x: auto; margin-top: 20px; }
+      .consult-table { width: 100%; border-collapse: collapse; font-size: .93rem; }
+      .consult-table th { text-align: left; padding: 12px 16px; background: var(--gray-50); color: var(--gray-500); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--gray-200); }
+      .consult-table td { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+      .consult-table tr:last-child td { border-bottom: none; }
+      .consult-table tr[data-consult-row]:hover td { background: var(--gray-50); }
+      .consult-search { flex: 1; min-width: 200px; max-width: 360px; }
+      .consult-search input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; }
+      .consult-search input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .consult-empty { text-align: center; padding: 40px; color: var(--gray-500); }
+      .patient-cell { display: flex; align-items: center; gap: 10px; }
+      .vitals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .consult-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .consult-form-grid .full-width { grid-column: 1 / -1; }
+      .form-field select { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; font-family: inherit; outline: none; color: var(--gray-700); }
+      .form-field select:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .section-label { grid-column: 1 / -1; font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--aqua); padding-bottom: 4px; border-bottom: 1px solid rgba(47,183,166,.2); margin-top: 4px; }
+      .nursing-modal__content { width: min(720px, 92vw); }
+      @media (max-width: 640px) { .consult-form-grid, .vitals-grid { grid-template-columns: 1fr; } .consult-form-grid .full-width { grid-column: 1; } }
+      /* Patient picker */
+      .patient-selected-box { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); }
+      .patient-selected-info { flex: 1; font-size: .93rem; color: var(--gray-700); min-width: 0; }
+      .patient-selected-info strong { display: block; }
+      .patient-selected-info small { color: var(--gray-500); font-size: .82rem; }
+      /* Patient search modal */
+      .patient-search-modal__content { width: min(540px, 92vw); }
+      .patient-search-input { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; font-family: inherit; outline: none; }
+      .patient-search-input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .patient-search-results { max-height: 260px; overflow-y: auto; margin: 4px 0; }
+      .patient-result-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background 140ms; }
+      .patient-result-item:hover { background: var(--gray-100); }
+      .patient-result-item__info { flex: 1; min-width: 0; }
+      .patient-result-item__info strong { display: block; font-size: .93rem; color: var(--gray-700); }
+      .patient-result-item__info small { color: var(--gray-500); font-size: .82rem; }
+      .patient-result-empty { text-align: center; padding: 20px; color: var(--gray-500); font-size: .9rem; }
+      .patient-search-divider { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
+      .quick-register-form { margin-top: 12px; }
+      .quick-register-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 480px) { .quick-register-grid { grid-template-columns: 1fr; } }
+    </style>
   </head>
   <body class="app-body">
     <div class="app-shell">
@@ -45,20 +89,182 @@
         <section class="content">
           <div class="page-header">
             <div>
-              <span class="eyebrow">Citas</span>
-              <h1>Citas y nueva atención</h1>
-              <p>Espacio operativo para coordinar consultas, iniciar atenciones y revisar estados de asistencia.</p>
+              <span class="eyebrow">Citas y Atenciones</span>
+              <h1>Nueva atención</h1>
+              <p>Registra consultas con signos vitales, diagnóstico, tratamiento y observaciones clínicas.</p>
             </div>
-            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+            <button class="btn btn--primary" id="newConsultBtn" type="button">+ Nueva Atención</button>
           </div>
-          <div class="module-grid">
-            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
-            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
-            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
-          </div>
+
+          <article class="card" style="padding: 24px;">
+            <div class="consult-toolbar">
+              <div class="consult-search">
+                <input id="consultSearch" type="search" placeholder="Buscar por paciente, diagnóstico…" />
+              </div>
+              <span class="consult-count" id="consultCount"></span>
+            </div>
+            <div class="consult-table-wrap">
+              <table class="consult-table">
+                <thead>
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Paciente</th>
+                    <th>Motivo</th>
+                    <th>Diagnóstico</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="consultTableBody">
+                  <tr id="consultEmptyRow" style="display:none;">
+                    <td colspan="5" class="consult-empty">No hay atenciones registradas. Usa el botón <strong>+ Nueva Atención</strong> para comenzar.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </main>
     </div>
+
+    <!-- Consultation Modal -->
+    <div class="nursing-modal" id="consultModal" role="dialog" aria-modal="true" aria-labelledby="consultModalTitle">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header">
+          <h2 id="consultModalTitle">Nueva Atención</h2>
+          <button class="nursing-modal__close" id="closeConsultModalBtn" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <form class="nursing-form" id="consultForm" novalidate>
+          <div class="consult-form-grid">
+
+            <!-- Datos generales -->
+            <span class="section-label">Datos generales</span>
+
+            <div class="form-field full-width" id="consultPatientField">
+              <span>Paciente *</span>
+              <div class="patient-selected-box" id="consultPatientBox">
+                <div class="patient-selected-info" id="consultPatientDisplay">
+                  <em style="color:var(--gray-500)">Sin paciente seleccionado</em>
+                </div>
+                <button type="button" class="btn btn--secondary" id="pickPatientBtn" style="padding:8px 16px;font-size:.87rem;white-space:nowrap">⌕ Buscar</button>
+              </div>
+              <input type="hidden" id="consultPatientId" />
+              <input type="hidden" id="consultPatientNameHidden" />
+            </div>
+            <label class="form-field">
+              <span>Fecha *</span>
+              <input type="date" name="date" required />
+            </label>
+            <label class="form-field">
+              <span>Hora</span>
+              <input type="time" name="time" />
+            </label>
+
+            <!-- Signos vitales -->
+            <span class="section-label">Signos vitales</span>
+
+            <label class="form-field">
+              <span>Presión arterial (mmHg)</span>
+              <input type="text" name="bp" placeholder="Ej. 120/80" />
+            </label>
+            <label class="form-field">
+              <span>Frecuencia cardíaca (lpm)</span>
+              <input type="number" name="hr" placeholder="Ej. 72" min="20" max="300" />
+            </label>
+            <label class="form-field">
+              <span>Temperatura (°C)</span>
+              <input type="number" name="temp" placeholder="Ej. 36.5" step="0.1" min="30" max="45" />
+            </label>
+            <label class="form-field">
+              <span>Peso (kg)</span>
+              <input type="number" name="weight" placeholder="Ej. 70" step="0.1" min="1" />
+            </label>
+            <label class="form-field">
+              <span>Talla (cm)</span>
+              <input type="number" name="height" placeholder="Ej. 170" min="30" max="250" />
+            </label>
+            <label class="form-field">
+              <span>Saturación O₂ (%)</span>
+              <input type="number" name="spo2" placeholder="Ej. 98" min="50" max="100" />
+            </label>
+
+            <!-- Consulta clínica -->
+            <span class="section-label">Consulta clínica</span>
+
+            <label class="form-field full-width">
+              <span>Motivo de consulta *</span>
+              <input type="text" name="chiefComplaint" placeholder="Ej. Dolor de cabeza persistente, fiebre…" required />
+            </label>
+            <label class="form-field full-width">
+              <span>Examen físico</span>
+              <textarea name="physicalExam" rows="3" placeholder="Hallazgos al examen físico…"></textarea>
+            </label>
+            <label class="form-field full-width">
+              <span>Diagnóstico</span>
+              <input type="text" name="diagnosis" placeholder="Ej. Hipertensión arterial, CIE-10 I10" />
+            </label>
+            <label class="form-field full-width">
+              <span>Tratamiento / Prescripción</span>
+              <textarea name="treatment" rows="3" placeholder="Medicamentos, dosis, indicaciones…"></textarea>
+            </label>
+            <label class="form-field full-width">
+              <span>Observaciones</span>
+              <textarea name="observations" rows="2" placeholder="Notas adicionales…"></textarea>
+            </label>
+          </div>
+          <div class="nursing-form__actions">
+            <button class="btn btn--secondary" id="cancelConsultModalBtn" type="button">Cancelar</button>
+            <button class="btn btn--primary" id="consultSaveBtn" type="submit">Guardar Atención</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Patient Search Modal -->
+    <div class="nursing-modal" id="patientSearchModal" role="dialog" aria-modal="true" aria-labelledby="patientSearchModalTitle">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content patient-search-modal__content">
+        <div class="nursing-modal__header">
+          <h2 id="patientSearchModalTitle">Buscar Paciente</h2>
+          <button class="nursing-modal__close" id="closePatientSearchModalBtn" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <div style="padding:0 24px 24px">
+          <p style="color:var(--gray-500);font-size:.9rem;margin:0 0 14px">Busca por nombre, cédula, teléfono o número de historia clínica.</p>
+          <input id="patientSearchInput" class="patient-search-input" type="search" placeholder="Nombre, CI, teléfono…" autocomplete="off" />
+          <div class="patient-search-results" id="patientSearchResults">
+            <p class="patient-result-empty">Escribe para buscar pacientes…</p>
+          </div>
+          <hr class="patient-search-divider" />
+          <button type="button" class="btn btn--secondary" id="showRegisterPatientBtn" style="width:100%">+ Registrar nuevo paciente</button>
+          <div id="quickRegisterSection" style="display:none" class="quick-register-form">
+            <h3 style="font-size:.95rem;color:var(--petroleum-dark);margin:16px 0 12px;font-weight:800">Registrar nuevo paciente</h3>
+            <form id="quickPatientForm" novalidate>
+              <div class="quick-register-grid">
+                <label class="form-field"><span>Nombre *</span><input type="text" name="nombre" placeholder="Nombre" required /></label>
+                <label class="form-field"><span>Apellido *</span><input type="text" name="apellido" placeholder="Apellido" required /></label>
+                <label class="form-field"><span>CI *</span><input type="text" name="ci" placeholder="Cédula" required /></label>
+                <label class="form-field"><span>Teléfono</span><input type="tel" name="telefono" placeholder="Ej. 0412-5551234" /></label>
+                <label class="form-field"><span>Género</span>
+                  <select name="genero" style="width:100%;padding:12px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font-size:.93rem;font-family:inherit;outline:none;color:var(--gray-700)">
+                    <option value="">Seleccionar…</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+                <label class="form-field"><span>Fecha de nacimiento</span><input type="date" name="fechaNacimiento" /></label>
+              </div>
+              <div class="nursing-form__actions" style="margin-top:12px">
+                <button type="button" class="btn btn--secondary" id="cancelQuickPatientBtn">Cancelar</button>
+                <button type="submit" class="btn btn--primary">Guardar y continuar →</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/appointments.js"></script>
   </body>
 </html>

@@ -149,6 +149,21 @@
   display: inline-block;
 }
 
+/* Shared patient avatar chip */
+.patient-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--petroleum), var(--medical-blue));
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
 .btn-action {
   border: none;
   background: transparent;
