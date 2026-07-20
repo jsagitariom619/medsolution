@@ -73,7 +73,11 @@ function nextId() {
 // ── Render ───────────────────────────────────────────────────────────────────
 
 function getInitials(nombre, apellido) {
-  return ((nombre[0] || '') + (apellido[0] || '')).toUpperCase();
+  return (((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase());
+}
+
+function getCurrentDateISO() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function formatDate(isoDate) {
@@ -224,7 +228,7 @@ function handleSave(event) {
   } else {
     patientsState.patients.push({
       id: nextId(),
-      registrado: new Date().toISOString().slice(0, 10),
+      registrado: getCurrentDateISO(),
       ...data,
     });
   }

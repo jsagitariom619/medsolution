@@ -10,10 +10,11 @@ const routes = {
 };
 
 const buildUserFromEmail = (email) => {
-  const prefix = email.split('@')[0];
-  const parts = prefix.split(/[._-]/).map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
-  const name = parts.join(' ');
-  const initials = parts.map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  const atIndex = email.indexOf('@');
+  const prefix = atIndex > -1 ? email.slice(0, atIndex) : email;
+  const parts = prefix.split(/[._-]/).filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+  const name = parts.length ? parts.join(' ') : prefix;
+  const initials = parts.filter((p) => p).map((p) => p[0]).join('').slice(0, 2).toUpperCase() || '?';
   return { name, initials, role: 'Médico' };
 };
 
