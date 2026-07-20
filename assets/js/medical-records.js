@@ -113,10 +113,15 @@ function renderPatientRecord(patientId) {
 
   const consultsHtml = consultations.length
     ? consultations.map((c) => `
-        <div class="record-entry">
+        <div class="record-entry record-entry--collapsed" data-entry-id="${c.id}">
           <div class="record-entry__header">
             <span class="record-entry__date">📅 ${formatDisplayDate(c.date)}${c.time ? ' — ' + c.time : ''}</span>
-            <a class="btn btn--secondary" style="padding:8px 14px;font-size:.82rem" href="appointments.html">Editar</a>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" class="record-entry__toggle" data-toggle-entry="${c.id}" title="Ver detalle">
+                <span class="record-entry__toggle-icon"></span> ${c.chiefComplaint ? c.chiefComplaint.slice(0, 40) + (c.chiefComplaint.length > 40 ? '…' : '') : 'Ver detalle'}
+              </button>
+              <a class="btn btn--secondary" style="padding:8px 14px;font-size:.82rem" href="appointments.html?patientId=${c.patientId}">Editar</a>
+            </div>
           </div>
           <div class="record-entry__grid">
             ${c.chiefComplaint ? `<div class="record-field record-field--full"><span>Motivo</span><p>${c.chiefComplaint}</p></div>` : ''}
@@ -140,7 +145,7 @@ function renderPatientRecord(patientId) {
           </div>
         </div>
       `).join('')
-    : '<p style="color:var(--gray-500);padding:12px 0;">Este paciente no tiene consultas registradas. <a href="appointments.html" style="color:var(--medical-blue);font-weight:700">Registrar primera atención →</a></p>';
+    : '<p style="color:var(--gray-500);padding:12px 0;">Este paciente no tiene consultas registradas. <a href="appointments.html?action=new" style="color:var(--medical-blue);font-weight:700">Registrar primera atención →</a></p>';
 
   panel.innerHTML = `
     <div class="record-patient-header">
@@ -149,13 +154,22 @@ function renderPatientRecord(patientId) {
         <h2 style="margin:0;color:var(--petroleum-dark);letter-spacing:-0.03em">${fullName}</h2>
         <p style="margin:4px 0 0;color:var(--gray-500);font-size:.88rem">CI: ${patient.ci} &middot; ${patient.genero || '—'} &middot; Nac: ${formatDisplayDate(patient.fechaNacimiento)} &middot; Tel: ${patient.telefono || '—'}</p>
       </div>
-      <a class="btn btn--primary" href="appointments.html?patientId=${patient.id}" style="margin-left:auto;white-space:nowrap">+ Nueva atención</a>
+      <a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}" style="margin-left:auto;white-space:nowrap">+ Nueva atención</a>
     </div>
     <div class="record-entries">
       <h3 style="color:var(--petroleum-dark);margin:0 0 16px;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Evolución clínica (${consultations.length})</h3>
       ${consultsHtml}
     </div>
   `;
+
+  // Wire up accordion toggles after rendering
+  panel.querySelectorAll('[data-toggle-entry]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const entryId = btn.dataset.toggleEntry;
+      const entry = panel.querySelector(`.record-entry[data-entry-id="${entryId}"]`);
+      if (entry) entry.classList.toggle('record-entry--collapsed');
+    });
+  });
 }
 
 // ── Render empty state ────────────────────────────────────────────────────────

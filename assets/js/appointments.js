@@ -1,13 +1,14 @@
 // Appointments Module — Nueva Atención / Consulta (localStorage)
+// Persistence isolated in load/save helpers — ready to migrate to Supabase.
 
 const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
-const SCHEDULE_KEY = 'medsolution.appointments';
 
 const consultState = {
   consultations: [],
   editingId: null,
   searchTerm: '',
+  patientSearchTerm: '',
 };
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -34,8 +35,17 @@ function getPatients() {
   }
 }
 
+function savePatientsToStorage(patients) {
+  localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+}
+
 function nextConsultId() {
   const ids = consultState.consultations.map((c) => c.id);
+  return ids.length ? Math.max(...ids) + 1 : 1;
+}
+
+function nextPatientId(patients) {
+  const ids = patients.map((p) => p.id);
   return ids.length ? Math.max(...ids) + 1 : 1;
 }
 
@@ -45,7 +55,7 @@ function getUrlParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
-// ── Render ────────────────────────────────────────────────────────────────────
+// ── Render consultations list ─────────────────────────────────────────────────
 
 function getInitials(fullName) {
   const parts = (fullName || '').trim().split(/\s+/);
@@ -111,23 +121,160 @@ function updateConsultCounter(count) {
   if (el) el.textContent = `${count} consulta${count !== 1 ? 's' : ''}`;
 }
 
-// ── Patient select ────────────────────────────────────────────────────────────
+// ── Patient picker (replaces select) ─────────────────────────────────────────
 
-function populatePatientSelect(selectedId = null) {
-  const select = document.getElementById('consultPatientSelect');
-  if (!select) return;
-  const patients = getPatients();
-  select.innerHTML = '<option value="">Seleccionar paciente…</option>';
-  patients.forEach((p) => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = `${p.nombre} ${p.apellido}`;
-    if (selectedId && p.id === selectedId) opt.selected = true;
-    select.appendChild(opt);
-  });
+function setSelectedPatient(id, name) {
+  const idInput = document.getElementById('consultPatientId');
+  const nameInput = document.getElementById('consultPatientNameHidden');
+  const display = document.getElementById('consultPatientDisplay');
+  if (idInput) idInput.value = id;
+  if (nameInput) nameInput.value = name;
+  if (display) {
+    display.innerHTML = `<strong>${name}</strong><small>ID Historia: #${id}</small>`;
+  }
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+function clearSelectedPatient() {
+  const idInput = document.getElementById('consultPatientId');
+  const nameInput = document.getElementById('consultPatientNameHidden');
+  const display = document.getElementById('consultPatientDisplay');
+  if (idInput) idInput.value = '';
+  if (nameInput) nameInput.value = '';
+  if (display) display.innerHTML = '<em style="color:var(--gray-500)">Sin paciente seleccionado</em>';
+}
+
+function getSelectedPatientId() {
+  return parseInt(document.getElementById('consultPatientId')?.value || '', 10) || null;
+}
+
+function getSelectedPatientName() {
+  return document.getElementById('consultPatientNameHidden')?.value || '';
+}
+
+// ── Patient Search Modal ──────────────────────────────────────────────────────
+
+function openPatientSearchModal() {
+  const modal = document.getElementById('patientSearchModal');
+  const input = document.getElementById('patientSearchInput');
+  if (!modal) return;
+  // Reset state
+  if (input) { input.value = ''; }
+  renderPatientSearchResults('');
+  hideQuickRegisterForm();
+  modal.classList.add('nursing-modal--active');
+  setTimeout(() => input?.focus(), 80);
+}
+
+function closePatientSearchModal() {
+  const modal = document.getElementById('patientSearchModal');
+  if (modal) modal.classList.remove('nursing-modal--active');
+  hideQuickRegisterForm();
+}
+
+function renderPatientSearchResults(term) {
+  const container = document.getElementById('patientSearchResults');
+  if (!container) return;
+
+  const patients = getPatients();
+  const q = term.toLowerCase().trim();
+
+  const matches = q
+    ? patients.filter((p) =>
+        `${p.nombre} ${p.apellido}`.toLowerCase().includes(q) ||
+        (p.ci || '').toLowerCase().includes(q) ||
+        (p.telefono || '').includes(q) ||
+        String(p.id).includes(q)
+      )
+    : patients;
+
+  if (!matches.length) {
+    container.innerHTML = `<p class="patient-result-empty">${q ? 'No se encontraron pacientes. Puedes registrar uno nuevo abajo.' : 'No hay pacientes registrados. Registra el primero abajo.'}</p>`;
+    return;
+  }
+
+  container.innerHTML = matches.map((p) => {
+    const fullName = `${p.nombre} ${p.apellido}`;
+    const initials = getInitials(fullName);
+    const consultCount = consultState.consultations.filter((c) => c.patientId === p.id).length;
+    return `
+      <div class="patient-result-item" data-select-patient="${p.id}" data-patient-name="${fullName}">
+        <span class="patient-photo">${initials}</span>
+        <div class="patient-result-item__info">
+          <strong>${fullName}</strong>
+          <small>CI: ${p.ci}${p.telefono ? ' · ' + p.telefono : ''} · #${p.id} · ${consultCount} consulta${consultCount !== 1 ? 's' : ''}</small>
+        </div>
+        <button class="btn btn--primary" type="button" style="padding:7px 14px;font-size:.82rem" data-pick-patient="${p.id}" data-pick-name="${fullName}">Seleccionar</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectPatientAndContinue(patientId, patientName) {
+  closePatientSearchModal();
+  setSelectedPatient(patientId, patientName);
+  // Show pick button only in create/edit mode (already handled by openConsultModal)
+  const pickBtn = document.getElementById('pickPatientBtn');
+  if (pickBtn) pickBtn.style.display = '';
+  // If consultation modal is not yet open (came from "Nueva Atención" button), open it
+  const consultModal = document.getElementById('consultModal');
+  if (!consultModal?.classList.contains('nursing-modal--active')) {
+    openConsultModal('create');
+  }
+}
+
+// ── Quick patient registration ────────────────────────────────────────────────
+
+function showQuickRegisterForm() {
+  const section = document.getElementById('quickRegisterSection');
+  const btn = document.getElementById('showRegisterPatientBtn');
+  if (section) section.style.display = '';
+  if (btn) btn.style.display = 'none';
+  document.getElementById('quickPatientForm')?.reset();
+}
+
+function hideQuickRegisterForm() {
+  const section = document.getElementById('quickRegisterSection');
+  const btn = document.getElementById('showRegisterPatientBtn');
+  if (section) section.style.display = 'none';
+  if (btn) btn.style.display = '';
+}
+
+function handleQuickPatientSave(event) {
+  event.preventDefault();
+  const form = document.getElementById('quickPatientForm');
+  if (!form) return;
+
+  const nombre = form.elements.nombre.value.trim();
+  const apellido = form.elements.apellido.value.trim();
+  const ci = form.elements.ci.value.trim();
+
+  if (!nombre || !apellido || !ci) {
+    alert('Nombre, apellido y cédula son requeridos.');
+    return;
+  }
+
+  const patients = getPatients();
+  const newPatient = {
+    id: nextPatientId(patients),
+    nombre,
+    apellido,
+    ci,
+    telefono: form.elements.telefono.value.trim(),
+    genero: form.elements.genero.value,
+    fechaNacimiento: form.elements.fechaNacimiento.value,
+    email: '',
+    direccion: '',
+    registrado: new Date().toISOString().slice(0, 10),
+  };
+
+  patients.push(newPatient);
+  savePatientsToStorage(patients);
+
+  const fullName = `${newPatient.nombre} ${newPatient.apellido}`;
+  selectPatientAndContinue(newPatient.id, fullName);
+}
+
+// ── Consultation Modal ────────────────────────────────────────────────────────
 
 function openConsultModal(mode, consult = null) {
   const modal = document.getElementById('consultModal');
@@ -137,26 +284,31 @@ function openConsultModal(mode, consult = null) {
 
   form.reset();
   consultState.editingId = null;
-  populatePatientSelect(consult?.patientId);
   setConsultFormReadOnly(form, false);
 
   const saveBtn = document.getElementById('consultSaveBtn');
+  const pickBtn = document.getElementById('pickPatientBtn');
 
   if (mode === 'create') {
     title.textContent = 'Nueva Atención';
     if (form.elements.date) form.elements.date.value = new Date().toISOString().slice(0, 10);
     if (form.elements.time) form.elements.time.value = new Date().toTimeString().slice(0, 5);
     if (saveBtn) saveBtn.style.display = '';
+    if (pickBtn) pickBtn.style.display = '';
+    // Only clear patient if none was pre-selected
+    if (!getSelectedPatientId()) clearSelectedPatient();
   } else if (mode === 'edit' && consult) {
     title.textContent = 'Editar Consulta';
     consultState.editingId = consult.id;
     fillConsultForm(form, consult);
     if (saveBtn) saveBtn.style.display = '';
+    if (pickBtn) pickBtn.style.display = '';
   } else if (mode === 'view' && consult) {
     title.textContent = 'Detalle de Consulta';
     fillConsultForm(form, consult);
     setConsultFormReadOnly(form, true);
     if (saveBtn) saveBtn.style.display = 'none';
+    if (pickBtn) pickBtn.style.display = 'none';
   }
 
   modal.classList.add('nursing-modal--active');
@@ -167,21 +319,21 @@ function closeConsultModal() {
   const form = document.getElementById('consultForm');
   if (modal) modal.classList.remove('nursing-modal--active');
   if (form) { form.reset(); setConsultFormReadOnly(form, false); }
+  clearSelectedPatient();
   consultState.editingId = null;
 }
 
 function fillConsultForm(form, c) {
+  setSelectedPatient(c.patientId, c.patientName);
   if (form.elements.date) form.elements.date.value = c.date || '';
   if (form.elements.time) form.elements.time.value = c.time || '';
-  const select = document.getElementById('consultPatientSelect');
-  if (select) select.value = c.patientId || '';
   ['bp', 'hr', 'temp', 'weight', 'height', 'spo2', 'chiefComplaint', 'physicalExam', 'diagnosis', 'treatment', 'observations'].forEach((f) => {
     if (form.elements[f]) form.elements[f].value = c[f] || '';
   });
 }
 
 function setConsultFormReadOnly(form, readOnly) {
-  form.querySelectorAll('input, select, textarea').forEach((el) => {
+  form.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach((el) => {
     el.readOnly = readOnly;
     if (el.tagName === 'SELECT') el.disabled = readOnly;
   });
@@ -194,9 +346,8 @@ function handleConsultSave(event) {
   const form = document.getElementById('consultForm');
   if (!form) return;
 
-  const select = document.getElementById('consultPatientSelect');
-  const patientId = parseInt(select?.value, 10);
-  const patientName = select?.options[select.selectedIndex]?.text || '';
+  const patientId = getSelectedPatientId();
+  const patientName = getSelectedPatientName();
 
   if (!patientId) {
     alert('Por favor selecciona un paciente.');
@@ -233,6 +384,7 @@ function handleConsultSave(event) {
     consultState.consultations.push({ id: nextConsultId(), ...data });
   }
 
+  // Consultations are stored with patientId — Historia Clínica reads them directly from here.
   saveConsultations();
   closeConsultModal();
   renderConsultations();
@@ -251,18 +403,29 @@ function setupAppointmentsModule() {
   loadConsultations();
   renderConsultations();
 
-  // Pre-fill patient if redirected from agenda
-  const prePatientId = parseInt(getUrlParam('patientId'), 10);
-  const hasPrePatient = !isNaN(prePatientId) && prePatientId > 0;
+  // ── Patient search modal events ──
+  document.getElementById('closePatientSearchModalBtn')?.addEventListener('click', closePatientSearchModal);
+  document.querySelector('#patientSearchModal .nursing-modal__overlay')?.addEventListener('click', closePatientSearchModal);
 
-  document.getElementById('newConsultBtn')?.addEventListener('click', () => {
-    openConsultModal('create');
-    if (hasPrePatient) {
-      const select = document.getElementById('consultPatientSelect');
-      if (select) select.value = prePatientId;
-    }
+  document.getElementById('patientSearchInput')?.addEventListener('input', (e) => {
+    renderPatientSearchResults(e.target.value);
   });
 
+  document.getElementById('patientSearchResults')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pick-patient]');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.pickPatient, 10);
+    const name = btn.dataset.pickName || '';
+    selectPatientAndContinue(id, name);
+  });
+
+  document.getElementById('showRegisterPatientBtn')?.addEventListener('click', showQuickRegisterForm);
+  document.getElementById('cancelQuickPatientBtn')?.addEventListener('click', hideQuickRegisterForm);
+  document.getElementById('quickPatientForm')?.addEventListener('submit', handleQuickPatientSave);
+
+  // ── Consultation modal events ──
+  document.getElementById('pickPatientBtn')?.addEventListener('click', openPatientSearchModal);
+  document.getElementById('newConsultBtn')?.addEventListener('click', openPatientSearchModal);
   document.getElementById('closeConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.getElementById('cancelConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.querySelector('#consultModal .nursing-modal__overlay')?.addEventListener('click', closeConsultModal);
@@ -284,11 +447,21 @@ function setupAppointmentsModule() {
     else if (btn.dataset.action === 'delete') handleConsultDelete(id);
   });
 
-  // Auto-open modal if redirected from agenda with a patient pre-selected
-  if (hasPrePatient) {
-    openConsultModal('create');
-    const select = document.getElementById('consultPatientSelect');
-    if (select) select.value = prePatientId;
+  // ── Auto-open from URL params ──
+  const prePatientId = parseInt(getUrlParam('patientId'), 10);
+  const action = getUrlParam('action');
+
+  if (!isNaN(prePatientId) && prePatientId > 0) {
+    // Redirected from medical-records or agenda with a specific patient
+    const patients = getPatients();
+    const patient = patients.find((p) => p.id === prePatientId);
+    if (patient) {
+      setSelectedPatient(patient.id, `${patient.nombre} ${patient.apellido}`);
+      openConsultModal('create');
+    }
+  } else if (action === 'new') {
+    // "Nueva Atención" button from Dashboard — open patient search flow
+    openPatientSearchModal();
   }
 }
 

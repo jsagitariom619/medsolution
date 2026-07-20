@@ -41,6 +41,12 @@
       .vital-chip { padding: 5px 12px; border-radius: 999px; background: rgba(15,76,92,.08); color: var(--petroleum); font-weight: 700; font-size: .82rem; }
       @media (max-width: 900px) { .records-layout { grid-template-columns: 1fr; } .records-sidebar-panel { position: static; } .records-patient-list { max-height: 300px; } }
       @media (max-width: 640px) { .record-entry__grid { grid-template-columns: 1fr; } }
+      /* Accordion for consultation entries */
+      .record-entry--collapsed .record-entry__grid { display: none; }
+      .record-entry__toggle { background: none; border: none; cursor: pointer; font-size: .85rem; color: var(--aqua); font-weight: 700; padding: 4px 10px; border-radius: 8px; transition: background 140ms; }
+      .record-entry__toggle:hover { background: rgba(47,183,166,.12); }
+      .record-entry--collapsed .record-entry__toggle-icon::before { content: '▶'; }
+      .record-entry__toggle-icon::before { content: '▼'; }
     </style>
   </head>
   <body class="app-body">
