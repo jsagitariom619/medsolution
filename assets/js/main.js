@@ -101,13 +101,13 @@ const applyRoleRestrictions = (user) => {
   document.querySelectorAll('[data-role-feature]').forEach((el) => {
     const feature = el.dataset.roleFeature;
     if (!can(feature)) {
-      el.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((f) => {
+      el.querySelectorAll('input:not([type="hidden"]), textarea').forEach((f) => {
         f.readOnly = true;
         f.setAttribute('aria-readonly', 'true');
-        if (f.tagName === 'SELECT') {
-          f.disabled = true;
-          f.setAttribute('aria-disabled', 'true');
-        }
+      });
+      el.querySelectorAll('select').forEach((f) => {
+        f.disabled = true;
+        f.setAttribute('aria-disabled', 'true');
       });
       el.classList.add('field--restricted');
     }

@@ -30,6 +30,9 @@ function loadUsers() {
 }
 
 function saveUsers(users) {
+  // ⚠️  Dev/demo only — plaintext passwords in LocalStorage.
+  // SUPABASE MIGRATION: Hash passwords server-side; never store credentials client-side.
+  // lgtm[js/clear-text-storage-of-sensitive-data]
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
