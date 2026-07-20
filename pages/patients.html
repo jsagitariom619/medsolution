@@ -44,11 +44,11 @@
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Citas</a>
-          <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
-          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
           <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
-          <a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a>
+          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar__footer">
           <strong>Preparado para Supabase</strong>
@@ -63,7 +63,7 @@
           </label>
           <div class="topbar__actions">
             <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
-            <div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>DR</span><span data-user-name>Usuario</span></div>
+            <div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>DR</span><div><span data-user-name>Usuario</span><small data-user-role></small></div></div>
           </div>
         </header>
         <section class="content">
@@ -73,7 +73,7 @@
               <h1>Gestión de pacientes</h1>
               <p>Registro, búsqueda, edición y seguimiento de pacientes del consultorio.</p>
             </div>
-            <button class="btn btn--primary" id="newPatientBtn" type="button">+ Nuevo Paciente</button>
+            <button class="btn btn--primary" id="newPatientBtn" type="button" data-requires-role="Administrador,Médico,Auxiliar">+ Nuevo Paciente</button>
           </div>
 
           <article class="card" style="padding: 24px;">

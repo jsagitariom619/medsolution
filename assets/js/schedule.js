@@ -11,6 +11,27 @@ const scheduleState = {
   filterPatient: '',
 };
 
+// ── Auth helper ───────────────────────────────────────────────────────────────
+
+function getAuthUser() {
+  try {
+    const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function authCan(feature) {
+  const user = getAuthUser();
+  if (!user) return false;
+  const permissions = {
+    'schedule.edit':   ['Administrador', 'Médico', 'Auxiliar'],
+    'schedule.delete': ['Administrador', 'Médico'],
+  };
+  return Boolean(permissions[feature]?.includes(user.role));
+}
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadAppointments() {
@@ -100,8 +121,8 @@ function renderSchedule() {
       <td>
         <span class="action-links">
           <button class="btn-action" data-action="attend" data-id="${a.id}" title="Iniciar atención">▶</button>
-          <button class="btn-action" data-action="edit" data-id="${a.id}" title="Editar">✎</button>
-          <button class="btn-action btn-action--delete" data-action="delete" data-id="${a.id}" title="Cancelar">✕</button>
+          ${authCan('schedule.edit') ? `<button class="btn-action" data-action="edit" data-id="${a.id}" title="Editar">✎</button>` : ''}
+          ${authCan('schedule.delete') ? `<button class="btn-action btn-action--delete" data-action="delete" data-id="${a.id}" title="Cancelar">✕</button>` : ''}
         </span>
       </td>
     `;
