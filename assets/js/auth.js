@@ -5,8 +5,12 @@
  * Each adapter function is annotated with its Supabase equivalent so the
  * migration is a targeted swap-out, not a rewrite.
  *
+ * ⚠️  SECURITY NOTE: Passwords are stored as plaintext in LocalStorage for this
+ * development/demo phase only. This MUST be replaced with proper hashing
+ * (bcrypt/Argon2) or Supabase Auth before any production deployment.
+ *
  * LocalStorage keys used:
- *   medsolution.authUser  — active session (user object)
+ *   medsolution.authUser  — active session (user object, NO password)
  *   medsolution.users     — user directory (seeded on first run)
  */
 
@@ -90,7 +94,8 @@ export function getUsers() {
   }
 }
 
-/** Persists users array. SUPABASE: supabase.from('users').upsert(users) */
+/** Persists users array. ⚠️ Passwords are plaintext — for dev/demo only.
+ *  SUPABASE MIGRATION: supabase.from('users').upsert(users) + hash passwords server-side */
 export function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }

@@ -1,5 +1,11 @@
 // Settings Module — User Management (Admin only)
 // Reads/writes users via the same medsolution.users localStorage key used by auth.js.
+//
+// ⚠️  SECURITY NOTE: Passwords are stored as plaintext in LocalStorage for this
+// development/demo phase only. This MUST be replaced with Supabase Auth (or
+// equivalent hashing) before any production deployment.
+// Non-module script: kept as regular script for compatibility with non-module
+// sibling scripts on this page. Refactor to ES module when migrating to Supabase.
 
 const USERS_KEY = 'medsolution.users';
 const ROLES = ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'];
@@ -108,7 +114,7 @@ function openUserModal(mode, user = null) {
     state.editingId = user.id;
     form.elements.name.value = user.name || '';
     form.elements.username.value = user.username || '';
-    form.elements.password.value = user.password || '';
+    // Do not pre-populate password — leave blank; only update if a new value is entered
     form.elements.role.value = user.role || '';
     form.elements.initials.value = user.initials || '';
     // Password not required on edit
@@ -191,7 +197,7 @@ function handleToggleActive(userId) {
   const idx = users.findIndex((u) => u.id === userId);
   if (idx === -1) return;
   if (currentUser && currentUser.id === userId) return; // can't deactivate self
-  users[idx].active = users[idx].active === false ? true : false;
+  users[idx].active = !users[idx].active;
   saveUsers(users);
   renderUsersTable();
 }

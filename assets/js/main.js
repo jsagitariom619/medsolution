@@ -103,7 +103,11 @@ const applyRoleRestrictions = (user) => {
     if (!can(feature)) {
       el.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((f) => {
         f.readOnly = true;
-        if (f.tagName === 'SELECT') f.disabled = true;
+        f.setAttribute('aria-readonly', 'true');
+        if (f.tagName === 'SELECT') {
+          f.disabled = true;
+          f.setAttribute('aria-disabled', 'true');
+        }
       });
       el.classList.add('field--restricted');
     }
