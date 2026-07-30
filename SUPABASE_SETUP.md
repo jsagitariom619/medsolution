@@ -18,20 +18,22 @@ en el SQL Editor del proyecto **Registro Clínico**.
 La migración crea `usuarios`, `personal_consultorio`, `servicios`, `pacientes`,
 `historias_clinicas` y `atenciones`; activa RLS, índices, relaciones y Realtime.
 
-## 2. Crear el primer administrador
+## 2. Autenticación local
 
-1. Crea el usuario en **Authentication → Users**.
-2. El trigger crea automáticamente su fila en `public.usuarios` como Auxiliar.
-3. Promuévelo una sola vez desde SQL Editor:
+MedSolution no utiliza Supabase Auth. Después de instalar, están disponibles:
 
-```sql
-update public.usuarios
-set rol = 'Administrador', nombre_completo = 'Administrador'
-where email = 'admin@consultorio.com';
+```text
+admin / admin123
+doctor / doctor123
+auxiliar / aux123
 ```
 
-Después, el administrador puede crear los demás usuarios desde la interfaz.
-Supabase puede requerir confirmación de correo según la configuración de Auth.
+Los tres usuarios y sus permisos están definidos en `assets/js/auth.js`. No se
+crean usuarios adicionales ni se utiliza Supabase Auth.
+
+Después de la migración principal, ejecuta también
+`202607300002_local_auth_public_data.sql`. Esta política permite que la
+Publishable Key acceda a los datos sin una sesión de Supabase Auth.
 
 ## 3. Variables de Vercel
 
@@ -46,20 +48,14 @@ SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 No uses prefijos `VITE_` ni escribas valores en archivos del navegador.
 `/api/config` expone al cliente únicamente estos dos valores públicos.
 
-## 4. Auth y URL
-
-En **Authentication → URL Configuration** registra:
-
-- Site URL: la URL de producción de Vercel.
-- Redirect URLs: la URL de producción y los previews que utilices.
-
-## 5. Verificación
+## 4. Verificación
 
 1. Despliega en Vercel.
-2. Inicia sesión con el administrador.
+2. Inicia sesión con `admin / admin123`.
 3. En **Configuración**, confirma el estado “Registro Clínico conectado”.
 4. Crea o edita un servicio y comprueba que otro navegador lo reciba en tiempo real.
 5. Registra una atención como Auxiliar y acéptala como Médico.
 
-La seguridad efectiva está en las políticas RLS de la migración. La interfaz
-oculta acciones por rol, pero nunca sustituye las políticas de base de datos.
+Los roles y permisos se aplican en la interfaz. Al no utilizar Supabase Auth,
+la base de datos no puede verificar esos roles; la Publishable Key tiene acceso
+a las tablas operativas.

@@ -73,14 +73,12 @@ reportes históricos. La información clínica extensible se conserva en
 `datos_clinicos`, mientras evolución, diagnóstico, tratamiento, receta,
 indicaciones y próximo control tienen columnas consultables.
 
-## RLS
+## Autenticación y acceso a datos
 
-- `Administrador`: catálogos, personal, usuarios, pacientes, historias y atenciones.
-- `Médico`: lectura/edición clínica, creación de historia única y gestión de consultas.
-- `Auxiliar`: alta/lectura de pacientes y atenciones operativas; no accede a historias.
-- Servicios y personal: lectura autenticada; escritura sólo del Administrador.
-- Atenciones médicas: el Auxiliar puede crearlas y ver su estado pendiente, pero no editar su contenido clínico.
-- Eliminaciones clínicas: restringidas al Administrador; las cancelaciones usan el estado de atención.
+El login local utiliza exclusivamente `admin`, `doctor` y `auxiliar`, definidos
+en el código. Los roles y permisos se aplican en la interfaz. La migración
+`202607300002_local_auth_public_data.sql` desactiva RLS en las tablas operativas
+y autoriza la Publishable Key, porque la instalación no utiliza Supabase Auth.
 
 ## Variables necesarias
 

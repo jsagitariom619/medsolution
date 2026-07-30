@@ -1,23 +1,19 @@
 /**
  * MedSolution — Auth Module
  *
- * Architecture designed for migration to Supabase Auth.
- * Each adapter function is annotated with its Supabase equivalent so the
- * migration is a targeted swap-out, not a rewrite.
+ * Autenticación local de MedSolution.
+ * Supabase continúa como capa de datos, sin intervenir en el inicio de sesión.
  *
  * Password handling: passwords are stored as FNV-1a 32-bit hashes (not plaintext).
- * This is NOT cryptographically secure for production — use Supabase Auth with
- * bcrypt/Argon2 server-side hashing before any real deployment.
+ * Este mecanismo conserva la compatibilidad con la instalación original.
  *
- * LocalStorage keys used:
- *   medsolution.authUser  — active session (user object, NO password)
- *   medsolution.users     — user directory (seeded on first run)
+ * LocalStorage key used:
+ *   medsolution.authUser — active session (user object, NO password)
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTH_KEY = 'medsolution.authUser';
-const USERS_KEY = 'medsolution.users';
 
 export const ROLES = Object.freeze({
   ADMIN: 'Administrador',
@@ -77,46 +73,39 @@ export function hashPassword(password) {
   return h.toString(16).padStart(8, '0');
 }
 
-// ── Default user seed ─────────────────────────────────────────────────────────
-// Applied once on first run; Admin can manage users via Settings afterward.
+// ── Usuarios predefinidos ─────────────────────────────────────────────────────
+// Son los únicos usuarios válidos y no dependen del almacenamiento del navegador.
 
-const DEFAULT_USERS = [
+const PREDEFINED_USERS = Object.freeze([
   { id: 1, username: 'admin',      passwordHash: hashPassword('admin123'),   name: 'Administrador',      role: ROLES.ADMIN,      initials: 'AD', active: true },
   { id: 2, username: 'doctor',     passwordHash: hashPassword('doctor123'),  name: 'Médico Demo',        role: ROLES.MEDICO,     initials: 'MD', active: true },
   { id: 3, username: 'auxiliar',   passwordHash: hashPassword('aux123'),     name: 'Ana Martínez',       role: ROLES.AUXILIAR,   initials: 'AM', active: true },
-  { id: 4, username: 'enfermeria', passwordHash: hashPassword('enf123'),     name: 'Rosa Pérez',         role: ROLES.AUXILIAR,   initials: 'RP', active: true },
-];
+]);
 
-// ── LocalStorage adapter ──────────────────────────────────────────────────────
-// SUPABASE MIGRATION: Replace each function body with the Supabase equivalent.
-
-function seedUsersIfNeeded() {
-  if (!localStorage.getItem(USERS_KEY)) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-  }
-}
-
-/** Returns all users. SUPABASE: supabase.from('users').select('*') */
+/** Devuelve una copia pública de los tres usuarios, sin sus contraseñas. */
 export function getUsers() {
-  seedUsersIfNeeded();
-  try {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-    return users.map((user) => ({ ...user, role: user.role === 'Enfermería' ? ROLES.AUXILIAR : user.role }));
-  } catch {
-    return [];
-  }
+  return PREDEFINED_USERS.map(({ passwordHash, ...user }) => ({ ...user }));
 }
 
-/** Persists users array. SUPABASE MIGRATION: supabase.from('users').upsert(users) */
-export function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-/** Returns the active session user or null. SUPABASE: supabase.auth.getUser() */
+/** Devuelve el usuario de la sesión local activa o null. */
 export function getSession() {
   try {
     const raw = sessionStorage.getItem(AUTH_KEY) || localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    const user = PREDEFINED_USERS.find((item) =>
+      item.id === cached?.id
+      && item.username === cached?.username
+      && item.role === cached?.role);
+    if (!user) {
+      localStorage.removeItem(AUTH_KEY);
+      sessionStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+    return {
+      id: user.id, username: user.username, name: user.name,
+      role: user.role, initials: user.initials,
+    };
   } catch {
     return null;
   }
@@ -131,35 +120,13 @@ export function getSession() {
  * @param {boolean} remember  Persist across browser sessions when true.
  * @returns {object|null} Session user object, or null on failure.
  *
- * SUPABASE MIGRATION: supabase.auth.signInWithPassword({ email, password })
  */
 export async function login(username, password, remember = false) {
-  await window.MedSolutionData?.ready;
-  if (window.MedSolutionData?.isConfigured()) {
-    const client = window.MedSolutionData.getClient();
-    const { data, error } = await client.auth.signInWithPassword({ email: username.trim(), password });
-    if (error || !data.user) return null;
-    const { data: profile, error: profileError } = await client.from('usuarios').select('*').eq('id', data.user.id).single();
-    if (profileError || !profile?.active) {
-      await client.auth.signOut();
-      return null;
-    }
-    const session = {
-      id: profile.id, username: profile.email, name: profile.nombre_completo,
-      role: profile.rol, initials: profile.nombre_completo.split(/\s+/).slice(0,2).map((part)=>part[0] || '').join('').toUpperCase(),
-    };
-    const payload = JSON.stringify(session);
-    if (remember) { localStorage.setItem(AUTH_KEY, payload); sessionStorage.removeItem(AUTH_KEY); }
-    else { sessionStorage.setItem(AUTH_KEY, payload); localStorage.removeItem(AUTH_KEY); }
-    return session;
-  }
-  seedUsersIfNeeded();
-  const users = getUsers();
   const normalizedUsername = username.trim().toLowerCase();
   const inputHash = hashPassword(password);
-  const user = users.find(
+  const user = PREDEFINED_USERS.find(
     (u) => u.username.toLowerCase() === normalizedUsername
-      && (u.passwordHash === inputHash || u.password === password) // backward compat
+      && u.passwordHash === inputHash
       && u.active !== false,
   );
   if (!user) return null;
@@ -168,7 +135,7 @@ export async function login(username, password, remember = false) {
     id: user.id,
     username: user.username,
     name: user.name,
-    role: user.role === 'Enfermería' ? ROLES.AUXILIAR : user.role,
+    role: user.role,
     initials: user.initials,
   };
   const payload = JSON.stringify(session);
@@ -186,11 +153,8 @@ export async function login(username, password, remember = false) {
 
 /**
  * Destroy the current session.
- * SUPABASE MIGRATION: supabase.auth.signOut()
  */
 export async function logout() {
-  await window.MedSolutionData?.ready;
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.getClient().auth.signOut();
   localStorage.removeItem(AUTH_KEY);
   sessionStorage.removeItem(AUTH_KEY);
 }
@@ -223,8 +187,6 @@ export function can(feature) {
  * or to dashboard if the user's role does not permit the current page.
  * Returns the session user when access is granted.
  *
- * SUPABASE MIGRATION: Combine with supabase.auth.onAuthStateChange()
- * and server-side middleware for true enforcement.
  */
 export function guardRoute() {
   const user = getSession();
@@ -247,20 +209,5 @@ export function guardRoute() {
 }
 
 export async function restoreSession() {
-  const cached = getSession();
-  if (cached) return cached;
-  await window.MedSolutionData?.ready;
-  const client = window.MedSolutionData?.getClient();
-  if (!client) return null;
-  const { data } = await client.auth.getSession();
-  const authUser = data.session?.user;
-  if (!authUser) return null;
-  const { data: profile, error } = await client.from('usuarios').select('*').eq('id', authUser.id).single();
-  if (error || !profile?.activo) return null;
-  const session = {
-    id: profile.id, username: profile.email, name: profile.nombre_completo, role: profile.rol,
-    initials: profile.nombre_completo.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase(),
-  };
-  sessionStorage.setItem(AUTH_KEY, JSON.stringify(session));
-  return session;
+  return getSession();
 }

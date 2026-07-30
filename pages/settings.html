@@ -97,11 +97,10 @@
           <section style="margin-top:40px" data-requires-role="Administrador">
             <div class="page-header" style="margin-bottom:20px">
               <div>
-                <span class="eyebrow">Gestión de usuarios</span>
+                <span class="eyebrow">Usuarios predefinidos</span>
                 <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-0.04em">Usuarios del sistema</h2>
-                <p style="margin:6px 0 0;color:var(--gray-500)">Crea y administra los usuarios con acceso a MedSolution.</p>
+                <p style="margin:6px 0 0;color:var(--gray-500)">El sistema utiliza únicamente los perfiles Administrador, Doctor y Auxiliar definidos en el código.</p>
               </div>
-              <button class="btn btn--primary" id="newUserBtn" type="button">+ Nuevo usuario</button>
             </div>
 
             <article class="card" style="padding:24px">
@@ -128,51 +127,6 @@
         </section>
       </main>
     </div>
-    <!-- User Modal -->
-    <div class="nursing-modal" id="userModal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
-      <div class="nursing-modal__overlay"></div>
-      <div class="nursing-modal__content">
-        <div class="nursing-modal__header">
-          <h2 id="userModalTitle">Nuevo Usuario</h2>
-          <button class="nursing-modal__close" id="closeUserModalBtn" type="button" aria-label="Cerrar">✕</button>
-        </div>
-        <form class="nursing-form" id="userForm" novalidate>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <label class="form-field">
-              <span>Nombre completo *</span>
-              <input type="text" name="name" placeholder="Ej. Dr. Juan Pérez" required />
-            </label>
-            <label class="form-field">
-              <span>Correo / usuario (login) *</span>
-              <input type="text" name="username" placeholder="Ej. jperez@consultorio.com" autocomplete="username" required />
-            </label>
-            <label class="form-field">
-              <span>Contraseña *</span>
-              <input type="password" name="password" placeholder="••••••••" autocomplete="new-password" required />
-            </label>
-            <label class="form-field">
-              <span>Rol *</span>
-              <select name="role" required style="width:100%;padding:12px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font-size:.93rem;font-family:inherit;outline:none;color:var(--gray-700)">
-                <option value="">Seleccionar rol…</option>
-                <option value="Administrador">Administrador</option>
-                <option value="Médico">Médico</option>
-                <option value="Auxiliar">Auxiliar</option>
-              </select>
-            </label>
-            <label class="form-field" style="grid-column:1/-1">
-              <span>Iniciales (avatar)</span>
-              <input type="text" name="initials" placeholder="Ej. JP" maxlength="2" style="text-transform:uppercase" />
-            </label>
-          </div>
-          <p id="userFormError" style="color:#c93047;font-size:.88rem;margin:8px 0 0;display:none"></p>
-          <div class="nursing-form__actions">
-            <button class="btn btn--secondary" id="cancelUserModalBtn" type="button">Cancelar</button>
-            <button class="btn btn--primary" type="submit">Guardar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js"></script>

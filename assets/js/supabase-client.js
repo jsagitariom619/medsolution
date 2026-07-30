@@ -14,7 +14,7 @@
       config = await response.json();
       if (!global.supabase?.createClient) throw new Error('No se cargó el cliente oficial de Supabase.');
       client = global.supabase.createClient(config.url, config.publishableKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
         realtime: { params: { eventsPerSecond: 10 } },
       });
       return client;
@@ -202,40 +202,6 @@
     const { data, error } = await connection.rpc('obtener_o_crear_historia', { paciente_legacy_id: Number(patientId) });
     throwIfError(error); return data;
   }
-  async function getProfiles() {
-    const connection = await db();
-    if (!connection) return localArray('medsolution.users');
-    const { data, error } = await connection.from('usuarios').select('*').order('nombre_completo');
-    throwIfError(error);
-    return (data || []).map((item) => ({
-      id: item.id, username: item.email, email: item.email, name: item.nombre_completo,
-      role: item.rol, active: item.activo,
-      initials: item.nombre_completo.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase(),
-    }));
-  }
-  async function manageUser(action, user) {
-    const connection = await db(true);
-    if (action === 'create') {
-      const isolated = global.supabase.createClient(config.url, config.publishableKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const { data, error } = await isolated.auth.signUp({
-        email: user.email, password: user.password,
-        options: { data: { nombre_completo: user.name } },
-      });
-      throwIfError(error);
-      if (!data.user) throw new Error('Supabase no devolvió el usuario creado.');
-      const { error: profileError } = await connection.from('usuarios').update({
-        nombre_completo: user.name, rol: user.role, activo: user.active !== false,
-      }).eq('id', data.user.id);
-      throwIfError(profileError); return data.user;
-    }
-    if (user.password) throw new Error('La contraseña de otro usuario debe restablecerse mediante Supabase Auth.');
-    const { data, error } = await connection.from('usuarios').update({
-      nombre_completo: user.name, rol: user.role, activo: user.active !== false,
-    }).eq('id', user.id).select().single();
-    throwIfError(error); return data;
-  }
   function subscribe(table, callback) {
     if (!client) return () => {};
     const channel = client.channel(`registro-clinico-${table}-${crypto.randomUUID()}`)
@@ -260,7 +226,7 @@
     testConnection, getServices, saveService, toggleService,
     getStaff: () => getStaff(false), getAllStaff: () => getStaff(true), saveStaff, toggleStaff,
     getPatients, savePatient, deletePatient, getAttentions, saveAttention, deleteAttention,
-    ensureMedicalRecord, getProfiles, manageUser, getSettings, saveSettings,
+    ensureMedicalRecord, getSettings, saveSettings,
     subscribeServices: (callback) => subscribe('servicios', callback),
     subscribeStaff: (callback) => subscribe('personal_consultorio', callback),
     subscribePatients: (callback) => subscribe('pacientes', callback),
