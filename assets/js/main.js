@@ -1,4 +1,4 @@
-import { login, logout, guardRoute, getUser, can } from './auth.js';
+import { login, logout, guardRoute, restoreSession, getUser, can } from './auth.js';
 
 // ── Route map ─────────────────────────────────────────────────────────────────
 
@@ -165,9 +165,14 @@ const isLoginPage = window.location.pathname.split('/').pop() === 'index.html'
   || window.location.pathname === '/'
   || window.location.pathname.endsWith('/');
 
-if (isLoginPage) {
-  handleLogin();
-} else {
+async function initializeApplication() {
+  await window.MedSolutionData?.ready;
+  if (isLoginPage) {
+    await restoreSession();
+    handleLogin();
+    return;
+  }
+  await restoreSession();
   const user = guardRoute();
   if (user) {
     applyRoleRestrictions(user);
@@ -176,3 +181,5 @@ if (isLoginPage) {
     setupLogout();
   }
 }
+
+initializeApplication();

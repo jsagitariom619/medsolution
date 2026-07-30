@@ -278,6 +278,7 @@ async function handleDelete(id) {
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
 async function setupPatientModule() {
+  await window.MedSolutionData?.ready;
   try { await loadPatients(); } catch (error) { alert(`No se pudieron cargar los pacientes: ${error.message}`); return; }
   renderTable();
 

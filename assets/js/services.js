@@ -37,7 +37,8 @@ function openStaff(item=null){const f=document.getElementById('staffForm');f.res
 function closeStaff(){document.getElementById('staffModal').classList.remove('nursing-modal--active');catalogState.editingStaffId=null}
 async function saveStaff(e){e.preventDefault();const f=e.currentTarget;const old=catalogState.staff.find(p=>String(p.id)===String(catalogState.editingStaffId));const value={...(old||{}),name:f.elements.name.value.trim(),position:f.elements.position.value.trim(),active:old?.active??true};if(!value.name||!value.position)return show('staffFormError','Nombre completo y cargo son obligatorios.');try{await data().saveStaff(value);closeStaff();await loadAll()}catch(error){show('staffFormError',error.message)}}
 function show(id,message){const e=document.getElementById(id);e.textContent=message;e.style.display=''}
-function setup(){
+async function setup(){
+  await data().ready;
   loadAll();data().subscribeServices(loadAll);data().subscribeStaff(loadAll);
   document.getElementById('newServiceBtn').onclick=()=>openService();document.getElementById('closeServiceModalBtn').onclick=closeService;document.getElementById('cancelServiceModalBtn').onclick=closeService;document.getElementById('serviceForm').onsubmit=saveService;
   document.getElementById('newStaffBtn').onclick=()=>openStaff();document.getElementById('closeStaffModalBtn').onclick=closeStaff;document.getElementById('cancelStaffModalBtn').onclick=closeStaff;document.getElementById('staffForm').onsubmit=saveStaff;

@@ -1,55 +1,65 @@
-# Configuración de Supabase para MedSolution
+# Registro Clínico: Supabase + Vercel
 
-## 1. Crear la estructura
+La integración utiliza exclusivamente la **Project URL** y la
+**Publishable Key**. No requiere funciones con privilegios ni claves privadas.
 
-1. Abre **SQL Editor** en tu proyecto Supabase.
-2. Ejecuta el archivo `supabase/schema.sql`.
-3. En **Authentication → Users**, crea el primer usuario administrador.
-4. Copia su UUID y ejecuta:
+## 1. Crear el esquema
 
-```sql
-insert into public.profiles (user_id, email, full_name, role)
-values ('UUID_DEL_USUARIO', 'correo@consultorio.com', 'Administrador', 'Administrador');
-```
-
-## 2. Desplegar la administración segura de usuarios
-
-Desde Supabase CLI, dentro de la carpeta del proyecto:
+Ejecuta la migración:
 
 ```bash
-supabase functions deploy manage-user
+supabase link --project-ref TU_PROJECT_REF
+supabase db push
 ```
 
-La función utiliza automáticamente `SUPABASE_URL`, `SUPABASE_ANON_KEY` y
-`SUPABASE_SERVICE_ROLE_KEY` en el entorno seguro de Supabase. La clave
-`service_role` nunca debe colocarse en los archivos del navegador.
+También puedes copiar `supabase/migrations/202607300001_registro_clinico.sql`
+en el SQL Editor del proyecto **Registro Clínico**.
 
-## 3. Conectar MedSolution
+La migración crea `usuarios`, `personal_consultorio`, `servicios`, `pacientes`,
+`historias_clinicas` y `atenciones`; activa RLS, índices, relaciones y Realtime.
 
-1. Ingresa con el administrador demo local.
-2. Abre **Configuración**.
-3. En la sección **Supabase**, registra:
-   - URL del proyecto.
-   - Clave pública `anon`.
-4. Presiona **Guardar y probar conexión**.
-5. Cierra sesión e ingresa con el correo y contraseña del administrador creado
-   en Supabase.
+## 2. Crear el primer administrador
 
-## 4. Configurar desde la interfaz
+1. Crea el usuario en **Authentication → Users**.
+2. El trigger crea automáticamente su fila en `public.usuarios` como Auxiliar.
+3. Promuévelo una sola vez desde SQL Editor:
 
-- **Servicios** permite crear, editar, desactivar y reactivar servicios.
-- En la misma pantalla, **Personal del Consultorio** permite administrar
-  responsables sin crearles un usuario.
-- **Configuración → Usuarios** administra los perfiles Administrador, Médico y
-  Auxiliar.
-- El sistema no incluye servicios ni nombres de responsables fijos. Después de
-  la primera conexión, crea el catálogo y el personal desde la interfaz.
-- Los cambios en servicios, personal y atenciones se propagan mediante
-  Supabase Realtime.
+```sql
+update public.usuarios
+set rol = 'Administrador', nombre_completo = 'Administrador'
+where email = 'admin@consultorio.com';
+```
 
-## Seguridad
+Después, el administrador puede crear los demás usuarios desde la interfaz.
+Supabase puede requerir confirmación de correo según la configuración de Auth.
 
-El esquema activa RLS. El Auxiliar no tiene acceso a historias clínicas ni a
-configuración; el Médico tiene acceso clínico; el Administrador tiene acceso
-total. Mantén habilitadas las políticas incluidas y nunca publiques una clave
-`service_role`.
+## 3. Variables de Vercel
+
+Configura en **Project Settings → Environment Variables**, para Production,
+Preview y Development:
+
+```text
+SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+No uses prefijos `VITE_` ni escribas valores en archivos del navegador.
+`/api/config` expone al cliente únicamente estos dos valores públicos.
+
+## 4. Auth y URL
+
+En **Authentication → URL Configuration** registra:
+
+- Site URL: la URL de producción de Vercel.
+- Redirect URLs: la URL de producción y los previews que utilices.
+
+## 5. Verificación
+
+1. Despliega en Vercel.
+2. Inicia sesión con el administrador.
+3. En **Configuración**, confirma el estado “Registro Clínico conectado”.
+4. Crea o edita un servicio y comprueba que otro navegador lo reciba en tiempo real.
+5. Registra una atención como Auxiliar y acéptala como Médico.
+
+La seguridad efectiva está en las políticas RLS de la migración. La interfaz
+oculta acciones por rol, pero nunca sustituye las políticas de base de datos.

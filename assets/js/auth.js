@@ -134,18 +134,19 @@ export function getSession() {
  * SUPABASE MIGRATION: supabase.auth.signInWithPassword({ email, password })
  */
 export async function login(username, password, remember = false) {
+  await window.MedSolutionData?.ready;
   if (window.MedSolutionData?.isConfigured()) {
     const client = window.MedSolutionData.getClient();
     const { data, error } = await client.auth.signInWithPassword({ email: username.trim(), password });
     if (error || !data.user) return null;
-    const { data: profile, error: profileError } = await client.from('profiles').select('*').eq('user_id', data.user.id).single();
+    const { data: profile, error: profileError } = await client.from('usuarios').select('*').eq('id', data.user.id).single();
     if (profileError || !profile?.active) {
       await client.auth.signOut();
       return null;
     }
     const session = {
-      id: profile.user_id, username: profile.email, name: profile.full_name,
-      role: profile.role, initials: profile.full_name.split(/\s+/).slice(0,2).map((part)=>part[0] || '').join('').toUpperCase(),
+      id: profile.id, username: profile.email, name: profile.nombre_completo,
+      role: profile.rol, initials: profile.nombre_completo.split(/\s+/).slice(0,2).map((part)=>part[0] || '').join('').toUpperCase(),
     };
     const payload = JSON.stringify(session);
     if (remember) { localStorage.setItem(AUTH_KEY, payload); sessionStorage.removeItem(AUTH_KEY); }
@@ -188,6 +189,7 @@ export async function login(username, password, remember = false) {
  * SUPABASE MIGRATION: supabase.auth.signOut()
  */
 export async function logout() {
+  await window.MedSolutionData?.ready;
   if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.getClient().auth.signOut();
   localStorage.removeItem(AUTH_KEY);
   sessionStorage.removeItem(AUTH_KEY);
@@ -242,4 +244,23 @@ export function guardRoute() {
   }
 
   return user;
+}
+
+export async function restoreSession() {
+  const cached = getSession();
+  if (cached) return cached;
+  await window.MedSolutionData?.ready;
+  const client = window.MedSolutionData?.getClient();
+  if (!client) return null;
+  const { data } = await client.auth.getSession();
+  const authUser = data.session?.user;
+  if (!authUser) return null;
+  const { data: profile, error } = await client.from('usuarios').select('*').eq('id', authUser.id).single();
+  if (error || !profile?.activo) return null;
+  const session = {
+    id: profile.id, username: profile.email, name: profile.nombre_completo, role: profile.rol,
+    initials: profile.nombre_completo.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase(),
+  };
+  sessionStorage.setItem(AUTH_KEY, JSON.stringify(session));
+  return session;
 }

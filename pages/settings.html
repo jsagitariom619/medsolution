@@ -69,16 +69,14 @@
           <section style="margin-top:40px" data-requires-role="Administrador">
             <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Conexión de datos</span>
               <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Supabase</h2>
-              <p style="margin:6px 0 0;color:var(--gray-500)">Configura la conexión pública del proyecto. Nunca ingreses la clave service_role.</p></div>
+              <p style="margin:6px 0 0;color:var(--gray-500)">La conexión se carga de forma segura desde las variables de entorno de Vercel.</p></div>
               <a class="btn btn--primary" href="services.html">Administrar servicios</a></div>
-            <article class="card" style="padding:24px"><form id="supabaseConfigForm">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-                <label class="form-field"><span>URL del proyecto *</span><input name="supabaseUrl" type="url" placeholder="https://proyecto.supabase.co" /></label>
-                <label class="form-field"><span>Clave pública anon *</span><input name="supabaseAnonKey" type="password" placeholder="eyJ…" autocomplete="off" /></label>
+            <article class="card" style="padding:24px"><div id="supabaseConfigForm">
+              <strong>Proyecto: Registro Clínico</strong>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+                <span id="supabaseConnectionStatus" style="font-size:.88rem;color:var(--gray-500)">Comprobando conexión…</span>
               </div>
-              <div style="display:flex;align-items:center;gap:12px;margin-top:16px"><button class="btn btn--primary" type="submit">Guardar y probar conexión</button>
-                <span id="supabaseConnectionStatus" style="font-size:.88rem;color:var(--gray-500)">Sin comprobar</span></div>
-            </form></article>
+            </div></article>
           </section>
 
           <section style="margin-top:40px" data-requires-role="Administrador">

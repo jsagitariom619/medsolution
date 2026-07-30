@@ -480,7 +480,7 @@ async function handleConsultSave(event) {
     };
     consultState.consultations.push(saved);
   }
-  if (clinical || data.generatesMedicalRecord) await ensureMedicalRecord(data.patientId);
+  if (clinical || (data.generatesMedicalRecord && isDoctor())) await ensureMedicalRecord(data.patientId);
   await saveConsultations(saved);
   closeConsultModal();
   renderConsultations();
@@ -502,6 +502,7 @@ async function deleteConsultation(id) {
 }
 
 async function setupAppointmentsModule() {
+  await window.MedSolutionData?.ready;
   try {
     await Promise.all([loadCatalog(), loadConsultations()]);
   } catch (error) {

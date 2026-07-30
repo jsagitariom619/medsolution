@@ -143,6 +143,7 @@ function printPrescription(consultId) {
 }
 
 async function setupMedicalRecords() {
+  await window.MedSolutionData?.ready;
   try { await loadData(); } catch (error) { alert(`No se pudo cargar la información clínica: ${error.message}`); return; }
   renderPatientList();
   document.getElementById('recordsDetailPanel').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-500)">Selecciona un paciente para ver su historia clínica.</div>';

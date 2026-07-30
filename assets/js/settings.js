@@ -226,32 +226,24 @@ function showFormError(el, msg) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-function setupSettingsModule() {
+async function setupSettingsModule() {
+  await window.MedSolutionData?.ready;
   // Only run user management if admin
   const currentUser = getCurrentUser();
   if (!currentUser || currentUser.role !== 'Administrador') return;
 
   renderUsersTable();
 
-  const config = window.MedSolutionData?.configuration();
   const configForm = document.getElementById('supabaseConfigForm');
-  if (configForm && config) {
-    configForm.elements.supabaseUrl.value = config.url;
-    configForm.elements.supabaseAnonKey.value = config.anonKey;
+  if (configForm) {
     const status = document.getElementById('supabaseConnectionStatus');
-    status.textContent = window.MedSolutionData.isConfigured() ? 'Configuración guardada' : 'Modo local de demostración';
-    configForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      status.textContent = 'Comprobando conexión…';
-      try {
-        window.MedSolutionData.configure(configForm.elements.supabaseUrl.value, configForm.elements.supabaseAnonKey.value);
-        await window.MedSolutionData.testConnection();
-        status.textContent = '✓ Conectado correctamente';
-        status.style.color = 'var(--aqua)';
-      } catch (error) {
-        status.textContent = `Error: ${error.message}`;
-        status.style.color = '#c93047';
-      }
+    window.MedSolutionData.ready.then(async () => {
+      await window.MedSolutionData.testConnection();
+      status.textContent = '✓ Registro Clínico conectado mediante variables de Vercel';
+      status.style.color = 'var(--aqua)';
+    }).catch((error) => {
+      status.textContent = `Error: ${error.message}`;
+      status.style.color = '#c93047';
     });
   }
 
