@@ -23,7 +23,6 @@ export const ROLES = Object.freeze({
   ADMIN: 'Administrador',
   MEDICO: 'Médico',
   AUXILIAR: 'Auxiliar',
-  ENFERMERIA: 'Enfermería',
 });
 
 // ── Page-level access ─────────────────────────────────────────────────────────
@@ -31,12 +30,13 @@ export const ROLES = Object.freeze({
 // SUPABASE MIGRATION: Enforce via Row Level Security policies on the DB instead.
 
 const PAGE_ACCESS = {
-  'dashboard.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
-  'patients.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
-  'appointments.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
+  'dashboard.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
+  'patients.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
+  'appointments.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'medical-records.html': [ROLES.ADMIN, ROLES.MEDICO],
   'schedule.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
-  'nursing.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
+  'services.html': [ROLES.ADMIN],
+  'reports.html': [ROLES.ADMIN],
   'settings.html': [ROLES.ADMIN],
 };
 
@@ -45,24 +45,22 @@ const PAGE_ACCESS = {
 
 const FEATURE_PERMISSIONS = {
   'patients.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
-  'patients.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
+  'patients.edit': [ROLES.ADMIN, ROLES.MEDICO],
   'patients.delete': [ROLES.ADMIN],
-  'appointments.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
-  'appointments.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
+  'appointments.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
+  'appointments.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'appointments.delete': [ROLES.ADMIN, ROLES.MEDICO],
   'appointments.edit-diagnosis': [ROLES.ADMIN, ROLES.MEDICO],
   'appointments.edit-treatment': [ROLES.ADMIN, ROLES.MEDICO],
   'appointments.edit-physical-exam': [ROLES.ADMIN, ROLES.MEDICO],
-  'appointments.edit-vitals': [ROLES.ADMIN, ROLES.MEDICO, ROLES.ENFERMERIA],
+  'appointments.edit-vitals': [ROLES.ADMIN, ROLES.MEDICO],
   'medical-records.view': [ROLES.ADMIN, ROLES.MEDICO],
   'medical-records.edit': [ROLES.ADMIN, ROLES.MEDICO],
-  'nursing.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
-  'nursing.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR, ROLES.ENFERMERIA],
-  'nursing.delete': [ROLES.ADMIN, ROLES.MEDICO],
   'schedule.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'schedule.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'schedule.delete': [ROLES.ADMIN, ROLES.MEDICO],
   'users.manage': [ROLES.ADMIN],
+  'services.manage': [ROLES.ADMIN],
 };
 
 // ── Password hashing ──────────────────────────────────────────────────────────
@@ -84,9 +82,9 @@ export function hashPassword(password) {
 
 const DEFAULT_USERS = [
   { id: 1, username: 'admin',      passwordHash: hashPassword('admin123'),   name: 'Administrador',      role: ROLES.ADMIN,      initials: 'AD', active: true },
-  { id: 2, username: 'doctor',     passwordHash: hashPassword('doctor123'),  name: 'Dr. Jeason Flores',  role: ROLES.MEDICO,     initials: 'JF', active: true },
+  { id: 2, username: 'doctor',     passwordHash: hashPassword('doctor123'),  name: 'Médico Demo',        role: ROLES.MEDICO,     initials: 'MD', active: true },
   { id: 3, username: 'auxiliar',   passwordHash: hashPassword('aux123'),     name: 'Ana Martínez',       role: ROLES.AUXILIAR,   initials: 'AM', active: true },
-  { id: 4, username: 'enfermeria', passwordHash: hashPassword('enf123'),     name: 'Rosa Pérez',         role: ROLES.ENFERMERIA, initials: 'RP', active: true },
+  { id: 4, username: 'enfermeria', passwordHash: hashPassword('enf123'),     name: 'Rosa Pérez',         role: ROLES.AUXILIAR,   initials: 'RP', active: true },
 ];
 
 // ── LocalStorage adapter ──────────────────────────────────────────────────────
@@ -102,7 +100,8 @@ function seedUsersIfNeeded() {
 export function getUsers() {
   seedUsersIfNeeded();
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+    const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+    return users.map((user) => ({ ...user, role: user.role === 'Enfermería' ? ROLES.AUXILIAR : user.role }));
   } catch {
     return [];
   }
@@ -134,7 +133,25 @@ export function getSession() {
  *
  * SUPABASE MIGRATION: supabase.auth.signInWithPassword({ email, password })
  */
-export function login(username, password, remember = false) {
+export async function login(username, password, remember = false) {
+  if (window.MedSolutionData?.isConfigured()) {
+    const client = window.MedSolutionData.getClient();
+    const { data, error } = await client.auth.signInWithPassword({ email: username.trim(), password });
+    if (error || !data.user) return null;
+    const { data: profile, error: profileError } = await client.from('profiles').select('*').eq('user_id', data.user.id).single();
+    if (profileError || !profile?.active) {
+      await client.auth.signOut();
+      return null;
+    }
+    const session = {
+      id: profile.user_id, username: profile.email, name: profile.full_name,
+      role: profile.role, initials: profile.full_name.split(/\s+/).slice(0,2).map((part)=>part[0] || '').join('').toUpperCase(),
+    };
+    const payload = JSON.stringify(session);
+    if (remember) { localStorage.setItem(AUTH_KEY, payload); sessionStorage.removeItem(AUTH_KEY); }
+    else { sessionStorage.setItem(AUTH_KEY, payload); localStorage.removeItem(AUTH_KEY); }
+    return session;
+  }
   seedUsersIfNeeded();
   const users = getUsers();
   const normalizedUsername = username.trim().toLowerCase();
@@ -150,7 +167,7 @@ export function login(username, password, remember = false) {
     id: user.id,
     username: user.username,
     name: user.name,
-    role: user.role,
+    role: user.role === 'Enfermería' ? ROLES.AUXILIAR : user.role,
     initials: user.initials,
   };
   const payload = JSON.stringify(session);
@@ -170,7 +187,8 @@ export function login(username, password, remember = false) {
  * Destroy the current session.
  * SUPABASE MIGRATION: supabase.auth.signOut()
  */
-export function logout() {
+export async function logout() {
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.getClient().auth.signOut();
   localStorage.removeItem(AUTH_KEY);
   sessionStorage.removeItem(AUTH_KEY);
 }

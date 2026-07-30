@@ -29,7 +29,8 @@ function getCurrentUser() {
   }
 }
 
-function loadUsers() {
+async function loadUsers() {
+  if (window.MedSolutionData?.isConfigured()) return window.MedSolutionData.getProfiles();
   try {
     return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
   } catch {
@@ -56,7 +57,6 @@ function roleBadgeClass(role) {
     case 'Administrador': return 'role-badge role-badge--admin';
     case 'Médico':        return 'role-badge role-badge--medico';
     case 'Auxiliar':      return 'role-badge role-badge--auxiliar';
-    case 'Enfermería':    return 'role-badge role-badge--enfermeria';
     default:              return 'role-badge';
   }
 }
@@ -67,11 +67,11 @@ const state = { editingId: null };
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
-function renderUsersTable() {
+async function renderUsersTable() {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
 
-  const users = loadUsers();
+  const users = await loadUsers();
   const currentUser = getCurrentUser();
   const emptyRow = document.getElementById('usersEmptyRow');
 
@@ -82,7 +82,7 @@ function renderUsersTable() {
   users.forEach((u) => {
     const tr = document.createElement('tr');
     tr.dataset.userRow = u.id;
-    const isSelf = currentUser && currentUser.id === u.id;
+    const isSelf = currentUser && String(currentUser.id) === String(u.id);
     tr.innerHTML = `
       <td>
         <div class="patient-cell">
@@ -146,7 +146,7 @@ function closeUserModal() {
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
-function handleUserSave(event) {
+async function handleUserSave(event) {
   event.preventDefault();
   const form = document.getElementById('userForm');
   const errEl = document.getElementById('userFormError');
@@ -167,10 +167,10 @@ function handleUserSave(event) {
     return;
   }
 
-  const users = loadUsers();
+  const users = await loadUsers();
 
   // Check username uniqueness
-  const duplicate = users.find((u) => u.username === username && u.id !== state.editingId);
+  const duplicate = users.find((u) => u.username === username && String(u.id) !== String(state.editingId));
   if (duplicate) {
     showFormError(errEl, `El nombre de usuario "${username}" ya está en uso.`);
     return;
@@ -178,8 +178,12 @@ function handleUserSave(event) {
 
   const initials = initialsInput || getInitials(name);
 
-  if (state.editingId !== null) {
-    const idx = users.findIndex((u) => u.id === state.editingId);
+  if (window.MedSolutionData?.isConfigured()) {
+    await window.MedSolutionData.manageUser(state.editingId !== null ? 'update' : 'create', {
+      id: state.editingId, email: username, name, password, role, active: true,
+    });
+  } else if (state.editingId !== null) {
+    const idx = users.findIndex((u) => String(u.id) === String(state.editingId));
     if (idx > -1) {
       users[idx] = {
         ...users[idx],
@@ -194,20 +198,24 @@ function handleUserSave(event) {
     users.push({ id: nextId(users), username, password, name, role, initials, active: true });
   }
 
-  saveUsers(users);
+  if (!window.MedSolutionData?.isConfigured()) saveUsers(users);
   closeUserModal();
-  renderUsersTable();
+  await renderUsersTable();
 }
 
-function handleToggleActive(userId) {
-  const users = loadUsers();
+async function handleToggleActive(userId) {
+  const users = await loadUsers();
   const currentUser = getCurrentUser();
-  const idx = users.findIndex((u) => u.id === userId);
+  const idx = users.findIndex((u) => String(u.id) === String(userId));
   if (idx === -1) return;
-  if (currentUser && currentUser.id === userId) return; // can't deactivate self
+  if (currentUser && String(currentUser.id) === String(userId)) return; // can't deactivate self
   users[idx].active = !users[idx].active;
-  saveUsers(users);
-  renderUsersTable();
+  if (window.MedSolutionData?.isConfigured()) {
+    await window.MedSolutionData.manageUser('toggle', {
+      ...users[idx], email: users[idx].email || users[idx].username,
+    });
+  } else saveUsers(users);
+  await renderUsersTable();
 }
 
 function showFormError(el, msg) {
@@ -225,21 +233,70 @@ function setupSettingsModule() {
 
   renderUsersTable();
 
+  const config = window.MedSolutionData?.configuration();
+  const configForm = document.getElementById('supabaseConfigForm');
+  if (configForm && config) {
+    configForm.elements.supabaseUrl.value = config.url;
+    configForm.elements.supabaseAnonKey.value = config.anonKey;
+    const status = document.getElementById('supabaseConnectionStatus');
+    status.textContent = window.MedSolutionData.isConfigured() ? 'Configuración guardada' : 'Modo local de demostración';
+    configForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.textContent = 'Comprobando conexión…';
+      try {
+        window.MedSolutionData.configure(configForm.elements.supabaseUrl.value, configForm.elements.supabaseAnonKey.value);
+        await window.MedSolutionData.testConnection();
+        status.textContent = '✓ Conectado correctamente';
+        status.style.color = 'var(--aqua)';
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        status.style.color = '#c93047';
+      }
+    });
+  }
+
+  const generalForm = document.getElementById('generalSettingsForm');
+  if (generalForm) {
+    window.MedSolutionData.getSettings().then((settings) => {
+      generalForm.elements.clinicName.value = settings.clinicName || 'Med Solution';
+      generalForm.elements.currency.value = settings.currency || 'BOB';
+      generalForm.elements.timezone.value = settings.timezone || 'America/La_Paz';
+    }).catch((error) => {
+      document.getElementById('generalSettingsStatus').textContent = error.message;
+    });
+    generalForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const status = document.getElementById('generalSettingsStatus');
+      try {
+        await window.MedSolutionData.saveSettings({
+          clinicName: generalForm.elements.clinicName.value.trim(),
+          currency: generalForm.elements.currency.value,
+          timezone: generalForm.elements.timezone.value.trim(),
+        });
+        status.textContent = '✓ Configuración guardada';
+        status.style.color = 'var(--aqua)';
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#c93047';
+      }
+    });
+  }
+
   document.getElementById('newUserBtn')?.addEventListener('click', () => openUserModal('create'));
   document.getElementById('closeUserModalBtn')?.addEventListener('click', closeUserModal);
   document.getElementById('cancelUserModalBtn')?.addEventListener('click', closeUserModal);
   document.querySelector('#userModal .nursing-modal__overlay')?.addEventListener('click', closeUserModal);
   document.getElementById('userForm')?.addEventListener('submit', handleUserSave);
 
-  document.getElementById('usersTableBody')?.addEventListener('click', (e) => {
+  document.getElementById('usersTableBody')?.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
-    const id = parseInt(btn.dataset.id, 10);
-    const users = loadUsers();
-    const user = users.find((u) => u.id === id);
+    const id = btn.dataset.id;
+    const users = await loadUsers();
+    const user = users.find((u) => String(u.id) === String(id));
     if (!user) return;
     if (btn.dataset.action === 'edit') openUserModal('edit', user);
-    else if (btn.dataset.action === 'toggle') handleToggleActive(id);
+    else if (btn.dataset.action === 'toggle') await handleToggleActive(id);
   });
 }
 

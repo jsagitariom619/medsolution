@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
-    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
     <style>
       .patients-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
       .patients-count { font-size: .88rem; color: var(--gray-500); margin-left: auto; }
@@ -44,10 +44,11 @@
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Citas</a>
           <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
           <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
           <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar__footer">
@@ -164,6 +165,8 @@
       </div>
     </div>
 
+    <script src="../assets/vendor/supabase.js"></script>
+    <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js"></script>
     <script src="../assets/js/patients.js"></script>
   </body>

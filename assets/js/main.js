@@ -9,7 +9,7 @@ const routes = {
   appointments: 'pages/appointments.html',
   records: 'pages/medical-records.html',
   schedule: 'pages/schedule.html',
-  nursing: 'pages/nursing.html',
+  reports: 'pages/reports.html',
   settings: 'pages/settings.html',
 };
 
@@ -38,13 +38,13 @@ const handleLogin = () => {
     return;
   }
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const usernameInput = form.querySelector('input[name="username"]');
     const passwordInput = form.querySelector('input[name="password"]');
     const rememberInput = form.querySelector('input[name="remember"]');
 
-    const user = login(
+    const user = await login(
       usernameInput?.value || '',
       passwordInput?.value || '',
       rememberInput?.checked || false,
@@ -125,9 +125,9 @@ const setupLogout = () => {
 
   // Wire up any existing logout button/link
   document.querySelectorAll('[data-logout-btn]').forEach((el) => {
-    el.addEventListener('click', (e) => {
+    el.addEventListener('click', async (e) => {
       e.preventDefault();
-      logout();
+      await logout();
       window.location.href = loginPath;
     });
   });
@@ -140,9 +140,9 @@ const setupLogout = () => {
     a.href = '#';
     a.dataset.logoutBtn = '';
     a.innerHTML = '<span>↪</span>Cerrar sesión';
-    a.addEventListener('click', (e) => {
+    a.addEventListener('click', async (e) => {
       e.preventDefault();
-      logout();
+      await logout();
       window.location.href = loginPath;
     });
     sidebar.appendChild(a);

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
-    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
     <style>
       .consult-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
       .consult-count { font-size: .88rem; color: var(--gray-500); margin-left: auto; }
@@ -51,6 +51,19 @@
       .patient-search-divider { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
       .quick-register-form { margin-top: 12px; }
       .quick-register-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .status-badge { display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:.78rem;font-weight:800;white-space:nowrap; }
+      .status-pending { background:#fff3cd;color:#8a6116; }
+      .status-progress { background:#dceeff;color:#185b91; }
+      .status-finished { background:rgba(47,183,166,.14);color:var(--petroleum); }
+      .status-cancelled { background:#fde2e2;color:#9b2c2c; }
+      .role-context-card { margin-bottom:18px;padding:16px 20px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(47,183,166,.10),rgba(40,111,178,.07)); }
+      .role-context-card strong { color:var(--petroleum-dark); }
+      .role-context-card p { margin:3px 0 0;color:var(--gray-500);font-size:.88rem; }
+      .hidden-section { display:none !important; }
+      .service-picker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 24px 24px;max-height:60vh;overflow:auto}
+      .service-choice{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:16px;border:1px solid var(--gray-200);border-radius:14px;background:var(--white);cursor:pointer;text-align:left;transition:all 140ms}
+      .service-choice:hover{border-color:var(--aqua);background:rgba(47,183,166,.06);transform:translateY(-1px)}.service-choice strong{color:var(--petroleum-dark)}.service-choice small{color:var(--gray-500)}.service-choice em{font-style:normal;color:var(--aqua);font-weight:800}
+      @media(max-width:560px){.service-picker-grid{grid-template-columns:1fr}}
       @media (max-width: 480px) { .quick-register-grid { grid-template-columns: 1fr; } }
     </style>
   </head>
@@ -64,10 +77,11 @@
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Citas</a>
           <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
           <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
           <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar__footer">
@@ -91,11 +105,16 @@
             <div>
               <span class="eyebrow">Citas y Atenciones</span>
               <h1>Nueva atención</h1>
-              <p>Registra consultas con signos vitales, diagnóstico, tratamiento y observaciones clínicas.</p>
+              <p id="appointmentsSubtitle">Registra el ingreso de cada paciente y dirige automáticamente su atención.</p>
             </div>
             <!-- Nueva Atención button -->
             <button class="btn btn--primary" id="newConsultBtn" type="button">+ Nueva Atención</button>
           </div>
+
+          <article class="card role-context-card" id="roleContextCard">
+            <span style="font-size:1.4rem">◷</span>
+            <div><strong id="roleContextTitle">Flujo de atención</strong><p id="roleContextText"></p></div>
+          </article>
 
           <article class="card" style="padding: 24px;">
             <div class="consult-toolbar">
@@ -108,10 +127,10 @@
               <table class="consult-table">
                 <thead>
                   <tr>
-                    <th>Fecha / Hora</th>
+                    <th>Hora</th>
                     <th>Paciente</th>
-                    <th>Motivo</th>
-                    <th>Diagnóstico</th>
+                    <th>Tipo de atención</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -125,6 +144,14 @@
           </article>
         </section>
       </main>
+    </div>
+
+    <div class="nursing-modal" id="servicePickerModal" role="dialog" aria-modal="true" aria-labelledby="servicePickerTitle">
+      <div class="nursing-modal__overlay"></div><div class="nursing-modal__content">
+        <div class="nursing-modal__header"><div><span class="eyebrow">Paso 1</span><h2 id="servicePickerTitle" style="margin:4px 0 0">¿Qué atención desea registrar?</h2></div>
+          <button class="nursing-modal__close" id="closeServicePickerBtn" type="button">✕</button></div>
+        <div class="service-picker-grid" id="servicePickerGrid"><p class="patient-result-empty">Cargando servicios activos…</p></div>
+      </div>
     </div>
 
     <!-- Consultation Modal -->
@@ -161,7 +188,24 @@
               <input type="time" name="time" />
             </label>
 
-            <!-- Signos vitales -->
+            <label class="form-field">
+              <span>Tipo de servicio *</span>
+              <select name="serviceType" id="serviceType" required>
+                <option value="">Cargando catálogo…</option>
+              </select>
+            </label>
+            <label class="form-field hidden-section" id="procedureResponsibleField">
+              <span>Responsable del procedimiento *</span>
+              <select name="procedureResponsible" id="procedureResponsible">
+                <option value="">Cargando responsables…</option>
+              </select>
+            </label>
+            <label class="form-field full-width">
+              <span>Motivo u observación breve *</span>
+              <input type="text" name="chiefComplaint" placeholder="Motivo de llegada o procedimiento solicitado…" required />
+            </label>
+
+            <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">
             <span class="section-label">Signos vitales</span>
 
             <label class="form-field">
@@ -191,11 +235,7 @@
 
             <!-- Consulta clínica -->
             <span class="section-label">Consulta clínica</span>
-
-            <label class="form-field full-width">
-              <span>Motivo de consulta *</span>
-              <input type="text" name="chiefComplaint" placeholder="Ej. Dolor de cabeza persistente, fiebre…" required />
-            </label>
+            <label class="form-field full-width"><span>Evolución</span><textarea name="evolution" rows="3" placeholder="Evolución y enfermedad actual…"></textarea></label>
             <label class="form-field full-width" data-role-feature="appointments.edit-physical-exam">
               <span>Examen físico</span>
               <textarea name="physicalExam" rows="3" placeholder="Hallazgos al examen físico…"></textarea>
@@ -205,13 +245,17 @@
               <input type="text" name="diagnosis" placeholder="Ej. Hipertensión arterial, CIE-10 I10" />
             </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-treatment">
-              <span>Tratamiento / Prescripción</span>
-              <textarea name="treatment" rows="3" placeholder="Medicamentos, dosis, indicaciones…"></textarea>
+              <span>Tratamiento</span>
+              <textarea name="treatment" rows="3" placeholder="Plan terapéutico…"></textarea>
             </label>
+            <label class="form-field full-width"><span>Receta</span><textarea name="prescription" rows="3" placeholder="Medicamentos, dosis, vía y duración…"></textarea></label>
+            <label class="form-field full-width"><span>Indicaciones</span><textarea name="indications" rows="2" placeholder="Cuidados e indicaciones para el paciente…"></textarea></label>
+            <label class="form-field"><span>Próximo control</span><input type="date" name="nextControl" /></label>
             <label class="form-field full-width">
               <span>Observaciones</span>
               <textarea name="observations" rows="2" placeholder="Notas adicionales…"></textarea>
             </label>
+            </div>
           </div>
           <div class="nursing-form__actions">
             <button class="btn btn--secondary" id="cancelConsultModalBtn" type="button">Cancelar</button>
@@ -265,6 +309,8 @@
       </div>
     </div>
 
+    <script src="../assets/vendor/supabase.js"></script>
+    <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js"></script>
     <script src="../assets/js/appointments.js"></script>
   </body>

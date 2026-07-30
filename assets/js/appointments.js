@@ -1,363 +1,398 @@
-// Appointments Module — Nueva Atención / Consulta (localStorage)
-// Persistence isolated in load/save helpers — ready to migrate to Supabase.
+// MedSolution — Flujo único de atención (Recepción → Médico → Historia clínica)
+// Mantiene las claves existentes para conservar todos los datos ya registrados.
 
 const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
-
+const RECORDS_KEY = 'medsolution.medicalRecords';
 const consultState = {
   consultations: [],
+  services: [],
+  staff: [],
+  patients: [],
   editingId: null,
+  mode: 'create',
   searchTerm: '',
-  patientSearchTerm: '',
+  unsubscribeAttentions: null,
+  unsubscribeServices: null,
+  unsubscribePatients: null,
+  selectedServiceId: null,
+  pendingPatient: null,
 };
-
-// ── Auth helper (mirrors auth.js without ES module import) ────────────────────
 
 function getAuthUser() {
   try {
     const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
     return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+function isDoctor() {
+  return ['Administrador', 'Médico'].includes(getAuthUser()?.role);
 }
 
 function authCan(feature) {
-  const user = getAuthUser();
-  if (!user) return false;
+  const role = getAuthUser()?.role;
   const permissions = {
-    'appointments.create':          ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
-    'appointments.edit':            ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
-    'appointments.delete':          ['Administrador', 'Médico'],
-    'appointments.edit-diagnosis':  ['Administrador', 'Médico'],
-    'appointments.edit-treatment':  ['Administrador', 'Médico'],
-    'appointments.edit-physical-exam': ['Administrador', 'Médico'],
-    'appointments.edit-vitals':     ['Administrador', 'Médico', 'Enfermería'],
+    'appointments.create': ['Administrador', 'Médico', 'Auxiliar'],
+    'appointments.edit': ['Administrador', 'Médico', 'Auxiliar'],
+    'appointments.delete': ['Administrador', 'Médico'],
   };
-  return Boolean(permissions[feature]?.includes(user.role));
+  return Boolean(permissions[feature]?.includes(role));
 }
 
-// ── Persistence ───────────────────────────────────────────────────────────────
-
-function loadConsultations() {
+function readArray(key) {
   try {
-    const stored = localStorage.getItem(CONSULT_KEY);
-    consultState.consultations = stored ? JSON.parse(stored) : [];
-  } catch {
-    consultState.consultations = [];
-  }
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
 }
 
-function saveConsultations() {
+async function loadConsultations() {
+  const remote = window.MedSolutionData?.isConfigured()
+    ? await window.MedSolutionData.getAttentions()
+    : readArray(CONSULT_KEY);
+  consultState.consultations = remote.map((item) => ({
+    serviceType: item.serviceType || 'Servicio anterior',
+    status: item.status || (item.diagnosis || item.treatment ? 'Finalizada' : 'Pendiente'),
+    ...item,
+  }));
   localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
 }
 
-function getPatients() {
-  try {
-    const stored = localStorage.getItem(PATIENTS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
+async function saveConsultations(changed = null) {
+  localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
+  if (changed && window.MedSolutionData?.isConfigured()) await window.MedSolutionData.saveAttention(changed);
+  window.dispatchEvent(new CustomEvent('medsolution:consultations-updated'));
+}
+
+function getPatients() { return consultState.patients.length ? consultState.patients : readArray(PATIENTS_KEY); }
+function savePatientsToStorage(items) { localStorage.setItem(PATIENTS_KEY, JSON.stringify(items)); }
+function nextId(items) {
+  const numeric = items.map((item) => Number(item.id)).filter(Number.isFinite);
+  return numeric.length ? Math.max(...numeric) + 1 : 1;
+}
+function getUrlParam(name) { return new URLSearchParams(window.location.search).get(name); }
+function getInitials(name) {
+  return (name || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase();
+}
+function formatDisplayDate(date) {
+  if (!date) return '—';
+  const [y, m, d] = date.split('-');
+  return `${d}/${m}/${y}`;
+}
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+function statusClass(status) {
+  return {
+    Pendiente: 'status-pending',
+    'Pendiente de consulta': 'status-pending',
+    'En consulta': 'status-progress',
+    Finalizada: 'status-finished',
+    Cancelada: 'status-cancelled',
+  }[status] || 'status-pending';
+}
+
+function serviceForAttention(attention) {
+  return consultState.services.find((service) =>
+    String(service.id) === String(attention.serviceId) || service.name === attention.serviceType);
+}
+
+function requiresMedical(attention) {
+  const service = serviceForAttention(attention);
+  return service ? Boolean(service.requires_medical_consultation) :
+    attention.requiresMedicalConsultation ?? Boolean(attention.diagnosis || attention.treatment || attention.evolution);
+}
+
+function visibleConsultations() {
+  const term = consultState.searchTerm.toLowerCase();
+  return consultState.consultations
+    .filter((c) => !isDoctor() || requiresMedical(c))
+    .filter((c) => !isDoctor() || ['Pendiente', 'Pendiente de consulta', 'En consulta'].includes(c.status))
+    .filter((c) => !term || [c.patientName, c.serviceType, c.status, c.chiefComplaint]
+      .some((v) => String(v || '').toLowerCase().includes(term)))
+    .sort((a, b) => {
+      if (isDoctor()) return (`${a.date} ${a.time || ''}`).localeCompare(`${b.date} ${b.time || ''}`);
+      return (`${b.date} ${b.time || ''}`).localeCompare(`${a.date} ${a.time || ''}`);
+    });
+}
+
+function rowActions(c) {
+  if (!isDoctor() && requiresMedical(c)) {
+    return '<small style="color:var(--gray-500);font-weight:700">Enviado al doctor</small>';
+  }
+  if (isDoctor() && requiresMedical(c)) {
+    if (['Pendiente', 'Pendiente de consulta'].includes(c.status)) {
+      return `<button class="btn btn--primary" style="padding:8px 12px;font-size:.8rem" data-action="accept" data-id="${c.id}">Aceptar consulta</button>
+        <button class="btn-action btn-action--delete" data-action="cancel" data-id="${c.id}" title="Cancelar">✕</button>`;
+    }
+    if (c.status === 'En consulta') {
+      return `<button class="btn btn--primary" style="padding:8px 12px;font-size:.8rem" data-action="continue" data-id="${c.id}">Continuar</button>`;
+    }
+    if (c.status === 'Finalizada') {
+      return `<button class="btn-action" data-action="view" data-id="${c.id}" title="Ver">👁</button>
+        <button class="btn-action" data-action="edit" data-id="${c.id}" title="Corregir">✎</button>
+        <a class="btn-action" href="medical-records.html?patientId=${c.patientId}" title="Historia clínica">▣</a>`;
+    }
+    return `<button class="btn-action" data-action="view" data-id="${c.id}" title="Ver">👁</button>`;
+  }
+  return `<button class="btn-action" data-action="view" data-id="${c.id}" title="Ver">👁</button>
+    ${authCan('appointments.edit') && c.status !== 'Cancelada' ? `<button class="btn-action" data-action="edit" data-id="${c.id}" title="Editar">✎</button>` : ''}
+    ${authCan('appointments.delete') ? `<button class="btn-action btn-action--delete" data-action="delete" data-id="${c.id}" title="Eliminar">✕</button>` : ''}`;
+}
+
+async function loadCatalog() {
+  const [services, staff, patients] = await Promise.all([
+    window.MedSolutionData.getServices(false),
+    window.MedSolutionData.getStaff(),
+    window.MedSolutionData.getPatients(),
+  ]);
+  consultState.services = services;
+  consultState.staff = staff;
+  consultState.patients = patients;
+  localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+  renderServiceOptions();
+}
+
+function renderServiceOptions(selectedId = '') {
+  const select = document.getElementById('serviceType');
+  if (!select) return;
+  const current = selectedId || select.value;
+  select.innerHTML = '<option value="">Seleccionar…</option>' + consultState.services
+    .map((service) => `<option value="${escapeHtml(service.id || service.name)}">${escapeHtml(service.name)} · ${Number(service.price || 0).toFixed(2)} Bs</option>`).join('');
+  if (current) {
+    const service = consultState.services.find((item) => String(item.id) === String(current) || item.name === current);
+    if (service) select.value = service.id || service.name;
   }
 }
 
-function savePatientsToStorage(patients) {
-  localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+function openServicePicker() {
+  const grid = document.getElementById('servicePickerGrid');
+  if (!consultState.services.length) {
+    grid.innerHTML = '<p class="patient-result-empty">No hay servicios activos. Solicita al administrador que configure el Catálogo de Servicios.</p>';
+  } else {
+    grid.innerHTML = consultState.services.map((service) => `<button class="service-choice" type="button" data-choose-service="${escapeHtml(service.id || service.name)}">
+      <strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.description || 'Sin descripción')}</small><em>${Number(service.price || 0).toFixed(2)} Bs</em></button>`).join('');
+  }
+  document.getElementById('servicePickerModal').classList.add('nursing-modal--active');
 }
-
-function nextConsultId() {
-  const ids = consultState.consultations.map((c) => c.id);
-  return ids.length ? Math.max(...ids) + 1 : 1;
-}
-
-function nextPatientId(patients) {
-  const ids = patients.map((p) => p.id);
-  return ids.length ? Math.max(...ids) + 1 : 1;
-}
-
-// ── URL params ────────────────────────────────────────────────────────────────
-
-function getUrlParam(name) {
-  return new URLSearchParams(window.location.search).get(name);
-}
-
-// ── Render consultations list ─────────────────────────────────────────────────
-
-function getInitials(fullName) {
-  const parts = (fullName || '').trim().split(/\s+/);
-  return (parts[0]?.[0] || '').toUpperCase() + (parts[1]?.[0] || '').toUpperCase();
-}
-
-function formatDisplayDate(isoDate) {
-  if (!isoDate) return '—';
-  const [y, m, d] = isoDate.split('-');
-  return `${d}/${m}/${y}`;
+function closeServicePicker() { document.getElementById('servicePickerModal')?.classList.remove('nursing-modal--active'); }
+function chooseService(serviceId) {
+  consultState.selectedServiceId = serviceId;
+  closeServicePicker();
+  if (consultState.pendingPatient) {
+    const patient = consultState.pendingPatient;
+    openConsultModal('create');
+    setSelectedPatient(patient.id, `${patient.nombre} ${patient.apellido}`);
+    document.getElementById('serviceType').value = serviceId;
+    toggleServiceFields();
+    return;
+  }
+  openPatientSearchModal();
 }
 
 function renderConsultations() {
   const tbody = document.getElementById('consultTableBody');
   if (!tbody) return;
+  const items = visibleConsultations();
+  const empty = document.getElementById('consultEmptyRow');
+  tbody.querySelectorAll('tr[data-consult-row]').forEach((row) => row.remove());
+  if (empty) empty.style.display = items.length ? 'none' : '';
 
-  const term = consultState.searchTerm.toLowerCase();
-  const visible = consultState.consultations.filter((c) => {
-    if (!term) return true;
-    return (
-      c.patientName.toLowerCase().includes(term) ||
-      (c.diagnosis || '').toLowerCase().includes(term) ||
-      (c.chiefComplaint || '').toLowerCase().includes(term)
-    );
-  });
-
-  visible.sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
-
-  const emptyRow = document.getElementById('consultEmptyRow');
-  if (emptyRow) emptyRow.style.display = visible.length ? 'none' : '';
-
-  Array.from(tbody.querySelectorAll('tr[data-consult-row]')).forEach((r) => r.remove());
-
-  visible.forEach((c) => {
+  items.forEach((c) => {
     const tr = document.createElement('tr');
     tr.dataset.consultRow = c.id;
     tr.innerHTML = `
-      <td><strong>${formatDisplayDate(c.date)}</strong><br><small style="color:var(--gray-500)">${c.time || ''}</small></td>
-      <td>
-        <div class="patient-cell">
-          <span class="patient-photo">${getInitials(c.patientName)}</span>
-          <span>${c.patientName}</span>
-        </div>
-      </td>
-      <td>${c.chiefComplaint || '—'}</td>
-      <td>${c.diagnosis || '—'}</td>
-      <td>
-        <span class="action-links">
-          <button class="btn-action" data-action="view" data-id="${c.id}" title="Ver">👁</button>
-          ${authCan('appointments.edit') ? `<button class="btn-action" data-action="edit" data-id="${c.id}" title="Editar">✎</button>` : ''}
-          ${authCan('appointments.delete') ? `<button class="btn-action btn-action--delete" data-action="delete" data-id="${c.id}" title="Eliminar">✕</button>` : ''}
-        </span>
-      </td>
-    `;
-    tbody.insertBefore(tr, emptyRow);
+      <td><strong>${escapeHtml(c.time || '—')}</strong><br><small style="color:var(--gray-500)">${formatDisplayDate(c.date)}</small></td>
+      <td><div class="patient-cell"><span class="patient-photo">${getInitials(c.patientName)}</span><span>${escapeHtml(c.patientName)}</span></div></td>
+      <td><strong>${escapeHtml(c.serviceType)}</strong><br><small style="color:var(--gray-500)">${escapeHtml(c.chiefComplaint || '')}</small></td>
+      <td><span class="status-badge ${statusClass(c.status)}">${escapeHtml(c.status)}</span></td>
+      <td><span class="action-links">${rowActions(c)}</span></td>`;
+    tbody.insertBefore(tr, empty);
   });
-
-  updateConsultCounter(visible.length);
+  const count = document.getElementById('consultCount');
+  if (count) count.textContent = `${items.length} atención${items.length !== 1 ? 'es' : ''}`;
 }
 
-function updateConsultCounter(count) {
-  const el = document.getElementById('consultCount');
-  if (el) el.textContent = `${count} consulta${count !== 1 ? 's' : ''}`;
-}
-
-// ── Patient picker (replaces select) ─────────────────────────────────────────
-
-function setSelectedPatient(id, name) {
-  const idInput = document.getElementById('consultPatientId');
-  const nameInput = document.getElementById('consultPatientNameHidden');
-  const display = document.getElementById('consultPatientDisplay');
-  if (idInput) idInput.value = id;
-  if (nameInput) nameInput.value = name;
-  if (display) {
-    display.innerHTML = `<strong>${name}</strong><small>ID Historia: #${id}</small>`;
+function configureRoleView() {
+  const doctor = isDoctor();
+  const title = document.getElementById('roleContextTitle');
+  const text = document.getElementById('roleContextText');
+  const subtitle = document.getElementById('appointmentsSubtitle');
+  const newButton = document.getElementById('newConsultBtn');
+  if (doctor) {
+    if (title) title.textContent = 'Panel del doctor';
+    if (text) text.textContent = 'Pacientes médicos pendientes ordenados por hora de llegada. Acepta una consulta para abrir su historia clínica.';
+    if (subtitle) subtitle.textContent = 'Gestiona la cola médica, la consulta activa y el historial clínico del paciente.';
+    if (newButton) newButton.style.display = 'none';
+  } else {
+    if (title) title.textContent = 'Panel de auxiliar · Recepción';
+    if (text) text.textContent = 'Toda atención comienza aquí. Las consultas médicas pasan automáticamente al panel del doctor.';
   }
 }
 
+function setSelectedPatient(id, name) {
+  document.getElementById('consultPatientId').value = id;
+  document.getElementById('consultPatientNameHidden').value = name;
+  document.getElementById('consultPatientDisplay').innerHTML =
+    `<strong>${escapeHtml(name)}</strong><small>ID Historia: #${escapeHtml(id)}</small>`;
+}
 function clearSelectedPatient() {
-  const idInput = document.getElementById('consultPatientId');
-  const nameInput = document.getElementById('consultPatientNameHidden');
-  const display = document.getElementById('consultPatientDisplay');
-  if (idInput) idInput.value = '';
-  if (nameInput) nameInput.value = '';
-  if (display) display.innerHTML = '<em style="color:var(--gray-500)">Sin paciente seleccionado</em>';
+  document.getElementById('consultPatientId').value = '';
+  document.getElementById('consultPatientNameHidden').value = '';
+  document.getElementById('consultPatientDisplay').innerHTML = '<em style="color:var(--gray-500)">Sin paciente seleccionado</em>';
 }
-
-function getSelectedPatientId() {
-  return parseInt(document.getElementById('consultPatientId')?.value || '', 10) || null;
-}
-
-function getSelectedPatientName() {
-  return document.getElementById('consultPatientNameHidden')?.value || '';
-}
-
-// ── Patient Search Modal ──────────────────────────────────────────────────────
+function selectedPatientId() { return Number(document.getElementById('consultPatientId')?.value) || null; }
+function selectedPatientName() { return document.getElementById('consultPatientNameHidden')?.value || ''; }
 
 function openPatientSearchModal() {
   const modal = document.getElementById('patientSearchModal');
-  const input = document.getElementById('patientSearchInput');
-  if (!modal) return;
-  // Reset state
-  if (input) { input.value = ''; }
+  document.getElementById('patientSearchInput').value = '';
   renderPatientSearchResults('');
   hideQuickRegisterForm();
   modal.classList.add('nursing-modal--active');
-  setTimeout(() => input?.focus(), 80);
+  setTimeout(() => document.getElementById('patientSearchInput')?.focus(), 60);
 }
-
 function closePatientSearchModal() {
-  const modal = document.getElementById('patientSearchModal');
-  if (modal) modal.classList.remove('nursing-modal--active');
+  document.getElementById('patientSearchModal')?.classList.remove('nursing-modal--active');
   hideQuickRegisterForm();
 }
-
 function renderPatientSearchResults(term) {
   const container = document.getElementById('patientSearchResults');
-  if (!container) return;
-
-  const patients = getPatients();
   const q = term.toLowerCase().trim();
-
-  const matches = q
-    ? patients.filter((p) =>
-        `${p.nombre} ${p.apellido}`.toLowerCase().includes(q) ||
-        (p.ci || '').toLowerCase().includes(q) ||
-        (p.telefono || '').includes(q) ||
-        String(p.id).includes(q)
-      )
-    : patients;
-
+  const matches = getPatients().filter((p) => !q ||
+    `${p.nombre} ${p.apellido} ${p.ci || ''} ${p.telefono || ''} ${p.id}`.toLowerCase().includes(q));
   if (!matches.length) {
-    container.innerHTML = `<p class="patient-result-empty">${q ? 'No se encontraron pacientes. Puedes registrar uno nuevo abajo.' : 'No hay pacientes registrados. Registra el primero abajo.'}</p>`;
+    container.innerHTML = `<p class="patient-result-empty">${q ? 'No se encontraron pacientes. Puedes registrar uno nuevo.' : 'No hay pacientes registrados.'}</p>`;
     return;
   }
-
   container.innerHTML = matches.map((p) => {
-    const fullName = `${p.nombre} ${p.apellido}`;
-    const initials = getInitials(fullName);
-    const consultCount = consultState.consultations.filter((c) => c.patientId === p.id).length;
-    return `
-      <div class="patient-result-item" data-select-patient="${p.id}" data-patient-name="${fullName}">
-        <span class="patient-photo">${initials}</span>
-        <div class="patient-result-item__info">
-          <strong>${fullName}</strong>
-          <small>CI: ${p.ci}${p.telefono ? ' · ' + p.telefono : ''} · #${p.id} · ${consultCount} consulta${consultCount !== 1 ? 's' : ''}</small>
-        </div>
-        <button class="btn btn--primary" type="button" style="padding:7px 14px;font-size:.82rem" data-pick-patient="${p.id}" data-pick-name="${fullName}">Seleccionar</button>
-      </div>
-    `;
+    const name = `${p.nombre} ${p.apellido}`;
+    return `<div class="patient-result-item"><span class="patient-photo">${getInitials(name)}</span>
+      <div class="patient-result-item__info"><strong>${escapeHtml(name)}</strong><small>CI: ${escapeHtml(p.ci)} · #${p.id}</small></div>
+      <button class="btn btn--primary" type="button" style="padding:7px 14px;font-size:.82rem" data-pick-patient="${p.id}" data-pick-name="${escapeHtml(name)}">Seleccionar</button></div>`;
   }).join('');
 }
-
-function selectPatientAndContinue(patientId, patientName) {
+function selectPatientAndContinue(id, name) {
   closePatientSearchModal();
-  setSelectedPatient(patientId, patientName);
-  // Show pick button only in create/edit mode (already handled by openConsultModal)
-  const pickBtn = document.getElementById('pickPatientBtn');
-  if (pickBtn) pickBtn.style.display = '';
-  // If consultation modal is not yet open (came from "Nueva Atención" button), open it
-  const consultModal = document.getElementById('consultModal');
-  if (!consultModal?.classList.contains('nursing-modal--active')) {
-    openConsultModal('create');
+  if (!document.getElementById('consultModal').classList.contains('nursing-modal--active')) openConsultModal('create');
+  setSelectedPatient(id, name);
+  if (consultState.selectedServiceId) {
+    document.getElementById('serviceType').value = consultState.selectedServiceId;
+    toggleServiceFields();
   }
 }
-
-// ── Quick patient registration ────────────────────────────────────────────────
-
 function showQuickRegisterForm() {
-  const section = document.getElementById('quickRegisterSection');
-  const btn = document.getElementById('showRegisterPatientBtn');
-  if (section) section.style.display = '';
-  if (btn) btn.style.display = 'none';
-  document.getElementById('quickPatientForm')?.reset();
+  document.getElementById('quickRegisterSection').style.display = '';
+  document.getElementById('showRegisterPatientBtn').style.display = 'none';
+  document.getElementById('quickPatientForm').reset();
 }
-
 function hideQuickRegisterForm() {
-  const section = document.getElementById('quickRegisterSection');
-  const btn = document.getElementById('showRegisterPatientBtn');
-  if (section) section.style.display = 'none';
-  if (btn) btn.style.display = '';
+  document.getElementById('quickRegisterSection').style.display = 'none';
+  document.getElementById('showRegisterPatientBtn').style.display = '';
 }
-
-function handleQuickPatientSave(event) {
+async function handleQuickPatientSave(event) {
   event.preventDefault();
-  const form = document.getElementById('quickPatientForm');
-  if (!form) return;
-
+  const form = event.currentTarget;
   const nombre = form.elements.nombre.value.trim();
   const apellido = form.elements.apellido.value.trim();
   const ci = form.elements.ci.value.trim();
-
-  if (!nombre || !apellido || !ci) {
-    alert('Nombre, apellido y cédula son requeridos.');
-    return;
-  }
-
+  if (!nombre || !apellido || !ci) return alert('Nombre, apellido y cédula son requeridos.');
   const patients = getPatients();
-  const newPatient = {
-    id: nextPatientId(patients),
-    nombre,
-    apellido,
-    ci,
-    telefono: form.elements.telefono.value.trim(),
-    genero: form.elements.genero.value,
-    fechaNacimiento: form.elements.fechaNacimiento.value,
-    email: '',
-    direccion: '',
+  if (patients.some((p) => String(p.ci).trim() === ci)) return alert('Ya existe un paciente con esta cédula.');
+  const patient = {
+    id: nextId(patients), nombre, apellido, ci,
+    telefono: form.elements.telefono.value.trim(), genero: form.elements.genero.value,
+    fechaNacimiento: form.elements.fechaNacimiento.value, email: '', direccion: '',
     registrado: new Date().toISOString().slice(0, 10),
   };
-
-  patients.push(newPatient);
+  patients.push(patient);
+  consultState.patients = patients;
   savePatientsToStorage(patients);
-
-  const fullName = `${newPatient.nombre} ${newPatient.apellido}`;
-  selectPatientAndContinue(newPatient.id, fullName);
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.savePatient(patient);
+  selectPatientAndContinue(patient.id, `${nombre} ${apellido}`);
 }
 
-// ── Consultation Modal ────────────────────────────────────────────────────────
+function toggleServiceFields() {
+  const serviceId = document.getElementById('serviceType')?.value;
+  const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));
+  const procedure = Boolean(service && !service.requires_medical_consultation);
+  const field = document.getElementById('procedureResponsibleField');
+  const select = document.getElementById('procedureResponsible');
+  field.classList.toggle('hidden-section', !procedure);
+  select.required = procedure;
+  if (!procedure) { select.value = ''; return; }
+  const allowed = service.allowed_responsible || 'Ambos';
+  const current = select.value;
+  const staff = consultState.staff.filter((person) =>
+    allowed === 'Ambos' || staffRole(person.position) === allowed);
+  select.innerHTML = '<option value="">Seleccionar…</option>' + staff
+    .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(person.name)}</option>`).join('');
+  if (staff.some((person) => person.name === current)) select.value = current;
+}
+function staffRole(position) {
+  const normalized = String(position || '').toLowerCase();
+  return normalized.includes('doctor') || normalized.includes('médic') || normalized.includes('medic') ? 'Doctor' : 'Auxiliar';
+}
+
+function configureFormMode(mode) {
+  const clinical = document.getElementById('clinicalFields');
+  const clinicalMode = ['clinical', 'edit-clinical', 'view-clinical'].includes(mode);
+  clinical.classList.toggle('hidden-section', !clinicalMode);
+  document.getElementById('serviceType').disabled = clinicalMode || mode === 'create';
+  document.getElementById('pickPatientBtn').style.display = clinicalMode ? 'none' : '';
+  document.getElementById('consultSaveBtn').textContent = clinicalMode ? 'Finalizar consulta' : 'Guardar Atención';
+}
 
 function openConsultModal(mode, consult = null) {
-  const modal = document.getElementById('consultModal');
-  const title = document.getElementById('consultModalTitle');
   const form = document.getElementById('consultForm');
-  if (!modal || !form) return;
-
   form.reset();
-  consultState.editingId = null;
+  clearSelectedPatient();
+  consultState.editingId = consult?.id ?? null;
+  consultState.mode = mode;
   setConsultFormReadOnly(form, false);
+  configureFormMode(mode);
+  document.getElementById('consultSaveBtn').style.display = mode.startsWith('view') ? 'none' : '';
 
-  const saveBtn = document.getElementById('consultSaveBtn');
-  const pickBtn = document.getElementById('pickPatientBtn');
-
-  if (mode === 'create') {
-    title.textContent = 'Nueva Atención';
-    if (form.elements.date) form.elements.date.value = new Date().toISOString().slice(0, 10);
-    if (form.elements.time) form.elements.time.value = new Date().toTimeString().slice(0, 5);
-    if (saveBtn) saveBtn.style.display = '';
-    if (pickBtn) pickBtn.style.display = '';
-    // Only clear patient if none was pre-selected
-    if (!getSelectedPatientId()) clearSelectedPatient();
-  } else if (mode === 'edit' && consult) {
-    title.textContent = 'Editar Consulta';
-    consultState.editingId = consult.id;
+  if (consult) {
     fillConsultForm(form, consult);
-    if (saveBtn) saveBtn.style.display = '';
-    if (pickBtn) pickBtn.style.display = '';
-  } else if (mode === 'view' && consult) {
-    title.textContent = 'Detalle de Consulta';
-    fillConsultForm(form, consult);
-    setConsultFormReadOnly(form, true);
-    if (saveBtn) saveBtn.style.display = 'none';
-    if (pickBtn) pickBtn.style.display = 'none';
+  } else {
+    form.elements.date.value = new Date().toISOString().slice(0, 10);
+    form.elements.time.value = new Date().toTimeString().slice(0, 5);
   }
 
-  modal.classList.add('nursing-modal--active');
+  const titles = {
+    create: 'Nueva Atención', edit: 'Editar Atención', view: 'Detalle de Atención',
+    clinical: 'Consulta clínica', 'edit-clinical': 'Corregir consulta clínica', 'view-clinical': 'Detalle de Consulta',
+  };
+  document.getElementById('consultModalTitle').textContent = titles[mode] || 'Atención';
+  if (mode.startsWith('view')) setConsultFormReadOnly(form, true);
+  toggleServiceFields();
+  document.getElementById('consultModal').classList.add('nursing-modal--active');
 }
-
 function closeConsultModal() {
-  const modal = document.getElementById('consultModal');
-  const form = document.getElementById('consultForm');
-  if (modal) modal.classList.remove('nursing-modal--active');
-  if (form) { form.reset(); setConsultFormReadOnly(form, false); }
+  document.getElementById('consultModal')?.classList.remove('nursing-modal--active');
+  document.getElementById('consultForm')?.reset();
   clearSelectedPatient();
   consultState.editingId = null;
+  consultState.selectedServiceId = null;
+  consultState.pendingPatient = null;
 }
-
 function fillConsultForm(form, c) {
   setSelectedPatient(c.patientId, c.patientName);
-  if (form.elements.date) form.elements.date.value = c.date || '';
-  if (form.elements.time) form.elements.time.value = c.time || '';
-  ['bp', 'hr', 'temp', 'weight', 'height', 'spo2', 'chiefComplaint', 'physicalExam', 'diagnosis', 'treatment', 'observations'].forEach((f) => {
-    if (form.elements[f]) form.elements[f].value = c[f] || '';
-  });
+  const fields = ['date','time','procedureResponsible','bp','hr','temp','weight','height','spo2',
+    'chiefComplaint','evolution','physicalExam','diagnosis','treatment','prescription','indications','nextControl','observations'];
+  fields.forEach((name) => { if (form.elements[name]) form.elements[name].value = c[name] || ''; });
+  renderServiceOptions(c.serviceId || c.serviceType);
+  if (!form.elements.serviceType.value && c.serviceType) {
+    const option = document.createElement('option');
+    option.value = c.serviceId || c.serviceType; option.textContent = c.serviceType;
+    form.elements.serviceType.appendChild(option); form.elements.serviceType.value = option.value;
+  }
 }
-
 function setConsultFormReadOnly(form, readOnly) {
   form.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach((el) => {
     el.readOnly = readOnly;
@@ -365,130 +400,176 @@ function setConsultFormReadOnly(form, readOnly) {
   });
 }
 
-// ── CRUD ──────────────────────────────────────────────────────────────────────
-
-function handleConsultSave(event) {
-  event.preventDefault();
-  const form = document.getElementById('consultForm');
-  if (!form) return;
-
-  const patientId = getSelectedPatientId();
-  const patientName = getSelectedPatientName();
-
-  if (!patientId) {
-    alert('Por favor selecciona un paciente.');
-    return;
+async function ensureMedicalRecord(patientId) {
+  const records = readArray(RECORDS_KEY);
+  let record = records.find((item) => Number(item.patientId) === Number(patientId));
+  if (!record) {
+    record = {
+      id: nextId(records), patientId: Number(patientId),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    records.push(record);
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
   }
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.ensureMedicalRecord(patientId);
+  return record;
+}
 
-  const data = {
-    patientId,
-    patientName,
-    date: form.elements.date.value,
-    time: form.elements.time.value,
-    bp: form.elements.bp.value.trim(),
-    hr: form.elements.hr.value.trim(),
-    temp: form.elements.temp.value.trim(),
-    weight: form.elements.weight.value.trim(),
-    height: form.elements.height.value.trim(),
-    spo2: form.elements.spo2.value.trim(),
-    chiefComplaint: form.elements.chiefComplaint.value.trim(),
-    physicalExam: form.elements.physicalExam.value.trim(),
-    diagnosis: form.elements.diagnosis.value.trim(),
-    treatment: form.elements.treatment.value.trim(),
-    observations: form.elements.observations.value.trim(),
+async function acceptConsultation(consult) {
+  await ensureMedicalRecord(consult.patientId);
+  consult.status = 'En consulta';
+  consult.acceptedAt = new Date().toISOString();
+  await saveConsultations(consult);
+  renderConsultations();
+  openConsultModal('clinical', consult);
+}
+
+function consultationData(form) {
+  const value = (name) => form.elements[name]?.value?.trim?.() || form.elements[name]?.value || '';
+  const serviceId = value('serviceType');
+  const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));
+  return {
+    patientId: selectedPatientId(), patientName: selectedPatientName(),
+    date: value('date'), time: value('time'), serviceId: service?.id || null,
+    serviceType: service?.name || '', servicePrice: Number(service?.price || 0),
+    requiresMedicalConsultation: Boolean(service?.requires_medical_consultation),
+    generatesMedicalRecord: Boolean(service?.generates_medical_record),
+    procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),
+    bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
+    height: value('height'), spo2: value('spo2'), evolution: value('evolution'),
+    physicalExam: value('physicalExam'), diagnosis: value('diagnosis'), treatment: value('treatment'),
+    prescription: value('prescription'), indications: value('indications'),
+    nextControl: value('nextControl'), observations: value('observations'),
+    registeredBy: consultState.editingId !== null
+      ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredBy
+      : (getAuthUser()?.name || getAuthUser()?.username || 'Usuario'),
+    registeredByUserId: consultState.editingId !== null
+      ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredByUserId
+      : (getAuthUser()?.id || null),
   };
+}
 
-  if (!data.date || !data.chiefComplaint) {
-    alert('Fecha y motivo de consulta son requeridos.');
-    return;
+async function handleConsultSave(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = consultationData(form);
+  if (!data.patientId) return alert('Por favor selecciona un paciente.');
+  if (!data.date || !data.chiefComplaint || !data.serviceType) return alert('Fecha, tipo de servicio y motivo son requeridos.');
+  if (!data.requiresMedicalConsultation && !data.procedureResponsible) {
+    return alert('Selecciona al responsable del procedimiento.');
   }
 
+  const clinical = ['clinical', 'edit-clinical'].includes(consultState.mode);
+  let saved;
   if (consultState.editingId !== null) {
-    const idx = consultState.consultations.findIndex((c) => c.id === consultState.editingId);
-    if (idx > -1) consultState.consultations[idx] = { ...consultState.consultations[idx], ...data };
+    const index = consultState.consultations.findIndex((c) => Number(c.id) === Number(consultState.editingId));
+    if (index >= 0) {
+      consultState.consultations[index] = saved = {
+        ...consultState.consultations[index], ...data,
+        status: clinical ? 'Finalizada' : consultState.consultations[index].status,
+        finalizedAt: clinical ? new Date().toISOString() : consultState.consultations[index].finalizedAt,
+      };
+    }
   } else {
-    consultState.consultations.push({ id: nextConsultId(), ...data });
+    const medical = data.requiresMedicalConsultation;
+    saved = {
+      id: nextId(consultState.consultations), ...data,
+      status: medical ? 'Pendiente' : 'Finalizada',
+      createdAt: new Date().toISOString(),
+      finalizedAt: medical ? null : new Date().toISOString(),
+    };
+    consultState.consultations.push(saved);
   }
-
-  // Consultations are stored with patientId — Historia Clínica reads them directly from here.
-  saveConsultations();
+  if (clinical || data.generatesMedicalRecord) await ensureMedicalRecord(data.patientId);
+  await saveConsultations(saved);
   closeConsultModal();
   renderConsultations();
 }
 
-function handleConsultDelete(id) {
-  if (!confirm('¿Eliminar esta consulta?')) return;
-  consultState.consultations = consultState.consultations.filter((c) => c.id !== id);
-  saveConsultations();
+async function cancelConsultation(id) {
+  if (!confirm('¿Cancelar esta atención?')) return;
+  const item = consultState.consultations.find((c) => Number(c.id) === Number(id));
+  if (item) { item.status = 'Cancelada'; item.cancelledAt = new Date().toISOString(); }
+  await saveConsultations(item);
+  renderConsultations();
+}
+async function deleteConsultation(id) {
+  if (!confirm('¿Eliminar esta atención?')) return;
+  consultState.consultations = consultState.consultations.filter((c) => Number(c.id) !== Number(id));
+  localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deleteAttention(id);
   renderConsultations();
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-
-function setupAppointmentsModule() {
-  loadConsultations();
+async function setupAppointmentsModule() {
+  try {
+    await Promise.all([loadCatalog(), loadConsultations()]);
+  } catch (error) {
+    alert(`No se pudo cargar la configuración: ${error.message}`);
+    return;
+  }
+  configureRoleView();
   renderConsultations();
-
-  // ── Patient search modal events ──
   document.getElementById('closePatientSearchModalBtn')?.addEventListener('click', closePatientSearchModal);
   document.querySelector('#patientSearchModal .nursing-modal__overlay')?.addEventListener('click', closePatientSearchModal);
-
-  document.getElementById('patientSearchInput')?.addEventListener('input', (e) => {
-    renderPatientSearchResults(e.target.value);
-  });
-
+  document.getElementById('patientSearchInput')?.addEventListener('input', (e) => renderPatientSearchResults(e.target.value));
   document.getElementById('patientSearchResults')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-pick-patient]');
-    if (!btn) return;
-    const id = parseInt(btn.dataset.pickPatient, 10);
-    const name = btn.dataset.pickName || '';
-    selectPatientAndContinue(id, name);
+    const button = e.target.closest('[data-pick-patient]');
+    if (button) selectPatientAndContinue(Number(button.dataset.pickPatient), button.dataset.pickName);
   });
-
   document.getElementById('showRegisterPatientBtn')?.addEventListener('click', showQuickRegisterForm);
   document.getElementById('cancelQuickPatientBtn')?.addEventListener('click', hideQuickRegisterForm);
   document.getElementById('quickPatientForm')?.addEventListener('submit', handleQuickPatientSave);
-
-  // ── Consultation modal events ──
   document.getElementById('pickPatientBtn')?.addEventListener('click', openPatientSearchModal);
-  document.getElementById('newConsultBtn')?.addEventListener('click', openPatientSearchModal);
+  document.getElementById('newConsultBtn')?.addEventListener('click', openServicePicker);
+  document.getElementById('closeServicePickerBtn')?.addEventListener('click', closeServicePicker);
+  document.querySelector('#servicePickerModal .nursing-modal__overlay')?.addEventListener('click', closeServicePicker);
+  document.getElementById('servicePickerGrid')?.addEventListener('click', (event) => {
+    const choice = event.target.closest('[data-choose-service]');
+    if (choice) chooseService(choice.dataset.chooseService);
+  });
+  document.getElementById('serviceType')?.addEventListener('change', toggleServiceFields);
   document.getElementById('closeConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.getElementById('cancelConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.querySelector('#consultModal .nursing-modal__overlay')?.addEventListener('click', closeConsultModal);
   document.getElementById('consultForm')?.addEventListener('submit', handleConsultSave);
-
   document.getElementById('consultSearch')?.addEventListener('input', (e) => {
     consultState.searchTerm = e.target.value;
     renderConsultations();
   });
-
   document.getElementById('consultTableBody')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const id = parseInt(btn.dataset.id, 10);
-    const consult = consultState.consultations.find((c) => c.id === id);
-    if (!consult) return;
-    if (btn.dataset.action === 'view') openConsultModal('view', consult);
-    else if (btn.dataset.action === 'edit') openConsultModal('edit', consult);
-    else if (btn.dataset.action === 'delete') handleConsultDelete(id);
+    const button = e.target.closest('[data-action]');
+    if (!button) return;
+    const item = consultState.consultations.find((c) => Number(c.id) === Number(button.dataset.id));
+    if (!item) return;
+    const action = button.dataset.action;
+    if (action === 'accept') acceptConsultation(item).catch((error) => alert(error.message));
+    else if (action === 'continue') openConsultModal('clinical', item);
+    else if (action === 'cancel') cancelConsultation(item.id).catch((error) => alert(error.message));
+    else if (action === 'delete') deleteConsultation(item.id).catch((error) => alert(error.message));
+    else if (action === 'view') openConsultModal(requiresMedical(item) ? 'view-clinical' : 'view', item);
+    else if (action === 'edit') openConsultModal(requiresMedical(item) && item.status === 'Finalizada' ? 'edit-clinical' : 'edit', item);
   });
 
-  // ── Auto-open from URL params ──
-  const prePatientId = parseInt(getUrlParam('patientId'), 10);
-  const action = getUrlParam('action');
+  const patientId = Number(getUrlParam('patientId'));
+  const consultationId = Number(getUrlParam('consultationId'));
+  const item = consultState.consultations.find((c) => Number(c.id) === consultationId);
+  if (item && isDoctor()) openConsultModal(requiresMedical(item) ? (item.status === 'Finalizada' ? 'edit-clinical' : 'clinical') : 'edit', item);
+  else if (patientId) {
+    const patient = getPatients().find((p) => Number(p.id) === patientId);
+    if (patient) { consultState.pendingPatient = patient; openServicePicker(); }
+  } else if (getUrlParam('action') === 'new' && !isDoctor()) openServicePicker();
 
-  if (!isNaN(prePatientId) && prePatientId > 0) {
-    // Redirected from medical-records or agenda with a specific patient
-    const patients = getPatients();
-    const patient = patients.find((p) => p.id === prePatientId);
-    if (patient) {
-      setSelectedPatient(patient.id, `${patient.nombre} ${patient.apellido}`);
-      openConsultModal('create');
-    }
-  } else if (action === 'new') {
-    // "Nueva Atención" button from Dashboard — open patient search flow
-    openPatientSearchModal();
-  }
+  consultState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
+    await loadConsultations(); renderConsultations();
+  });
+  consultState.unsubscribeServices = window.MedSolutionData.subscribeServices(async () => {
+    await loadCatalog(); renderConsultations();
+  });
+  consultState.unsubscribePatients = window.MedSolutionData.subscribePatients(async () => {
+    consultState.patients = await window.MedSolutionData.getPatients();
+    localStorage.setItem(PATIENTS_KEY, JSON.stringify(consultState.patients));
+  });
 }
 
 document.addEventListener('DOMContentLoaded', setupAppointmentsModule);

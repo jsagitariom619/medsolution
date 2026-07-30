@@ -15,7 +15,7 @@ function authCan(feature) {
   const user = getAuthUser();
   if (!user) return false;
   const permissions = {
-    'nursing.edit':   ['Administrador', 'Médico', 'Auxiliar', 'Enfermería'],
+    'nursing.edit':   ['Administrador', 'Médico', 'Auxiliar'],
     'nursing.delete': ['Administrador', 'Médico'],
   };
   return Boolean(permissions[feature]?.includes(user.role));

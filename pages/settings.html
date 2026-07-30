@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
-    <link rel="stylesheet" href="../assets/css/nursing.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
     <style>
       .patients-table { width: 100%; border-collapse: collapse; font-size: .93rem; }
       .patients-table th { text-align: left; padding: 12px 16px; background: var(--gray-50); color: var(--gray-500); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--gray-200); }
@@ -28,10 +28,11 @@
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Citas</a>
           <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
           <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
           <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar__footer">
@@ -62,8 +63,37 @@
           <div class="module-grid">
             <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
             <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
-            <article class="card module-card"><h2>Integración futura</h2><p>Componentes organizados para conectar autenticación y persistencia con Supabase.</p></article>
+            <article class="card module-card"><h2>Sincronización activa</h2><p>Servicios, personal y atenciones pueden sincronizarse en tiempo real mediante Supabase.</p></article>
           </div>
+
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Conexión de datos</span>
+              <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Supabase</h2>
+              <p style="margin:6px 0 0;color:var(--gray-500)">Configura la conexión pública del proyecto. Nunca ingreses la clave service_role.</p></div>
+              <a class="btn btn--primary" href="services.html">Administrar servicios</a></div>
+            <article class="card" style="padding:24px"><form id="supabaseConfigForm">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <label class="form-field"><span>URL del proyecto *</span><input name="supabaseUrl" type="url" placeholder="https://proyecto.supabase.co" /></label>
+                <label class="form-field"><span>Clave pública anon *</span><input name="supabaseAnonKey" type="password" placeholder="eyJ…" autocomplete="off" /></label>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:16px"><button class="btn btn--primary" type="submit">Guardar y probar conexión</button>
+                <span id="supabaseConnectionStatus" style="font-size:.88rem;color:var(--gray-500)">Sin comprobar</span></div>
+            </form></article>
+          </section>
+
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Parámetros</span>
+              <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Configuración general</h2>
+              <p style="margin:6px 0 0;color:var(--gray-500)">Parámetros operativos almacenados centralmente.</p></div></div>
+            <article class="card" style="padding:24px"><form id="generalSettingsForm">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <label class="form-field"><span>Nombre del consultorio</span><input name="clinicName" placeholder="Med Solution" /></label>
+                <label class="form-field"><span>Moneda</span><select name="currency"><option value="BOB">Bolivianos (Bs)</option><option value="USD">Dólares (USD)</option></select></label>
+                <label class="form-field"><span>Zona horaria</span><input name="timezone" value="America/La_Paz" /></label>
+              </div><div style="display:flex;align-items:center;gap:12px;margin-top:16px"><button class="btn btn--primary" type="submit">Guardar configuración</button>
+                <span id="generalSettingsStatus" style="font-size:.88rem;color:var(--gray-500)"></span></div>
+            </form></article>
+          </section>
 
           <!-- User management — Administrador only -->
           <section style="margin-top:40px" data-requires-role="Administrador">
@@ -115,8 +145,8 @@
               <input type="text" name="name" placeholder="Ej. Dr. Juan Pérez" required />
             </label>
             <label class="form-field">
-              <span>Usuario (login) *</span>
-              <input type="text" name="username" placeholder="Ej. jperez" autocomplete="username" required />
+              <span>Correo / usuario (login) *</span>
+              <input type="text" name="username" placeholder="Ej. jperez@consultorio.com" autocomplete="username" required />
             </label>
             <label class="form-field">
               <span>Contraseña *</span>
@@ -129,7 +159,6 @@
                 <option value="Administrador">Administrador</option>
                 <option value="Médico">Médico</option>
                 <option value="Auxiliar">Auxiliar</option>
-                <option value="Enfermería">Enfermería</option>
               </select>
             </label>
             <label class="form-field" style="grid-column:1/-1">
@@ -146,6 +175,8 @@
       </div>
     </div>
 
+    <script src="../assets/vendor/supabase.js"></script>
+    <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js"></script>
     <script src="../assets/js/settings.js"></script>
   </body>

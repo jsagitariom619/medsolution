@@ -1,0 +1,190 @@
+/* Consulta Médica Completa */
+.consult-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.consult-count { font-size: .88rem; color: var(--gray-500); margin-left: auto; }
+.consult-table-wrap { overflow-x: auto; margin-top: 20px; }
+.consult-table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 980px; }
+.consult-table th { text-align: left; padding: 12px 14px; background: var(--gray-50); color: var(--gray-500); font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--gray-200); }
+.consult-table td { padding: 14px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+.consult-table tr:last-child td { border-bottom: none; }
+.consult-table tr[data-consult-row]:hover td { background: var(--gray-50); }
+.consult-search { flex: 1; min-width: 220px; max-width: 430px; }
+.consult-search input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; font-family: inherit; }
+.consult-search input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+.consult-empty { text-align: center; padding: 40px; color: var(--gray-500); }
+.patient-cell { display: flex; align-items: center; gap: 10px; }
+.consult-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: .76rem; font-weight: 800; }
+.consult-status--draft { background: rgba(238, 174, 55, .14); color: #9a6500; }
+.consult-status--final { background: rgba(47,183,166,.14); color: var(--petroleum); }
+.consult-diagnosis-code { display: inline-block; padding: 3px 7px; border-radius: 7px; background: rgba(15,76,92,.08); color: var(--petroleum); font-size: .75rem; font-weight: 800; margin-right: 5px; }
+
+/* Full clinical modal */
+.consult-modal__content { width: min(1180px, 96vw); max-height: 94vh; overflow: hidden; display: flex; flex-direction: column; }
+.consult-modal__header { flex-shrink: 0; }
+.consult-modal__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 22px 24px 0; }
+.consult-form { padding: 0; display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
+.consult-form__actions { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding: 16px 24px; border-top: 1px solid var(--gray-200); background: rgba(255,255,255,.96); backdrop-filter: blur(10px); }
+.consult-form__actions .action-spacer { flex: 1; }
+.consult-section-nav { display: flex; gap: 8px; overflow-x: auto; padding: 0 0 16px; scrollbar-width: thin; }
+.consult-section-nav button { border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-600); padding: 8px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; font: inherit; font-size: .82rem; font-weight: 700; }
+.consult-section-nav button:hover { border-color: var(--aqua); color: var(--petroleum); background: rgba(47,183,166,.06); }
+[data-wizard-step][hidden] { display: none !important; }
+.history-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.inline-history-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.inline-history-patient { display: grid; gap: 4px; margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(15,76,92,.05); }
+.inline-history-patient strong { color: var(--petroleum-dark); font-size: .86rem; }
+.inline-history-patient span { color: var(--gray-600); font-size: .82rem; line-height: 1.45; }
+.consult-wizard-progress { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.consult-wizard-progress__step { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--white); color: var(--gray-500); cursor: pointer; font: inherit; text-align: left; }
+.consult-wizard-progress__step span { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 27px; border-radius: 50%; background: var(--gray-100); color: var(--gray-600); font-size: .78rem; font-weight: 800; }
+.consult-wizard-progress__step strong { overflow: hidden; text-overflow: ellipsis; font-size: .8rem; white-space: nowrap; }
+.consult-wizard-progress__step--active { border-color: var(--aqua); background: rgba(47,183,166,.07); color: var(--petroleum-dark); }
+.consult-wizard-progress__step--active span { background: var(--petroleum); color: var(--white); }
+.consult-wizard-progress__step--complete span { background: var(--aqua); color: var(--white); }
+.consult-wizard-counter { min-width: 54px; color: var(--petroleum); font-size: .85rem; text-align: center; }
+.clinical-section { scroll-margin-top: 12px; border: 1px solid var(--gray-200); border-radius: 18px; margin-bottom: 16px; overflow: hidden; background: var(--white); }
+.clinical-section__header { display: flex; align-items: center; gap: 12px; padding: 15px 18px; background: linear-gradient(90deg, rgba(15,76,92,.04), rgba(47,183,166,.04)); border-bottom: 1px solid var(--gray-200); }
+.clinical-section__number { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--petroleum); color: var(--white); font-size: .8rem; font-weight: 800; flex-shrink: 0; }
+.clinical-section__header h3 { margin: 0; color: var(--petroleum-dark); font-size: 1rem; }
+.clinical-section__header p { margin: 3px 0 0; color: var(--gray-500); font-size: .8rem; }
+.clinical-section__content { padding: 18px; }
+.clinical-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+.col-12 { grid-column: span 12; }
+.col-8 { grid-column: span 8; }
+.col-6 { grid-column: span 6; }
+.col-4 { grid-column: span 4; }
+.col-3 { grid-column: span 3; }
+.col-2 { grid-column: span 2; }
+.consult-form .form-field { gap: 7px; font-size: .85rem; }
+.consult-form .form-field > span { color: var(--gray-600); }
+.consult-form .form-field input,
+.consult-form .form-field select,
+.consult-form .form-field textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--gray-200); border-radius: 11px; background: var(--gray-50); font: inherit; font-size: .9rem; color: var(--gray-700); outline: none; transition: border-color 150ms, box-shadow 150ms, background 150ms; }
+.consult-form .form-field textarea { resize: vertical; min-height: 82px; }
+.consult-form .form-field input:focus,
+.consult-form .form-field select:focus,
+.consult-form .form-field textarea:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.12); }
+.consult-form .form-field input[readonly],
+.consult-form .form-field textarea[readonly],
+.consult-form .form-field select:disabled { color: var(--gray-500); background: var(--gray-100); cursor: default; }
+.field-help { color: var(--gray-500); font-size: .75rem; font-weight: 500; line-height: 1.35; }
+.required-mark { color: #c93047; }
+.bmi-box { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 12px; border: 1px dashed rgba(15,76,92,.25); border-radius: 11px; background: rgba(15,76,92,.03); }
+.bmi-value { font-weight: 800; color: var(--petroleum); }
+
+/* Repeating clinical rows */
+.repeatable-block { display: grid; gap: 10px; }
+.repeatable-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.repeatable-toolbar h4 { margin: 0; color: var(--petroleum); font-size: .9rem; }
+.repeatable-list { display: grid; gap: 10px; }
+.repeatable-row { display: grid; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--gray-200); border-radius: 14px; background: var(--gray-50); }
+.repeatable-row--diagnosis { grid-template-columns: 130px minmax(220px, 1fr) 145px 130px 42px; }
+.repeatable-row--medication { grid-template-columns: minmax(160px, 1.2fr) minmax(120px, .8fr) 100px 110px minmax(130px, .9fr) 100px minmax(150px, 1fr) 42px; }
+.repeatable-row--order { grid-template-columns: minmax(220px, 1.2fr) 130px minmax(220px, 1fr) 42px; }
+.repeatable-row .form-field { min-width: 0; }
+.repeatable-remove { width: 38px; height: 38px; border: none; border-radius: 10px; background: rgba(239,61,89,.09); color: #c93047; cursor: pointer; font-weight: 900; font-size: 1rem; }
+.repeatable-remove:hover { background: rgba(239,61,89,.16); }
+.repeatable-empty { padding: 16px; border: 1px dashed var(--gray-200); border-radius: 12px; color: var(--gray-500); text-align: center; font-size: .85rem; }
+
+/* Patient picker */
+.patient-selected-box { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); min-height: 46px; }
+.patient-selected-info { flex: 1; font-size: .9rem; color: var(--gray-700); min-width: 0; }
+.patient-selected-info strong { display: block; }
+.patient-selected-info small { color: var(--gray-500); font-size: .78rem; }
+.patient-search-modal__content { width: min(560px, 92vw); }
+.patient-search-input { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; font-family: inherit; outline: none; }
+.patient-search-input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+.patient-search-results { max-height: 280px; overflow-y: auto; margin: 8px 0; }
+.patient-result-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background 140ms; }
+.patient-result-item:hover { background: var(--gray-100); }
+.patient-result-item__info { flex: 1; min-width: 0; }
+.patient-result-item__info strong { display: block; font-size: .93rem; color: var(--gray-700); }
+.patient-result-item__info small { color: var(--gray-500); font-size: .78rem; }
+.patient-result-empty { text-align: center; padding: 20px; color: var(--gray-500); font-size: .9rem; }
+.patient-search-divider { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
+.quick-register-form { margin-top: 12px; }
+.quick-register-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Document controls */
+.document-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.document-card { border: 1px solid var(--gray-200); border-radius: 14px; padding: 14px; background: var(--gray-50); }
+.document-card h4 { margin: 0 0 6px; color: var(--petroleum); font-size: .92rem; }
+.document-card p { margin: 0 0 12px; color: var(--gray-500); font-size: .8rem; line-height: 1.4; }
+.document-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.document-actions .btn { padding: 8px 12px; font-size: .8rem; }
+.form-error-summary { display: none; margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: rgba(239,61,89,.09); color: #a32338; font-size: .86rem; font-weight: 700; }
+.form-error-summary--visible { display: block; }
+
+@media (max-width: 1100px) {
+  .repeatable-row--diagnosis { grid-template-columns: 120px 1fr 130px 110px 42px; }
+  .repeatable-row--medication { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+  .repeatable-row--medication .repeatable-remove { grid-column: -2 / -1; justify-self: end; }
+}
+@media (max-width: 820px) {
+  .col-8, .col-6, .col-4, .col-3, .col-2 { grid-column: span 12; }
+  .repeatable-row--diagnosis, .repeatable-row--medication, .repeatable-row--order { grid-template-columns: 1fr 1fr; }
+  .repeatable-remove { justify-self: end; }
+  .document-grid { grid-template-columns: 1fr; }
+  .consult-wizard-progress { display: flex; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .consult-wizard-progress__step { min-width: 135px; }
+}
+@media (max-width: 560px) {
+  .consult-modal__content { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+  .consult-modal__body { padding: 14px 14px 0; }
+  .consult-form__actions { padding: 12px 14px; }
+  .consult-form__actions .btn { width: 100%; justify-content: center; }
+  .consult-form__actions .action-spacer { display: none; }
+  .clinical-section__content { padding: 14px; }
+  .repeatable-row--diagnosis, .repeatable-row--medication, .repeatable-row--order, .quick-register-grid { grid-template-columns: 1fr; }
+  .repeatable-remove { justify-self: end; }
+}
+
+@media (max-width: 560px) {
+  .consult-modal__header { padding: 14px; }
+  .consult-modal__header small { display: none; }
+  .consult-form__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: 0 0 auto; }
+  .consult-form__actions .btn { width: auto; min-width: 0; padding-left: 10px; padding-right: 10px; }
+  .consult-form__actions .action-spacer { display: none; }
+  .consult-wizard-counter { grid-column: 1 / -1; grid-row: 1; }
+}
+
+.quick-register-grid .form-field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--gray-50);
+  font: inherit;
+  color: var(--gray-700);
+  outline: none;
+}
+.quick-register-grid .form-field select:focus {
+  border-color: var(--aqua);
+  background: var(--white);
+  box-shadow: 0 0 0 4px rgba(47,183,166,.14);
+}
+
+/* Historia clínica única dentro del flujo de consulta */
+.consult-history-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--gray-200);
+}
+.consult-history-status > div { display: grid; gap: 4px; }
+.consult-history-status strong { color: var(--petroleum-dark); font-size: .92rem; }
+.consult-history-status span { color: var(--gray-600); font-size: .82rem; line-height: 1.45; }
+.consult-history-status .btn { white-space: nowrap; padding: 8px 13px; font-size: .8rem; }
+.consult-history-status--ready { background: rgba(47,183,166,.07); border-color: rgba(47,183,166,.38); }
+.consult-history-status--pending { background: #fffaf0; border-color: rgba(224,167,61,.65); }
+#section-anamnesis textarea[readonly] { background: var(--gray-50); color: var(--gray-600); cursor: default; }
+#section-anamnesis .form-field span small { font-size: .67rem; color: var(--aqua); text-transform: uppercase; letter-spacing: .04em; }
+@media (max-width: 700px) {
+  .consult-history-status { align-items: flex-start; flex-direction: column; }
+  .history-form-grid { grid-template-columns: 1fr; }
+  .inline-history-actions { flex-direction: column-reverse; }
+  .inline-history-actions .btn { width: 100%; justify-content: center; }
+}

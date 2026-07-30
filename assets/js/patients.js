@@ -23,7 +23,7 @@ function authCan(feature) {
   const user = getAuthUser();
   if (!user) return false;
   const permissions = {
-    'patients.edit':   ['Administrador', 'Médico', 'Auxiliar'],
+    'patients.edit':   ['Administrador', 'Médico'],
     'patients.delete': ['Administrador'],
   };
   return Boolean(permissions[feature]?.includes(user.role));
@@ -31,7 +31,12 @@ function authCan(feature) {
 
 // ── Persistence ──────────────────────────────────────────────────────────────
 
-function loadPatients() {
+async function loadPatients() {
+  if (window.MedSolutionData?.isConfigured()) {
+    patientsState.patients = await window.MedSolutionData.getPatients();
+    savePatients();
+    return;
+  }
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     patientsState.patients = stored ? JSON.parse(stored) : getSeedData();
@@ -224,7 +229,7 @@ function setFormReadOnly(form, readOnly) {
 
 // ── CRUD actions ──────────────────────────────────────────────────────────────
 
-function handleSave(event) {
+async function handleSave(event) {
   event.preventDefault();
   const form = document.getElementById('patientForm');
   const modal = document.getElementById('patientModal');
@@ -241,35 +246,39 @@ function handleSave(event) {
     direccion: form.elements.direccion.value.trim(),
   };
 
+  let saved;
   if (patientsState.editingId !== null) {
     const idx = patientsState.patients.findIndex((p) => p.id === patientsState.editingId);
     if (idx > -1) {
-      patientsState.patients[idx] = { ...patientsState.patients[idx], ...data };
+      patientsState.patients[idx] = saved = { ...patientsState.patients[idx], ...data };
     }
   } else {
-    patientsState.patients.push({
+    saved = {
       id: nextId(),
       registrado: getCurrentDateISO(),
       ...data,
-    });
+    };
+    patientsState.patients.push(saved);
   }
 
   savePatients();
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.savePatient(saved);
   closeModal();
   renderTable();
 }
 
-function handleDelete(id) {
+async function handleDelete(id) {
   if (!confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')) return;
   patientsState.patients = patientsState.patients.filter((p) => p.id !== id);
   savePatients();
+  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);
   renderTable();
 }
 
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
-function setupPatientModule() {
-  loadPatients();
+async function setupPatientModule() {
+  try { await loadPatients(); } catch (error) { alert(`No se pudieron cargar los pacientes: ${error.message}`); return; }
   renderTable();
 
   // New patient button
@@ -294,7 +303,7 @@ function setupPatientModule() {
     if (!patient) return;
     if (btn.dataset.action === 'view') openModal('view', patient);
     else if (btn.dataset.action === 'edit') openModal('edit', patient);
-    else if (btn.dataset.action === 'delete') handleDelete(id);
+    else if (btn.dataset.action === 'delete') handleDelete(id).catch((error)=>alert(error.message));
   });
 
   // Search
@@ -302,6 +311,7 @@ function setupPatientModule() {
     patientsState.searchTerm = e.target.value;
     renderTable();
   });
+  window.MedSolutionData?.subscribePatients(async () => { await loadPatients(); renderTable(); });
 }
 
 document.addEventListener('DOMContentLoaded', setupPatientModule);

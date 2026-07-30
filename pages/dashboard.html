@@ -19,9 +19,9 @@
           <span class="brand__text">Med Solution <small>Sistema Médico Integral</small></span>
         </a>
         <section class="doctor-profile" aria-label="Perfil médico activo">
-          <span class="doctor-profile__avatar" data-doctor-avatar>JF</span>
+          <span class="doctor-profile__avatar" data-doctor-avatar>MD</span>
           <div>
-            <strong data-doctor-name>Dr. Jeason Flores</strong>
+            <strong data-doctor-name>Médico</strong>
             <span data-doctor-role>Médico</span>
             <small>● En línea</small>
           </div>
@@ -29,11 +29,11 @@
         <nav class="sidebar__nav">
           <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
           <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👥</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar,Enfermería"><span class="nav-link__icon">✚</span>Nueva Atención</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">✚</span>Nueva Atención</a>
           <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias Clínicas</a>
           <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="nursing.html"><span class="nav-link__icon">⊕</span>Enfermería</a>
-          <a class="nav-link" href="#reports" data-requires-role="Administrador,Médico"><span class="nav-link__icon">◫</span>Reportes</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
           <a class="nav-link" href="#prescriptions" data-requires-role="Administrador,Médico"><span class="nav-link__icon">Rx</span>Recetas e Impresiones</a>
           <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
@@ -55,13 +55,13 @@
           </label>
           <div class="topbar__actions">
             <button class="notification-button" type="button" aria-label="Notificaciones">♢<span>3</span></button>
-            <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>JF</span><div><strong data-user-name>Dr. Jeason Flores</strong><small data-user-role>Médico</small></div><span>⌄</span></div>
+            <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>MD</span><div><strong data-user-name>Médico</strong><small data-user-role>Médico</small></div><span>⌄</span></div>
           </div>
         </header>
         <section class="content dashboard-content">
           <div class="dashboard-welcome">
             <div>
-              <h1 data-welcome-name>¡Bienvenido, Dr. Jeason Flores!</h1>
+              <h1 data-welcome-name>¡Bienvenido!</h1>
               <p>Aquí tienes un resumen general de tu consultorio médico.</p>
             </div>
             <a class="btn btn--primary dashboard-care-button" href="appointments.html?action=new"><span>👥</span>Nueva Atención</a>
@@ -110,7 +110,7 @@
                 <a class="quick-action-card" href="patients.html"><span>⌕</span><strong>Buscar Paciente</strong></a>
                 <a class="quick-action-card" href="medical-records.html" data-requires-role="Administrador,Médico"><span>▣</span><strong>Nueva Historia</strong></a>
                 <a class="quick-action-card" href="medical-records.html" data-requires-role="Administrador,Médico"><span>Rx</span><strong>Nueva Receta</strong></a>
-                <a class="quick-action-card" href="nursing.html"><span>⊕</span><strong>Enfermería</strong></a>
+                <a class="quick-action-card" href="appointments.html?action=new"><span>⊕</span><strong>Nueva Atención</strong></a>
               </div>
             </article>
 
