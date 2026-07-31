@@ -14,6 +14,37 @@ const routes = {
   settings: 'pages/settings.html',
 };
 
+const MODULE_PAGES = new Set([
+  'patients.html', 'appointments.html', 'medical-records.html', 'schedule.html',
+  'services.html', 'contraceptives.html', 'reports.html', 'settings.html',
+]);
+
+const setupEmbeddedModuleLayout = () => {
+  if (window.self === window.top) return false;
+  document.body.classList.add('embedded-module');
+  const style = document.createElement('style');
+  style.textContent = `
+    body.embedded-module { min-height: 0; overflow-x: hidden; background: #f5f8fb; }
+    body.embedded-module .app-shell { display: block; min-height: 0; }
+    body.embedded-module .app-shell > .sidebar,
+    body.embedded-module .main-area > .topbar,
+    body.embedded-module .main-area > footer,
+    body.embedded-module .sidebar-logout { display: none !important; }
+    body.embedded-module .main-area { width: 100%; min-width: 0; min-height: 0; margin: 0; background: #f5f8fb; }
+  `;
+  document.head.appendChild(style);
+  return true;
+};
+
+const redirectStandaloneModuleToShell = () => {
+  if (window.self !== window.top) return false;
+  const page = window.location.pathname.split('/').pop();
+  if (!MODULE_PAGES.has(page)) return false;
+  const target = `${page}${window.location.search}${window.location.hash}`;
+  window.location.replace(`dashboard.html?module=${encodeURIComponent(target)}`);
+  return true;
+};
+
 // ── Login page ────────────────────────────────────────────────────────────────
 
 const showLoginError = (msg) => {
@@ -205,6 +236,8 @@ const isLoginPage = window.location.pathname.split('/').pop() === 'index.html'
   || window.location.pathname.endsWith('/');
 
 async function initializeApplication() {
+  if (redirectStandaloneModuleToShell()) return;
+  setupEmbeddedModuleLayout();
   await window.MedSolutionData?.ready;
   if (isLoginPage) {
     await restoreSession();

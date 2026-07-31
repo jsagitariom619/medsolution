@@ -162,6 +162,19 @@
   background: #f5f8fb;
 }
 
+.dashboard-module-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 70px);
+  border: 0;
+  background: #f5f8fb;
+}
+
+.dashboard-module-frame[hidden],
+#dashboardHomeView[hidden] {
+  display: none;
+}
+
 .dashboard-topbar {
   height: 70px;
   justify-content: flex-start;
