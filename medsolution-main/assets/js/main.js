@@ -151,20 +151,6 @@ const applyRoleRestrictions = (user) => {
   window.MedSolutionAuth = { user, can };
 };
 
-const injectContraceptivesNavigation = (user) => {
-  if (!['Administrador', 'Médico', 'Auxiliar'].includes(user.role)) return;
-  document.querySelectorAll('.sidebar__nav').forEach((nav) => {
-    if (nav.querySelector('a[href="contraceptives.html"]')) return;
-    const link = document.createElement('a');
-    link.className = 'nav-link';
-    link.dataset.navLink = '';
-    link.href = 'contraceptives.html';
-    link.innerHTML = '<span class="nav-link__icon">◉</span>Registro de Anticonceptivos';
-    const settings = nav.querySelector('a[href="settings.html"]');
-    nav.insertBefore(link, settings || null);
-  });
-};
-
 const capitalizeFirstCharacter = (value) => {
   if (!value) return value;
   const index = value.search(/\S/);
@@ -247,7 +233,6 @@ async function initializeApplication() {
   await restoreSession();
   const user = guardRoute();
   if (user) {
-    injectContraceptivesNavigation(user);
     applyRoleRestrictions(user);
     setActiveNavigation();
     updateUserChip();

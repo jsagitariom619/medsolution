@@ -6,13 +6,7 @@
 .report-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}.report-summary article{padding:18px}.report-summary small{display:block;color:var(--gray-500);font-weight:700}.report-summary strong{display:block;margin-top:6px;color:var(--petroleum-dark);font-size:1.65rem}
 @media(max-width:760px){.report-filters,.report-summary{grid-template-columns:1fr}}
 </style></head><body class="app-body"><div class="app-shell">
-<aside class="sidebar"><a class="brand brand--light" href="dashboard.html"><span class="brand__mark">MS</span><span class="brand__text">Med Solution</span></a><nav class="sidebar__nav">
-<a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a><a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-<a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Nueva Atención</a><a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
-<a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a><a class="nav-link" data-nav-link href="services.html"><span class="nav-link__icon">☷</span>Servicios</a>
-<a class="nav-link" data-nav-link href="reports.html"><span class="nav-link__icon">◫</span>Reportes</a><a class="nav-link" data-nav-link href="settings.html"><span class="nav-link__icon">⚙</span>Configuración</a></nav>
-<div class="sidebar__footer"><strong>Contabilidad histórica</strong><span>Los precios registrados no cambian retroactivamente.</span></div></aside>
-<main class="main-area"><header class="topbar"><label class="search-box"><span>⌕</span><input type="search" placeholder="Buscar reporte"/></label><div class="topbar__actions"><div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>AD</span><div><span data-user-name>Administrador</span><small data-user-role></small></div></div></div></header>
+<main class="main-area">
 <section class="content"><div class="page-header"><div><span class="eyebrow">Administración</span><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div><button class="btn btn--secondary" id="printReportBtn" type="button">Imprimir reporte</button></div>
 <article class="card" style="padding:22px"><div class="report-filters">
 <label>Período<select id="periodFilter"><option value="day">Día</option><option value="week">Semana</option><option value="month" selected>Mes</option></select></label>
