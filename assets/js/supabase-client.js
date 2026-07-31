@@ -6,10 +6,13 @@
   let client = null;
   let config = null;
   let bootError = null;
+  const CONFIG_TIMEOUT_MS = 10000;
 
   const ready = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG_TIMEOUT_MS);
     try {
-      const response = await fetch('/api/config', { cache: 'no-store' });
+      const response = await fetch('/api/config', { cache: 'no-store', signal: controller.signal });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Supabase no está configurado.');
       config = await response.json();
       if (!global.supabase?.createClient) throw new Error('No se cargó el cliente oficial de Supabase.');
@@ -19,8 +22,13 @@
       });
       return client;
     } catch (error) {
-      bootError = error;
+      bootError = error?.name === 'AbortError'
+        ? new Error('La configuración de Supabase no respondió en 10 segundos. Verifica /api/config y las variables de entorno.')
+        : error;
+      console.error('[Supabase] No se pudo inicializar el cliente:', bootError);
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   })();
 

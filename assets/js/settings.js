@@ -14,6 +14,7 @@ const REQUIRED_SERVICE_VALUES = Object.freeze([
 
 const settingsServiceState = { services: [], savingId: null, subscribed: false };
 const systemUsersState = { users: [], editing: null, pendingPhoto: null, removePhoto: false, saving: false, subscribed: false };
+const SETTINGS_TIMEOUT_MS = 12000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -26,8 +27,49 @@ function getCurrentUser() {
   }
 }
 
+function withSettingsTimeout(promise, operation) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${operation} superó el tiempo máximo de 12 segundos.`)), SETTINGS_TIMEOUT_MS);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function settingsErrorMessage(error, context) {
+  const detail = error?.message || String(error || 'Error desconocido');
+  return `${context}: ${detail}`;
+}
+
+function renderServiceValuesError(error) {
+  const message = settingsErrorMessage(error, 'No se pudieron cargar los servicios');
+  console.error('[Configuración] Error al consultar public.servicios:', error);
+  const body = document.getElementById('serviceValuesTableBody');
+  if (body) body.innerHTML = `<tr><td colspan="4" class="patients-empty" style="color:#c93047">${escapeSettingsHtml(message)}</td></tr>`;
+  const status = document.getElementById('serviceValuesStatus');
+  if (status) { status.textContent = message; status.style.color = '#c93047'; }
+}
+
+function renderSystemUsersError(error) {
+  const message = settingsErrorMessage(error, 'No se pudieron cargar los usuarios');
+  console.error('[Configuración] Error al consultar public.perfiles_sistema:', error);
+  const body = document.getElementById('usersTableBody');
+  if (body) body.innerHTML = `<tr><td colspan="6" class="patients-empty" style="color:#c93047">${escapeSettingsHtml(message)} Verifica la migración 202607310002 y sus políticas RLS.</td></tr>`;
+}
+
+async function ensureSupabaseReady() {
+  const client = await withSettingsTimeout(window.MedSolutionData.ready, 'La inicialización de Supabase');
+  if (!client || !window.MedSolutionData.isConfigured()) {
+    throw new Error('Supabase no está configurado. Verifica SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY y /api/config.');
+  }
+  return client;
+}
+
 async function loadUsers() {
-  systemUsersState.users = await window.MedSolutionData.getSystemUsers();
+  await ensureSupabaseReady();
+  systemUsersState.users = await withSettingsTimeout(
+    window.MedSolutionData.getSystemUsers(),
+    'La consulta a public.perfiles_sistema',
+  );
   return systemUsersState.users;
 }
 
@@ -120,6 +162,7 @@ async function saveConfiguredUser(event) {
     status.style.color = 'var(--aqua)';
     setTimeout(closeUserModal, 650);
   } catch (error) {
+    console.error('[Configuración] No se pudo guardar el perfil del sistema:', error);
     if (newPhotoPath) await window.MedSolutionData.deleteStoredFile(newPhotoPath).catch(() => {});
     status.textContent = error.message || 'No se pudo guardar el perfil.';
     status.style.color = '#c93047';
@@ -195,7 +238,11 @@ function renderServiceValues() {
 }
 
 async function loadServiceValues() {
-  settingsServiceState.services = await window.MedSolutionData.getServices(true);
+  await ensureSupabaseReady();
+  settingsServiceState.services = await withSettingsTimeout(
+    window.MedSolutionData.getServices(true),
+    'La consulta a public.servicios',
+  );
   renderServiceValues();
 }
 
@@ -242,6 +289,7 @@ async function saveServiceValue(button) {
     globalStatus.textContent = `✓ ${name} actualizado correctamente. Los registros nuevos usarán ${price.toFixed(2)} Bs.`;
     globalStatus.style.color = 'var(--aqua)';
   } catch (error) {
+    console.error('[Configuración] No se pudo guardar el servicio o valor:', error);
     status.textContent = error.message || 'No se pudo guardar.';
     status.style.color = '#c93047';
   } finally {
@@ -284,15 +332,59 @@ async function renderUsersTable(reload = true) {
   });
 }
 
+async function initializeConnectionStatus() {
+  const status = document.getElementById('supabaseConnectionStatus');
+  if (!status) return;
+  try {
+    await ensureSupabaseReady();
+    await withSettingsTimeout(window.MedSolutionData.testConnection(), 'La prueba de lectura en public.servicios');
+    status.textContent = '✓ Registro Clínico conectado mediante variables de Vercel';
+    status.style.color = 'var(--aqua)';
+  } catch (error) {
+    console.error('[Configuración] Falló la comprobación de conexión con Supabase:', error);
+    status.textContent = settingsErrorMessage(error, 'Error de conexión');
+    status.style.color = '#c93047';
+  }
+}
+
+async function initializeSystemUsers() {
+  try {
+    await renderUsersTable();
+    if (!systemUsersState.subscribed) {
+      systemUsersState.subscribed = true;
+      window.MedSolutionData.subscribeSystemUsers(async () => {
+        try {
+          await renderUsersTable();
+          publishSystemUsers(systemUsersState.users);
+        } catch (error) { renderSystemUsersError(error); }
+      });
+    }
+  } catch (error) {
+    renderSystemUsersError(error);
+  }
+}
+
+async function initializeServiceValues() {
+  try {
+    await loadServiceValues();
+    if (!settingsServiceState.subscribed) {
+      settingsServiceState.subscribed = true;
+      window.MedSolutionData.subscribeServices(async () => {
+        try { await loadServiceValues(); }
+        catch (error) { renderServiceValuesError(error); }
+      });
+    }
+  } catch (error) {
+    renderServiceValuesError(error);
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function setupSettingsModule() {
-  await window.MedSolutionData?.ready;
-  // Only run user management if admin
   const currentUser = getCurrentUser();
   if (!currentUser || !['Administrador', 'Médico'].includes(currentUser.role)) return;
 
-  await renderUsersTable();
   document.getElementById('usersTableBody')?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-edit-system-user]');
     if (!button) return;
@@ -314,41 +406,16 @@ async function setupSettingsModule() {
     document.getElementById('systemUserPhoto').value = '';
     setUserPhotoPreview(systemUsersState.editing);
   });
-  if (!systemUsersState.subscribed) {
-    systemUsersState.subscribed = true;
-    window.MedSolutionData.subscribeSystemUsers(async () => {
-      await renderUsersTable();
-      publishSystemUsers(systemUsersState.users);
-    });
-  }
+  document.getElementById('serviceValuesTableBody')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-save-service-value]');
+    if (button) saveServiceValue(button);
+  });
 
-  try {
-    await loadServiceValues();
-    document.getElementById('serviceValuesTableBody')?.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-save-service-value]');
-      if (button) saveServiceValue(button);
-    });
-    if (!settingsServiceState.subscribed) {
-      settingsServiceState.subscribed = true;
-      window.MedSolutionData.subscribeServices(loadServiceValues);
-    }
-  } catch (error) {
-    const status = document.getElementById('serviceValuesStatus');
-    if (status) { status.textContent = error.message; status.style.color = '#c93047'; }
-  }
-
-  const configForm = document.getElementById('supabaseConfigForm');
-  if (configForm) {
-    const status = document.getElementById('supabaseConnectionStatus');
-    window.MedSolutionData.ready.then(async () => {
-      await window.MedSolutionData.testConnection();
-      status.textContent = '✓ Registro Clínico conectado mediante variables de Vercel';
-      status.style.color = 'var(--aqua)';
-    }).catch((error) => {
-      status.textContent = `Error: ${error.message}`;
-      status.style.color = '#c93047';
-    });
-  }
+  // Cada bloque finaliza de forma independiente: una tabla ausente o un error
+  // RLS nunca vuelve a bloquear el resto de la pantalla de Configuración.
+  initializeConnectionStatus();
+  initializeServiceValues();
+  initializeSystemUsers();
 
   const generalForm = document.getElementById('generalSettingsForm');
   if (generalForm) {
@@ -357,6 +424,7 @@ async function setupSettingsModule() {
       generalForm.elements.currency.value = settings.currency || 'BOB';
       generalForm.elements.timezone.value = settings.timezone || 'America/La_Paz';
     }).catch((error) => {
+      console.error('[Configuración] No se pudo cargar la configuración general:', error);
       document.getElementById('generalSettingsStatus').textContent = error.message;
     });
     generalForm.addEventListener('submit', async (event) => {
@@ -371,12 +439,12 @@ async function setupSettingsModule() {
         status.textContent = '✓ Configuración guardada';
         status.style.color = 'var(--aqua)';
       } catch (error) {
+        console.error('[Configuración] No se pudo guardar la configuración general:', error);
         status.textContent = error.message;
         status.style.color = '#c93047';
       }
     });
   }
-
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSettingsModule, { once: true });
