@@ -101,9 +101,9 @@ function renderDashboardChart(attentions) {
 
 function renderDashboardAppointments(schedule) {
   const current=dashboardBoliviaNow();const today=current.date;const currentTime=current.time;
-  const items=schedule.filter(item=>item.date>=today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>`${a.date}${a.time||''}`.localeCompare(`${b.date}${b.time||''}`));
-  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${item.date===today?dashboardEscape(item.time||'—'):`${dashboardFormatDate(item.date)}<small>${dashboardEscape(item.time||'—')}</small>`}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita pendiente')}</small></div><span class="badge badge--pending">${dashboardEscape(item.status||'Pendiente')}</span></div>`).join(''):'<p class="dashboard-empty">No existen citas programadas.</p>';
-  return items.filter(item=>item.date===today&&String(item.time||'')>=currentTime).length;
+  const items=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${dashboardEscape(item.time||'—')}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita pendiente')}</small></div><span class="badge badge--pending">${dashboardEscape(item.status||'Pendiente')}</span></div>`).join(''):'<p class="dashboard-empty">No hay citas pendientes para hoy.</p>';
+  return items.filter(item=>String(item.time||'')>=currentTime).length;
 }
 
 function renderDashboardPatients(patients,attentions) {
