@@ -29,7 +29,11 @@
     catch { return []; }
   };
   const throwIfError = (error) => {
-    if (error) throw new Error(error.message || 'No se pudo completar la operación en Supabase.');
+    if (error) {
+      const details = [error.message, error.details, error.hint]
+        .filter(Boolean).join(' · ');
+      throw new Error(details || `Error de Supabase${error.code ? ` (${error.code})` : ''}.`);
+    }
   };
   const db = async (required = false) => {
     await ready;
@@ -128,11 +132,24 @@
     const { data, error } = await connection.from('pacientes').select('*').order('nombre');
     throwIfError(error); return (data || []).map(mapPatient);
   }
+  async function findPatientByCi(ci) {
+    const normalizedCi = String(ci || '').trim();
+    if (!normalizedCi) return null;
+    const connection = await db();
+    if (!connection) {
+      return localArray('medsolution.patients')
+        .find((patient) => String(patient.ci || '').trim() === normalizedCi) || null;
+    }
+    const { data, error } = await connection.from('pacientes')
+      .select('*').eq('ci', normalizedCi).maybeSingle();
+    throwIfError(error);
+    return data ? mapPatient(data) : null;
+  }
   async function savePatient(patient) {
     const connection = await db(true);
     const payload = {
       ...(patient.remoteId ? { id: patient.remoteId } : {}),
-      ...(Number(patient.id) ? { legacy_id: Number(patient.id) } : {}),
+      ...(patient.remoteId && Number(patient.id) ? { legacy_id: Number(patient.id) } : {}),
       nombre: patient.nombre, apellido: patient.apellido || '', ci: patient.ci || null,
       fecha_nacimiento: patient.fechaNacimiento || null, genero: patient.genero || null,
       telefono: patient.telefono || null, email: patient.email || null,
@@ -170,7 +187,7 @@
     ].forEach((key) => delete clinical[key]);
     const payload = {
       ...(attention.remoteId ? { id: attention.remoteId } : {}),
-      ...(Number(attention.id) ? { legacy_id: Number(attention.id) } : {}),
+      ...(attention.remoteId && Number(attention.id) ? { legacy_id: Number(attention.id) } : {}),
       paciente_id: patientId, servicio_id: uuidOrNull(attention.serviceId),
       historia_clinica_id: medicalRecordId,
       responsable_id: responsible?.id || null, registrado_por: uuidOrNull(attention.registeredByUserId),
@@ -184,7 +201,43 @@
       proximo_control: attention.nextControl || null, datos_clinicos: clinical,
     };
     const { data, error } = await connection.from('atenciones').upsert(payload, { onConflict: 'legacy_id' }).select().single();
-    throwIfError(error); return data;
+    throwIfError(error);
+    return { ...attention, id: Number(data.legacy_id), remoteId: data.id };
+  }
+  async function savePatientAndAttention(patient, attention) {
+    const connection = await db(true);
+    let persistedPatient = await findPatientByCi(patient.ci);
+    let createdPatient = false;
+
+    if (!persistedPatient) {
+      persistedPatient = await savePatient(patient);
+      createdPatient = true;
+    }
+
+    const linkedAttention = {
+      ...attention,
+      patientId: persistedPatient.id,
+      patientName: `${persistedPatient.nombre} ${persistedPatient.apellido || ''}`.trim(),
+    };
+
+    try {
+      const persistedAttention = await saveAttention(linkedAttention);
+      return {
+        patient: persistedPatient,
+        attention: persistedAttention,
+        linkedAttention: persistedAttention,
+        reusedPatient: !createdPatient,
+      };
+    } catch (attentionError) {
+      if (createdPatient) {
+        const { error: rollbackError } = await connection.from('pacientes')
+          .delete().eq('id', persistedPatient.remoteId);
+        if (rollbackError) {
+          throw new Error(`${attentionError.message} No se pudo revertir el paciente recién creado: ${rollbackError.message}`);
+        }
+      }
+      throw attentionError;
+    }
   }
   async function getAttentions() {
     const connection = await db();
@@ -225,7 +278,8 @@
     ready, configuration: () => config || {}, getClient: () => client, isConfigured: () => Boolean(client),
     testConnection, getServices, saveService, toggleService,
     getStaff: () => getStaff(false), getAllStaff: () => getStaff(true), saveStaff, toggleStaff,
-    getPatients, savePatient, deletePatient, getAttentions, saveAttention, deleteAttention,
+    getPatients, findPatientByCi, savePatient, deletePatient,
+    getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
     ensureMedicalRecord, getSettings, saveSettings,
     subscribeServices: (callback) => subscribe('servicios', callback),
     subscribeStaff: (callback) => subscribe('personal_consultorio', callback),

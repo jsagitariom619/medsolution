@@ -17,6 +17,7 @@ const consultState = {
   unsubscribePatients: null,
   selectedServiceId: null,
   pendingPatient: null,
+  saving: false,
 };
 
 function getAuthUser() {
@@ -60,8 +61,8 @@ async function loadConsultations() {
 }
 
 async function saveConsultations(changed = null) {
-  localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
   if (changed && window.MedSolutionData?.isConfigured()) await window.MedSolutionData.saveAttention(changed);
+  localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
   window.dispatchEvent(new CustomEvent('medsolution:consultations-updated'));
 }
 
@@ -84,6 +85,48 @@ function escapeHtml(value) {
   const div = document.createElement('div');
   div.textContent = value == null ? '' : String(value);
   return div.innerHTML;
+}
+function canViewPrices() { return getAuthUser()?.role !== 'Auxiliar'; }
+function showFlowMessage(message, type = 'success') {
+  let toast = document.getElementById('attentionFlowToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'attentionFlowToast';
+    toast.setAttribute('role', 'status');
+    Object.assign(toast.style, {
+      position: 'fixed', right: '24px', bottom: '24px', zIndex: '3000',
+      maxWidth: '420px', padding: '14px 18px', borderRadius: '12px',
+      boxShadow: '0 12px 30px rgba(15,76,92,.2)', fontWeight: '700',
+    });
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.background = type === 'error' ? '#fde2e2' : '#dff7f1';
+  toast.style.color = type === 'error' ? '#9b2c2c' : '#0f5f55';
+  toast.style.display = '';
+  clearTimeout(showFlowMessage.timeout);
+  showFlowMessage.timeout = setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
+function setFormStatus(id, message = '', type = 'error') {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = message;
+  element.style.color = type === 'error' ? '#c93047' : 'var(--aqua)';
+  element.style.display = message ? '' : 'none';
+}
+function setButtonLoading(button, loading, loadingText = 'Guardando…') {
+  if (!button) return;
+  if (loading) {
+    button.dataset.originalText = button.textContent;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = `⏳ ${loadingText}`;
+  } else {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    button.textContent = button.dataset.originalText || button.textContent;
+    delete button.dataset.originalText;
+  }
 }
 
 function statusClass(status) {
@@ -161,8 +204,9 @@ function renderServiceOptions(selectedId = '') {
   const select = document.getElementById('serviceType');
   if (!select) return;
   const current = selectedId || select.value;
+  const showPrices = canViewPrices();
   select.innerHTML = '<option value="">Seleccionar…</option>' + consultState.services
-    .map((service) => `<option value="${escapeHtml(service.id || service.name)}">${escapeHtml(service.name)} · ${Number(service.price || 0).toFixed(2)} Bs</option>`).join('');
+    .map((service) => `<option value="${escapeHtml(service.id || service.name)}">${escapeHtml(service.name)}${showPrices ? ` · ${Number(service.price || 0).toFixed(2)} Bs` : ''}</option>`).join('');
   if (current) {
     const service = consultState.services.find((item) => String(item.id) === String(current) || item.name === current);
     if (service) select.value = service.id || service.name;
@@ -174,8 +218,9 @@ function openServicePicker() {
   if (!consultState.services.length) {
     grid.innerHTML = '<p class="patient-result-empty">No hay servicios activos. Solicita al administrador que configure el Catálogo de Servicios.</p>';
   } else {
+    const showPrices = canViewPrices();
     grid.innerHTML = consultState.services.map((service) => `<button class="service-choice" type="button" data-choose-service="${escapeHtml(service.id || service.name)}">
-      <strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.description || 'Sin descripción')}</small><em>${Number(service.price || 0).toFixed(2)} Bs</em></button>`).join('');
+      <strong>${escapeHtml(service.name)}</strong>${showPrices ? `<em>${Number(service.price || 0).toFixed(2)} Bs</em>` : ''}</button>`).join('');
   }
   document.getElementById('servicePickerModal').classList.add('nursing-modal--active');
 }
@@ -183,15 +228,12 @@ function closeServicePicker() { document.getElementById('servicePickerModal')?.c
 function chooseService(serviceId) {
   consultState.selectedServiceId = serviceId;
   closeServicePicker();
-  if (consultState.pendingPatient) {
-    const patient = consultState.pendingPatient;
-    openConsultModal('create');
-    setSelectedPatient(patient.id, `${patient.nombre} ${patient.apellido}`);
-    document.getElementById('serviceType').value = serviceId;
-    toggleServiceFields();
-    return;
-  }
-  openPatientSearchModal();
+  const patient = consultState.pendingPatient;
+  if (!patient) return openPatientSearchModal();
+  openConsultModal('create');
+  setSelectedPatient(patient.id, `${patient.nombre} ${patient.apellido}`);
+  document.getElementById('serviceType').value = serviceId;
+  toggleServiceFields();
 }
 
 function renderConsultations() {
@@ -277,13 +319,15 @@ function renderPatientSearchResults(term) {
   }).join('');
 }
 function selectPatientAndContinue(id, name) {
+  const patient = getPatients().find((item) => Number(item.id) === Number(id));
+  if (!patient) return;
+  consultState.pendingPatient = patient;
   closePatientSearchModal();
-  if (!document.getElementById('consultModal').classList.contains('nursing-modal--active')) openConsultModal('create');
-  setSelectedPatient(id, name);
-  if (consultState.selectedServiceId) {
-    document.getElementById('serviceType').value = consultState.selectedServiceId;
-    toggleServiceFields();
+  if (document.getElementById('consultModal').classList.contains('nursing-modal--active')) {
+    setSelectedPatient(id, name);
+    return;
   }
+  openServicePicker();
 }
 function showQuickRegisterForm() {
   document.getElementById('quickRegisterSection').style.display = '';
@@ -297,23 +341,36 @@ function hideQuickRegisterForm() {
 async function handleQuickPatientSave(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  const button = document.getElementById('quickPatientSaveBtn');
+  if (button?.disabled) return;
+  setFormStatus('quickPatientStatus');
   const nombre = form.elements.nombre.value.trim();
   const apellido = form.elements.apellido.value.trim();
   const ci = form.elements.ci.value.trim();
-  if (!nombre || !apellido || !ci) return alert('Nombre, apellido y cédula son requeridos.');
+  if (!nombre || !apellido || !ci) {
+    setFormStatus('quickPatientStatus', 'Nombre, apellido y cédula son requeridos.');
+    return;
+  }
   const patients = getPatients();
-  if (patients.some((p) => String(p.ci).trim() === ci)) return alert('Ya existe un paciente con esta cédula.');
+  const existing = patients.find((p) => String(p.ci || '').trim() === ci);
+  if (existing) {
+    consultState.pendingPatient = existing;
+    closePatientSearchModal();
+    showFlowMessage('El paciente ya existía y fue seleccionado automáticamente.');
+    openServicePicker();
+    return;
+  }
   const patient = {
     id: nextId(patients), nombre, apellido, ci,
     telefono: form.elements.telefono.value.trim(), genero: form.elements.genero.value,
     fechaNacimiento: form.elements.fechaNacimiento.value, email: '', direccion: '',
-    registrado: new Date().toISOString().slice(0, 10),
+    registrado: new Date().toISOString().slice(0, 10), isNew: true,
   };
-  patients.push(patient);
-  consultState.patients = patients;
-  savePatientsToStorage(patients);
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.savePatient(patient);
-  selectPatientAndContinue(patient.id, `${nombre} ${apellido}`);
+  setButtonLoading(button, true, 'Preparando…');
+  consultState.pendingPatient = patient;
+  closePatientSearchModal();
+  setButtonLoading(button, false);
+  openServicePicker();
 }
 
 function toggleServiceFields() {
@@ -345,6 +402,8 @@ function configureFormMode(mode) {
   document.getElementById('serviceType').disabled = clinicalMode || mode === 'create';
   document.getElementById('pickPatientBtn').style.display = clinicalMode ? 'none' : '';
   document.getElementById('consultSaveBtn').textContent = clinicalMode ? 'Finalizar consulta' : 'Guardar Atención';
+  const step = document.getElementById('consultStepLabel');
+  if (step) step.style.display = mode === 'create' ? '' : 'none';
 }
 
 function openConsultModal(mode, consult = null) {
@@ -356,6 +415,7 @@ function openConsultModal(mode, consult = null) {
   setConsultFormReadOnly(form, false);
   configureFormMode(mode);
   document.getElementById('consultSaveBtn').style.display = mode.startsWith('view') ? 'none' : '';
+  setFormStatus('consultFormStatus');
 
   if (consult) {
     fillConsultForm(form, consult);
@@ -451,23 +511,29 @@ function consultationData(form) {
 
 async function handleConsultSave(event) {
   event.preventDefault();
+  if (consultState.saving) return;
   const form = event.currentTarget;
+  const saveButton = document.getElementById('consultSaveBtn');
+  setFormStatus('consultFormStatus');
   const data = consultationData(form);
-  if (!data.patientId) return alert('Por favor selecciona un paciente.');
-  if (!data.date || !data.chiefComplaint || !data.serviceType) return alert('Fecha, tipo de servicio y motivo son requeridos.');
+  if (!data.patientId) return setFormStatus('consultFormStatus', 'Selecciona un paciente.');
+  if (!data.date || !data.chiefComplaint || !data.serviceType) {
+    return setFormStatus('consultFormStatus', 'Fecha, servicio y motivo son requeridos.');
+  }
   if (!data.requiresMedicalConsultation && !data.procedureResponsible) {
-    return alert('Selecciona al responsable del procedimiento.');
+    return setFormStatus('consultFormStatus', 'Selecciona al responsable del procedimiento.');
   }
 
   const clinical = ['clinical', 'edit-clinical'].includes(consultState.mode);
-  let saved;
+  let saved = null;
+  let editIndex = -1;
   if (consultState.editingId !== null) {
-    const index = consultState.consultations.findIndex((c) => Number(c.id) === Number(consultState.editingId));
-    if (index >= 0) {
-      consultState.consultations[index] = saved = {
-        ...consultState.consultations[index], ...data,
-        status: clinical ? 'Finalizada' : consultState.consultations[index].status,
-        finalizedAt: clinical ? new Date().toISOString() : consultState.consultations[index].finalizedAt,
+    editIndex = consultState.consultations.findIndex((c) => Number(c.id) === Number(consultState.editingId));
+    if (editIndex >= 0) {
+      saved = {
+        ...consultState.consultations[editIndex], ...data,
+        status: clinical ? 'Finalizada' : consultState.consultations[editIndex].status,
+        finalizedAt: clinical ? new Date().toISOString() : consultState.consultations[editIndex].finalizedAt,
       };
     }
   } else {
@@ -478,12 +544,66 @@ async function handleConsultSave(event) {
       createdAt: new Date().toISOString(),
       finalizedAt: medical ? null : new Date().toISOString(),
     };
-    consultState.consultations.push(saved);
   }
-  if (clinical || (data.generatesMedicalRecord && isDoctor())) await ensureMedicalRecord(data.patientId);
-  await saveConsultations(saved);
-  closeConsultModal();
-  renderConsultations();
+  if (!saved) return setFormStatus('consultFormStatus', 'No se encontró la atención que deseas actualizar.');
+
+  consultState.saving = true;
+  setButtonLoading(saveButton, true);
+  form.querySelectorAll('button, input, select, textarea').forEach((control) => {
+    if (control !== saveButton) control.dataset.wasDisabled = String(control.disabled);
+    control.disabled = true;
+  });
+
+  try {
+    if (clinical || (data.generatesMedicalRecord && isDoctor())) await ensureMedicalRecord(data.patientId);
+
+    if (editIndex >= 0) {
+      if (window.MedSolutionData?.isConfigured()) saved = await window.MedSolutionData.saveAttention(saved);
+      consultState.consultations[editIndex] = saved;
+    } else if (consultState.pendingPatient?.isNew && window.MedSolutionData?.isConfigured()) {
+      const result = await window.MedSolutionData.savePatientAndAttention(consultState.pendingPatient, saved);
+      saved = result.linkedAttention;
+      const patient = result.patient;
+      if (!consultState.patients.some((item) => Number(item.id) === Number(patient.id))) {
+        consultState.patients.push(patient);
+        savePatientsToStorage(consultState.patients);
+      }
+      consultState.consultations.push(saved);
+    } else {
+      if (window.MedSolutionData?.isConfigured()) saved = await window.MedSolutionData.saveAttention(saved);
+      if (consultState.pendingPatient?.isNew) {
+        const patient = { ...consultState.pendingPatient };
+        delete patient.isNew;
+        consultState.patients.push(patient);
+        savePatientsToStorage(consultState.patients);
+      }
+      consultState.consultations.push(saved);
+    }
+
+    await saveConsultations();
+    const successMessage = saved.requiresMedicalConsultation
+      ? 'Atención registrada y enviada correctamente al panel del doctor.'
+      : 'Procedimiento registrado como realizado.';
+    closeConsultModal();
+    renderConsultations();
+    showFlowMessage(successMessage);
+  } catch (error) {
+    const message = error?.message || 'No se pudo registrar la atención.';
+    setFormStatus('consultFormStatus', `No se guardó la atención: ${message}`);
+    showFlowMessage(`Error: ${message}`, 'error');
+  } finally {
+    consultState.saving = false;
+    form.querySelectorAll('button, input, select, textarea').forEach((control) => {
+      if (control.dataset.wasDisabled !== undefined) {
+        control.disabled = control.dataset.wasDisabled === 'true';
+        delete control.dataset.wasDisabled;
+      } else {
+        control.disabled = false;
+      }
+    });
+    setButtonLoading(saveButton, false);
+    if (consultState.mode === 'create') document.getElementById('serviceType').disabled = true;
+  }
 }
 
 async function cancelConsultation(id) {
@@ -522,7 +642,11 @@ async function setupAppointmentsModule() {
   document.getElementById('cancelQuickPatientBtn')?.addEventListener('click', hideQuickRegisterForm);
   document.getElementById('quickPatientForm')?.addEventListener('submit', handleQuickPatientSave);
   document.getElementById('pickPatientBtn')?.addEventListener('click', openPatientSearchModal);
-  document.getElementById('newConsultBtn')?.addEventListener('click', openServicePicker);
+  document.getElementById('newConsultBtn')?.addEventListener('click', () => {
+    consultState.pendingPatient = null;
+    consultState.selectedServiceId = null;
+    openPatientSearchModal();
+  });
   document.getElementById('closeServicePickerBtn')?.addEventListener('click', closeServicePicker);
   document.querySelector('#servicePickerModal .nursing-modal__overlay')?.addEventListener('click', closeServicePicker);
   document.getElementById('servicePickerGrid')?.addEventListener('click', (event) => {
@@ -559,7 +683,7 @@ async function setupAppointmentsModule() {
   else if (patientId) {
     const patient = getPatients().find((p) => Number(p.id) === patientId);
     if (patient) { consultState.pendingPatient = patient; openServicePicker(); }
-  } else if (getUrlParam('action') === 'new' && !isDoctor()) openServicePicker();
+  } else if (getUrlParam('action') === 'new' && !isDoctor()) openPatientSearchModal();
 
   consultState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
     await loadConsultations(); renderConsultations();

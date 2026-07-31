@@ -148,7 +148,7 @@
 
     <div class="nursing-modal" id="servicePickerModal" role="dialog" aria-modal="true" aria-labelledby="servicePickerTitle">
       <div class="nursing-modal__overlay"></div><div class="nursing-modal__content">
-        <div class="nursing-modal__header"><div><span class="eyebrow">Paso 1</span><h2 id="servicePickerTitle" style="margin:4px 0 0">¿Qué atención desea registrar?</h2></div>
+        <div class="nursing-modal__header"><div><span class="eyebrow">Paso 2</span><h2 id="servicePickerTitle" style="margin:4px 0 0">Seleccionar servicio</h2></div>
           <button class="nursing-modal__close" id="closeServicePickerBtn" type="button">✕</button></div>
         <div class="service-picker-grid" id="servicePickerGrid"><p class="patient-result-empty">Cargando servicios activos…</p></div>
       </div>
@@ -159,7 +159,7 @@
       <div class="nursing-modal__overlay"></div>
       <div class="nursing-modal__content">
         <div class="nursing-modal__header">
-          <h2 id="consultModalTitle">Nueva Atención</h2>
+          <div><span class="eyebrow" id="consultStepLabel">Paso 3</span><h2 id="consultModalTitle" style="margin:4px 0 0">Registrar atención</h2></div>
           <button class="nursing-modal__close" id="closeConsultModalBtn" type="button" aria-label="Cerrar">✕</button>
         </div>
         <form class="nursing-form" id="consultForm" novalidate>
@@ -261,6 +261,7 @@
             <button class="btn btn--secondary" id="cancelConsultModalBtn" type="button">Cancelar</button>
             <button class="btn btn--primary" id="consultSaveBtn" type="submit">Guardar Atención</button>
           </div>
+          <p id="consultFormStatus" role="status" style="display:none;margin:10px 24px 0;font-size:.88rem"></p>
         </form>
       </div>
     </div>
@@ -270,12 +271,12 @@
       <div class="nursing-modal__overlay"></div>
       <div class="nursing-modal__content patient-search-modal__content">
         <div class="nursing-modal__header">
-          <h2 id="patientSearchModalTitle">Buscar Paciente</h2>
+          <div><span class="eyebrow">Paso 1</span><h2 id="patientSearchModalTitle" style="margin:4px 0 0">Buscar paciente</h2></div>
           <button class="nursing-modal__close" id="closePatientSearchModalBtn" type="button" aria-label="Cerrar">✕</button>
         </div>
         <div style="padding:0 24px 24px">
-          <p style="color:var(--gray-500);font-size:.9rem;margin:0 0 14px">Busca por nombre, cédula, teléfono o número de historia clínica.</p>
-          <input id="patientSearchInput" class="patient-search-input" type="search" placeholder="Nombre, CI, teléfono…" autocomplete="off" />
+          <p style="color:var(--gray-500);font-size:.9rem;margin:0 0 14px">Busca por CI, nombre o apellido.</p>
+          <input id="patientSearchInput" class="patient-search-input" type="search" placeholder="CI, nombre o apellido…" autocomplete="off" />
           <div class="patient-search-results" id="patientSearchResults">
             <p class="patient-result-empty">Escribe para buscar pacientes…</p>
           </div>
@@ -301,8 +302,9 @@
               </div>
               <div class="nursing-form__actions" style="margin-top:12px">
                 <button type="button" class="btn btn--secondary" id="cancelQuickPatientBtn">Cancelar</button>
-                <button type="submit" class="btn btn--primary">Guardar y continuar →</button>
+                <button type="submit" class="btn btn--primary" id="quickPatientSaveBtn">Guardar y continuar →</button>
               </div>
+              <p id="quickPatientStatus" role="status" style="display:none;margin:10px 0 0;font-size:.86rem"></p>
             </form>
           </div>
         </div>

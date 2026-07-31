@@ -120,3 +120,16 @@ configurar las dos variables en el proyecto real.
   LocalStorage, si hubiera una instalación productiva previa.
 - Persistir Agenda y configuración general sólo si el consultorio decide
   compartirlas entre sedes; actualmente se preserva su funcionamiento existente.
+
+## Corrección del flujo Nueva Atención
+
+La recepción ahora trabaja en el orden Paciente → Servicio → Atención. El
+registro rápido mantiene al paciente en memoria hasta el guardado final. La
+pasarela busca primero por CI y reutiliza el registro existente; si debe crear
+uno nuevo, crea inmediatamente la atención y revierte el paciente cuando esa
+segunda operación falla.
+
+Se agregaron bloqueo contra doble envío, estado de carga, errores detallados y
+mensajes de éxito. El Auxiliar sólo visualiza el nombre del servicio; el precio
+se conserva internamente como snapshot para reportes y continúa visible para
+Administrador y Médico.

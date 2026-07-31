@@ -234,6 +234,8 @@ async function handleSave(event) {
   const form = document.getElementById('patientForm');
   const modal = document.getElementById('patientModal');
   if (!form || modal?.dataset.viewMode) return;
+  const saveButton = document.getElementById('modalSaveBtn');
+  if (saveButton?.disabled) return;
 
   const data = {
     nombre: form.elements.nombre.value.trim(),
@@ -246,11 +248,20 @@ async function handleSave(event) {
     direccion: form.elements.direccion.value.trim(),
   };
 
+  const duplicate = patientsState.patients.find((patient) =>
+    String(patient.ci || '').trim() === data.ci
+    && Number(patient.id) !== Number(patientsState.editingId));
+  if (duplicate) {
+    alert(`Ya existe el paciente ${duplicate.nombre} ${duplicate.apellido} con esta cédula.`);
+    return;
+  }
+
   let saved;
+  let editIndex = -1;
   if (patientsState.editingId !== null) {
-    const idx = patientsState.patients.findIndex((p) => p.id === patientsState.editingId);
-    if (idx > -1) {
-      patientsState.patients[idx] = saved = { ...patientsState.patients[idx], ...data };
+    editIndex = patientsState.patients.findIndex((p) => p.id === patientsState.editingId);
+    if (editIndex > -1) {
+      saved = { ...patientsState.patients[editIndex], ...data };
     }
   } else {
     saved = {
@@ -258,13 +269,33 @@ async function handleSave(event) {
       registrado: getCurrentDateISO(),
       ...data,
     };
-    patientsState.patients.push(saved);
   }
 
-  savePatients();
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.savePatient(saved);
-  closeModal();
-  renderTable();
+  if (!saved) return alert('No se encontró el paciente que deseas guardar.');
+
+  const originalText = saveButton?.textContent || 'Guardar';
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = '⏳ Guardando…';
+  }
+  try {
+    const persisted = window.MedSolutionData?.isConfigured()
+      ? await window.MedSolutionData.savePatient(saved)
+      : saved;
+    const normalized = { ...saved, ...persisted };
+    if (editIndex >= 0) patientsState.patients[editIndex] = normalized;
+    else patientsState.patients.push(normalized);
+    savePatients();
+    closeModal();
+    renderTable();
+  } catch (error) {
+    alert(`No se pudo guardar el paciente: ${error.message}`);
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = originalText;
+    }
+  }
 }
 
 async function handleDelete(id) {
