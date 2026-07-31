@@ -101,9 +101,9 @@ function renderDashboardChart(attentions) {
 
 function renderDashboardAppointments(schedule) {
   const current=dashboardBoliviaNow();const today=current.date;const currentTime=current.time;
-  const items=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
-  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${dashboardEscape(item.time||'—')}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita pendiente')}</small></div><span class="badge badge--pending">${dashboardEscape(item.status||'Pendiente')}</span></div>`).join(''):'<p class="dashboard-empty">No hay citas pendientes para hoy.</p>';
-  return items.filter(item=>String(item.time||'')>=currentTime).length;
+  const items=schedule.filter(item=>item.date>=today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>`${a.date}${a.time||''}`.localeCompare(`${b.date}${b.time||''}`));
+  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${item.date===today?dashboardEscape(item.time||'—'):`${dashboardFormatDate(item.date)}<small>${dashboardEscape(item.time||'—')}</small>`}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita pendiente')}</small></div><span class="badge badge--pending">${dashboardEscape(item.status||'Pendiente')}</span></div>`).join(''):'<p class="dashboard-empty">No existen citas programadas.</p>';
+  return items.filter(item=>item.date===today&&String(item.time||'')>=currentTime).length;
 }
 
 function renderDashboardPatients(patients,attentions) {
@@ -115,7 +115,8 @@ function renderDashboardPatients(patients,attentions) {
 async function setupFunctionalDashboard() {
   await window.MedSolutionData?.ready;
   try {
-    const [patients,attentions,histories,schedule]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords(),window.MedSolutionData.getAppointments()]);
+    const [patients,attentions,histories]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords()]);
+    const schedule=attentions.filter(item=>item.contraceptiveControl!==true).map(item=>({...item,serviceName:item.serviceType,status:item.scheduleStatus||({'Pendiente de consulta':'Pendiente','En consulta':'En Atención',Finalizada:'Atendida'}[item.status]||item.status)}));
     const today=dashboardToday(),month=today.slice(0,7);
     const medical=attentions.filter(item=>item.contraceptiveControl!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
     const pending=medical.filter(item=>['Pendiente','Pendiente de consulta','En consulta'].includes(item.status));
@@ -135,7 +136,7 @@ async function setupFunctionalDashboard() {
     const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
     renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
     const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};
-    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard);window.MedSolutionData.subscribeAppointments(setupFunctionalDashboard)}
+    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard)}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }
 }
 function bootDashboard() {

@@ -105,8 +105,6 @@
       chiefComplaint: row.motivo || '',
       evolution: row.evolucion || '', diagnosis: row.diagnostico || '', treatment: row.tratamiento || '',
       prescription: row.receta || '', indications: row.indicaciones || '', nextControl: row.proximo_control || '',
-      appointmentRemoteId: row.cita_id || null,
-      scheduledAppointmentId: Number(row.citas?.legacy_id || 0) || null,
     };
   }
 
@@ -122,26 +120,6 @@
       time: `${parts.hour}:${parts.minute}`,
     };
   }
-  function mapAppointment(row) {
-    const parts = localDateTimeParts(row.fecha_hora);
-    const linkedAttention = Array.isArray(row.atenciones) ? row.atenciones[0] : row.atenciones;
-    return {
-      id: Number(row.legacy_id), remoteId: row.id,
-      patientId: Number(row.pacientes?.legacy_id),
-      patientName: row.pacientes ? `${row.pacientes.nombre} ${row.pacientes.apellido || ''}`.trim() : '',
-      serviceId: row.servicio_id, serviceName: row.servicios?.nombre || '',
-      date: parts.date, time: parts.time, professional: row.profesional || '',
-      observations: row.observaciones || '', status: row.estado,
-      attentionId: Number(linkedAttention?.legacy_id || 0) || null,
-      createdAt: row.creado_en, registeredBy: row.creado_por_nombre || '',
-    };
-  }
-  function localDateTimeIso(date, time = '00:00') {
-    const value = new Date(`${date}T${String(time || '00:00').slice(0, 5)}:00-04:00`);
-    if (Number.isNaN(value.getTime())) throw new Error('La fecha u hora de la cita no es válida.');
-    return value.toISOString();
-  }
-
   async function getServices(includeInactive = false) {
     const connection = await db();
     if (!connection) return [];
@@ -271,71 +249,12 @@
     const { data, error } = await connection.from('pacientes').select('id').eq('legacy_id', Number(legacyId)).single();
     throwIfError(error); return data.id;
   }
-  async function getAppointments() {
-    const connection = await db(true);
-    const { data, error } = await connection.from('citas')
-      .select('*, pacientes(legacy_id,nombre,apellido), servicios(nombre), atenciones!atenciones_cita_id_fkey(legacy_id)')
-      .order('fecha_hora', { ascending: true });
-    throwIfError(error); return (data || []).map(mapAppointment);
-  }
-  async function saveAppointment(appointment) {
-    const connection = await db(true);
-    const patientId = await resolvePatient(connection, appointment.patientId);
-    const payload = {
-      paciente_id: patientId, servicio_id: uuidOrNull(appointment.serviceId),
-      fecha_hora: localDateTimeIso(appointment.date, appointment.time),
-      profesional: appointment.professional || '', observaciones: appointment.observations || '',
-      estado: appointment.status || 'Pendiente', creado_por_nombre: appointment.registeredBy || '',
-    };
-    const mutation = appointment.remoteId
-      ? connection.from('citas').update(payload).eq('id', appointment.remoteId)
-      : connection.from('citas').insert(payload);
-    const { data, error } = await mutation
-      .select('*, pacientes(legacy_id,nombre,apellido), servicios(nombre), atenciones!atenciones_cita_id_fkey(legacy_id)')
-      .single();
-    throwIfError(error);
-    return mapAppointment(data);
-  }
-  async function updateAppointmentStatus(id, status) {
-    const connection = await db(true);
-    const filter = uuidOrNull(id) ? { column: 'id', value: id } : { column: 'legacy_id', value: Number(id) };
-    const { data, error } = await connection.from('citas').update({ estado: status })
-      .eq(filter.column, filter.value)
-      .select('*, pacientes(legacy_id,nombre,apellido), servicios(nombre), atenciones!atenciones_cita_id_fkey(legacy_id)')
-      .single();
-    throwIfError(error);
-    return mapAppointment(data);
-  }
-  async function resolveOrCreateAppointment(connection, attention, patientId) {
-    if (attention.appointmentRemoteId) return { id: attention.appointmentRemoteId, created: false };
-    if (attention.scheduledAppointmentId) {
-      const { data, error } = await connection.from('citas').select('id')
-        .eq('legacy_id', Number(attention.scheduledAppointmentId)).single();
-      throwIfError(error); return { id: data.id, created: false };
-    }
-    const fallback = localDateTimeParts(attention.createdAt || new Date());
-    const { data, error } = await connection.from('citas').insert({
-      paciente_id: patientId, servicio_id: uuidOrNull(attention.serviceId),
-      fecha_hora: localDateTimeIso(attention.date || fallback.date, attention.time || fallback.time),
-      profesional: attention.scheduledProfessional || attention.procedureResponsible || '',
-      observaciones: attention.appointmentObservations || attention.observations || '',
-      estado: 'Pendiente', creado_por_nombre: attention.registeredBy || '',
-    }).select('id,legacy_id').single();
-    throwIfError(error); return { id: data.id, legacyId: Number(data.legacy_id), created: true };
-  }
   async function saveAttention(attention) {
     const connection = await db(true);
     const patientId = await resolvePatient(connection, attention.patientId);
-    let appointment;
-    if (attention.remoteId && !attention.appointmentRemoteId && !attention.scheduledAppointmentId) {
-      const { data, error } = await connection.from('atenciones').select('cita_id').eq('id', attention.remoteId).single();
-      throwIfError(error); appointment = { id: data.cita_id, created: false };
-    } else {
-      appointment = await resolveOrCreateAppointment(connection, attention, patientId);
-    }
-    try {
     let medicalRecordId = null;
-    if (['En consulta', 'Finalizada'].includes(attention.status) && attention.requiresMedicalConsultation !== false) {
+    if (['En Atención', 'Atendida', 'En consulta', 'Finalizada'].includes(attention.status)
+      && attention.requiresMedicalConsultation !== false) {
       const { data: record, error: recordError } = await connection.from('historias_clinicas')
         .select('id').eq('paciente_id', patientId).maybeSingle();
       throwIfError(recordError);
@@ -348,11 +267,11 @@
     [
       'id','remoteId','patientId','patientName','serviceId','serviceType','servicePrice','procedureResponsible',
       'registeredByUserId','registeredBy','status','createdAt','chiefComplaint','evolution','diagnosis',
-      'treatment','prescription','indications','nextControl','appointmentRemoteId','scheduledAppointmentId',
+      'treatment','prescription','indications','nextControl',
     ].forEach((key) => delete clinical[key]);
     const payload = {
       paciente_id: patientId, servicio_id: uuidOrNull(attention.serviceId),
-      historia_clinica_id: medicalRecordId, cita_id: appointment.id,
+      historia_clinica_id: medicalRecordId,
       // La autenticación es local: el responsable queda preservado en el snapshot,
       // sin intentar vincularlo a public.usuarios (tabla reservada para Supabase Auth).
       responsable_id: responsible?.id || null, registrado_por: null,
@@ -370,18 +289,7 @@
       : connection.from('atenciones').insert(payload);
     const { data, error } = await mutation.select().single();
     throwIfError(error);
-    return {
-      ...attention, id: Number(data.legacy_id), remoteId: data.id,
-      appointmentRemoteId: appointment.id,
-      scheduledAppointmentId: attention.scheduledAppointmentId || appointment.legacyId || null,
-    };
-    } catch (error) {
-      if (appointment.created) {
-        const { error: rollbackError } = await connection.from('citas').delete().eq('id', appointment.id);
-        if (rollbackError) console.error('[Supabase] No se pudo revertir la cita incompleta:', rollbackError);
-      }
-      throw error;
-    }
+    return { ...attention, id: Number(data.legacy_id), remoteId: data.id };
   }
   async function savePatientAndAttention(patient, attention) {
     const connection = await db(true);
@@ -400,7 +308,7 @@
     };
 
     try {
-      if (['En consulta', 'Finalizada'].includes(linkedAttention.status)
+      if (['En Atención', 'Atendida', 'En consulta', 'Finalizada'].includes(linkedAttention.status)
         && linkedAttention.requiresMedicalConsultation !== false) {
         const { error: recordError } = await connection.rpc(
           'obtener_o_crear_historia',
@@ -430,7 +338,7 @@
     const connection = await db();
     if (!connection) return localArray('medsolution.consultations');
     const { data, error } = await connection.from('atenciones')
-      .select('*, pacientes(legacy_id,nombre,apellido), citas!atenciones_cita_id_fkey(legacy_id)').order('fecha_hora', { ascending: false });
+      .select('*, pacientes(legacy_id,nombre,apellido)').order('fecha_hora', { ascending: false });
     throwIfError(error); return (data || []).map(mapAttention);
   }
   async function deleteAttention(id) {
@@ -495,14 +403,12 @@
     getSystemUsers, saveSystemUser, uploadProfilePhoto, deleteStoredFile,
     uploadClinicalAttachment, signedFileUrl,
     getPatients, findPatientByCi, savePatient, deletePatient,
-    getAppointments, saveAppointment, updateAppointmentStatus,
     getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
     ensureMedicalRecord, getMedicalRecords, getSettings, saveSettings,
     subscribeServices: (callback) => subscribe('servicios', callback),
     subscribeStaff: (callback) => subscribe('personal_consultorio', callback),
     subscribePatients: (callback) => subscribe('pacientes', callback),
     subscribeAttentions: (callback) => subscribe('atenciones', callback),
-    subscribeAppointments: (callback) => subscribe('citas', callback),
     subscribeSystemUsers: (callback) => subscribe('perfiles_sistema', callback),
   });
 })(window);
