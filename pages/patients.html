@@ -128,8 +128,8 @@
               <input type="text" name="apellido" placeholder="Ej. López" required />
             </label>
             <label class="form-field">
-              <span>Cédula de identidad *</span>
-              <input type="text" name="ci" placeholder="Ej. 12345678" required />
+              <span>Cédula de identidad</span>
+              <input type="text" name="ci" placeholder="Opcional" />
             </label>
             <label class="form-field">
               <span>Fecha de nacimiento</span>
@@ -161,6 +161,7 @@
             <button class="btn btn--secondary" id="cancelModalBtn" type="button">Cancelar</button>
             <button class="btn btn--primary" id="modalSaveBtn" type="submit">Guardar</button>
           </div>
+          <p id="patientFormStatus" role="status" style="display:none;margin:10px 0 0;font-size:.88rem"></p>
         </form>
       </div>
     </div>

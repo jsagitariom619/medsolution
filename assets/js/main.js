@@ -9,6 +9,7 @@ const routes = {
   appointments: 'pages/appointments.html',
   records: 'pages/medical-records.html',
   schedule: 'pages/schedule.html',
+  contraceptives: 'pages/contraceptives.html',
   reports: 'pages/reports.html',
   settings: 'pages/settings.html',
 };
@@ -117,6 +118,42 @@ const applyRoleRestrictions = (user) => {
   window.MedSolutionAuth = { user, can };
 };
 
+const injectContraceptivesNavigation = (user) => {
+  if (!['Administrador', 'Auxiliar'].includes(user.role)) return;
+  document.querySelectorAll('.sidebar__nav').forEach((nav) => {
+    if (nav.querySelector('a[href="contraceptives.html"]')) return;
+    const link = document.createElement('a');
+    link.className = 'nav-link';
+    link.dataset.navLink = '';
+    link.href = 'contraceptives.html';
+    link.innerHTML = '<span class="nav-link__icon">◉</span>Registro de Anticonceptivos';
+    const settings = nav.querySelector('a[href="settings.html"]');
+    nav.insertBefore(link, settings || null);
+  });
+};
+
+const capitalizeFirstCharacter = (value) => {
+  if (!value) return value;
+  const index = value.search(/\S/);
+  if (index < 0) return value;
+  return `${value.slice(0, index)}${value.charAt(index).toLocaleUpperCase('es')}${value.slice(index + 1)}`;
+};
+
+const setupAutomaticCapitalization = () => {
+  document.addEventListener('input', (event) => {
+    const field = event.target;
+    if (!(field instanceof HTMLTextAreaElement)
+      && !(field instanceof HTMLInputElement && (field.type === 'text' || field.type === 'search'))) return;
+    if (field.dataset.noAutoCapitalize !== undefined) return;
+    const capitalized = capitalizeFirstCharacter(field.value);
+    if (capitalized === field.value) return;
+    const start = field.selectionStart;
+    const end = field.selectionEnd;
+    field.value = capitalized;
+    if (start !== null && end !== null) field.setSelectionRange(start, end);
+  });
+};
+
 // ── Logout ────────────────────────────────────────────────────────────────────
 
 const setupLogout = () => {
@@ -175,6 +212,7 @@ async function initializeApplication() {
   await restoreSession();
   const user = guardRoute();
   if (user) {
+    injectContraceptivesNavigation(user);
     applyRoleRestrictions(user);
     setActiveNavigation();
     updateUserChip();
@@ -182,4 +220,5 @@ async function initializeApplication() {
   }
 }
 
+setupAutomaticCapitalization();
 initializeApplication();

@@ -120,10 +120,10 @@ function renderTable() {
   const visible = patientsState.patients.filter((p) => {
     if (!term) return true;
     return (
-      p.nombre.toLowerCase().includes(term) ||
-      p.apellido.toLowerCase().includes(term) ||
-      p.ci.includes(term) ||
-      p.telefono.includes(term)
+      String(p.nombre || '').toLowerCase().includes(term) ||
+      String(p.apellido || '').toLowerCase().includes(term) ||
+      String(p.ci || '').toLowerCase().includes(term) ||
+      String(p.telefono || '').toLowerCase().includes(term)
     );
   });
 
@@ -142,7 +142,7 @@ function renderTable() {
           <span class="patient-photo">${getInitials(p.nombre, p.apellido)}</span>
           <div>
             <strong>${p.nombre} ${p.apellido}</strong>
-            <small>CI: ${p.ci}</small>
+            <small>CI: ${p.ci || 'Sin CI'}</small>
           </div>
         </div>
       </td>
@@ -180,6 +180,7 @@ function openModal(mode, patient = null) {
 
   form.reset();
   patientsState.editingId = null;
+  showPatientStatus();
 
   if (mode === 'create') {
     title.textContent = 'Nuevo Paciente';
@@ -211,6 +212,7 @@ function closeModal() {
   if (modal) modal.classList.remove('nursing-modal--active');
   if (form) { form.reset(); setFormReadOnly(form, false); }
   patientsState.editingId = null;
+  showPatientStatus();
 }
 
 function fillForm(form, patient) {
@@ -248,7 +250,12 @@ async function handleSave(event) {
     direccion: form.elements.direccion.value.trim(),
   };
 
-  const duplicate = patientsState.patients.find((patient) =>
+  if (!data.nombre || !data.apellido) {
+    showPatientStatus('Nombre y apellido son los únicos campos obligatorios.', 'error');
+    return;
+  }
+
+  const duplicate = data.ci && patientsState.patients.find((patient) =>
     String(patient.ci || '').trim() === data.ci
     && Number(patient.id) !== Number(patientsState.editingId));
   if (duplicate) {
@@ -288,8 +295,9 @@ async function handleSave(event) {
     savePatients();
     closeModal();
     renderTable();
+    showPatientToast('Paciente guardado correctamente.');
   } catch (error) {
-    alert(`No se pudo guardar el paciente: ${error.message}`);
+    showPatientStatus(`No se pudo guardar el paciente: ${error.message}`, 'error');
   } finally {
     if (saveButton) {
       saveButton.disabled = false;
@@ -298,12 +306,44 @@ async function handleSave(event) {
   }
 }
 
+function showPatientStatus(message = '', type = 'error') {
+  const status = document.getElementById('patientFormStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.style.display = message ? '' : 'none';
+  status.style.color = type === 'error' ? '#c93047' : 'var(--aqua)';
+}
+
+function showPatientToast(message) {
+  let toast = document.getElementById('patientToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'patientToast';
+    toast.setAttribute('role', 'status');
+    Object.assign(toast.style, {
+      position: 'fixed', right: '24px', bottom: '24px', zIndex: '3000',
+      padding: '14px 18px', borderRadius: '12px', background: '#dff7f1',
+      color: '#0f5f55', boxShadow: '0 12px 30px rgba(15,76,92,.2)', fontWeight: '700',
+    });
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.display = '';
+  clearTimeout(showPatientToast.timeout);
+  showPatientToast.timeout = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+}
+
 async function handleDelete(id) {
   if (!confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')) return;
-  patientsState.patients = patientsState.patients.filter((p) => p.id !== id);
-  savePatients();
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);
-  renderTable();
+  try {
+    if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);
+    patientsState.patients = patientsState.patients.filter((p) => p.id !== id);
+    savePatients();
+    renderTable();
+    showPatientToast('Paciente eliminado correctamente.');
+  } catch (error) {
+    alert(`No se pudo eliminar el paciente: ${error.message}`);
+  }
 }
 
 // ── Event wiring ──────────────────────────────────────────────────────────────

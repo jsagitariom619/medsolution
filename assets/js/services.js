@@ -1,5 +1,6 @@
 const catalogState={services:[],staff:[],editingServiceId:null,editingStaffId:null,search:'',showInactive:false};
 const data=()=>window.MedSolutionData;
+let catalogSaving=false;
 function esc(v){const e=document.createElement('div');e.textContent=v==null?'':String(v);return e.innerHTML}
 function money(v){return `${Number(v||0).toFixed(2)} Bs`}
 function badge(active){return `<span class="service-status ${active===false?'service-status--inactive':''}">${active===false?'Inactivo':'Activo'}</span>`}
@@ -24,18 +25,24 @@ function renderStaff(){
   body.innerHTML=catalogState.staff.map(p=>`<tr><td><strong>${esc(p.name)}</strong></td><td>${esc(p.position||'')}</td><td>${badge(p.active)}</td><td><span class="action-links">
     <button class="btn-action" data-staff-action="edit" data-id="${p.id}">✎</button><button class="btn-action ${p.active===false?'':'btn-action--delete'}" data-staff-action="toggle" data-id="${p.id}">${p.active===false?'✓':'✕'}</button></span></td></tr>`).join('');
 }
+function setCatalogSaving(form,saving,text='Guardando…'){
+  catalogSaving=saving;const button=form.querySelector('[type="submit"]');
+  form.querySelectorAll('button,input,select,textarea').forEach(control=>{if(saving){control.dataset.wasDisabled=String(control.disabled);control.disabled=true}else{control.disabled=control.dataset.wasDisabled==='true';delete control.dataset.wasDisabled}});
+  if(saving){button.dataset.originalText=button.textContent;button.textContent=`⏳ ${text}`;button.setAttribute('aria-busy','true')}else{button.textContent=button.dataset.originalText||'Guardar';button.removeAttribute('aria-busy');delete button.dataset.originalText}
+}
+function catalogToast(message,type='success'){let toast=document.getElementById('catalogToast');if(!toast){toast=document.createElement('div');toast.id='catalogToast';toast.setAttribute('role','status');Object.assign(toast.style,{position:'fixed',right:'24px',bottom:'24px',zIndex:'3000',padding:'14px 18px',borderRadius:'12px',boxShadow:'0 12px 30px rgba(15,76,92,.2)',fontWeight:'700'});document.body.appendChild(toast)}toast.textContent=message;toast.style.background=type==='error'?'#fde2e2':'#dff7f1';toast.style.color=type==='error'?'#9b2c2c':'#0f5f55';toast.style.display='';clearTimeout(catalogToast.timeout);catalogToast.timeout=setTimeout(()=>{toast.style.display='none'},4000)}
 function openService(item=null){
   const f=document.getElementById('serviceForm');f.reset();catalogState.editingServiceId=item?.id||null;document.getElementById('serviceModalTitle').textContent=item?'Editar servicio':'Nuevo servicio';
   if(item){['name','price','description','allowed_responsible'].forEach(k=>f.elements[k].value=item[k]??'');f.elements.requires_medical_consultation.checked=!!item.requires_medical_consultation;f.elements.generates_medical_record.checked=!!item.generates_medical_record}
   document.getElementById('serviceFormError').style.display='none';document.getElementById('serviceModal').classList.add('nursing-modal--active')
 }
 function closeService(){document.getElementById('serviceModal').classList.remove('nursing-modal--active');catalogState.editingServiceId=null}
-async function saveService(e){e.preventDefault();const f=e.currentTarget;const old=catalogState.services.find(s=>String(s.id)===String(catalogState.editingServiceId));const value={...(old||{}),name:f.elements.name.value.trim(),price:Number(f.elements.price.value),description:f.elements.description.value.trim(),requires_medical_consultation:f.elements.requires_medical_consultation.checked,generates_medical_record:f.elements.generates_medical_record.checked,allowed_responsible:f.elements.allowed_responsible.value,active:old?.active??true};
-  if(!value.name||value.price<0)return show('serviceFormError','Nombre y precio son obligatorios.');try{await data().saveService(value);closeService();await loadAll()}catch(error){show('serviceFormError',error.message)}
+async function saveService(e){e.preventDefault();if(catalogSaving)return;const f=e.currentTarget;const old=catalogState.services.find(s=>String(s.id)===String(catalogState.editingServiceId));const value={...(old||{}),name:f.elements.name.value.trim(),price:Number(f.elements.price.value),description:f.elements.description.value.trim(),requires_medical_consultation:f.elements.requires_medical_consultation.checked,generates_medical_record:f.elements.generates_medical_record.checked,allowed_responsible:f.elements.allowed_responsible.value,active:old?.active??true};
+  if(!value.name||value.price<0)return show('serviceFormError','Nombre y precio son obligatorios.');setCatalogSaving(f,true);try{await data().saveService(value);closeService();await loadAll();catalogToast('Servicio guardado correctamente.')}catch(error){show('serviceFormError',error.message);catalogToast(`Error: ${error.message}`,'error')}finally{setCatalogSaving(f,false)}
 }
 function openStaff(item=null){const f=document.getElementById('staffForm');f.reset();catalogState.editingStaffId=item?.id||null;document.getElementById('staffModalTitle').textContent=item?'Editar integrante':'Nuevo integrante';if(item){f.elements.name.value=item.name||'';f.elements.position.value=item.position||''}document.getElementById('staffFormError').style.display='none';document.getElementById('staffModal').classList.add('nursing-modal--active')}
 function closeStaff(){document.getElementById('staffModal').classList.remove('nursing-modal--active');catalogState.editingStaffId=null}
-async function saveStaff(e){e.preventDefault();const f=e.currentTarget;const old=catalogState.staff.find(p=>String(p.id)===String(catalogState.editingStaffId));const value={...(old||{}),name:f.elements.name.value.trim(),position:f.elements.position.value.trim(),active:old?.active??true};if(!value.name||!value.position)return show('staffFormError','Nombre completo y cargo son obligatorios.');try{await data().saveStaff(value);closeStaff();await loadAll()}catch(error){show('staffFormError',error.message)}}
+async function saveStaff(e){e.preventDefault();if(catalogSaving)return;const f=e.currentTarget;const old=catalogState.staff.find(p=>String(p.id)===String(catalogState.editingStaffId));const value={...(old||{}),name:f.elements.name.value.trim(),position:f.elements.position.value.trim(),active:old?.active??true};if(!value.name||!value.position)return show('staffFormError','Nombre completo y cargo son obligatorios.');setCatalogSaving(f,true);try{await data().saveStaff(value);closeStaff();await loadAll();catalogToast('Personal guardado correctamente.')}catch(error){show('staffFormError',error.message);catalogToast(`Error: ${error.message}`,'error')}finally{setCatalogSaving(f,false)}}
 function show(id,message){const e=document.getElementById(id);e.textContent=message;e.style.display=''}
 async function setup(){
   await data().ready;

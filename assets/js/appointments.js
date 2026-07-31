@@ -153,6 +153,7 @@ function requiresMedical(attention) {
 function visibleConsultations() {
   const term = consultState.searchTerm.toLowerCase();
   return consultState.consultations
+    .filter((c) => c.contraceptiveControl !== true)
     .filter((c) => !isDoctor() || requiresMedical(c))
     .filter((c) => !isDoctor() || ['Pendiente', 'Pendiente de consulta', 'En consulta'].includes(c.status))
     .filter((c) => !term || [c.patientName, c.serviceType, c.status, c.chiefComplaint]
@@ -269,7 +270,7 @@ function configureRoleView() {
     if (title) title.textContent = 'Panel del doctor';
     if (text) text.textContent = 'Pacientes médicos pendientes ordenados por hora de llegada. Acepta una consulta para abrir su historia clínica.';
     if (subtitle) subtitle.textContent = 'Gestiona la cola médica, la consulta activa y el historial clínico del paciente.';
-    if (newButton) newButton.style.display = 'none';
+    if (newButton) newButton.style.display = '';
   } else {
     if (title) title.textContent = 'Panel de auxiliar · Recepción';
     if (text) text.textContent = 'Toda atención comienza aquí. Las consultas médicas pasan automáticamente al panel del doctor.';
@@ -314,7 +315,7 @@ function renderPatientSearchResults(term) {
   container.innerHTML = matches.map((p) => {
     const name = `${p.nombre} ${p.apellido}`;
     return `<div class="patient-result-item"><span class="patient-photo">${getInitials(name)}</span>
-      <div class="patient-result-item__info"><strong>${escapeHtml(name)}</strong><small>CI: ${escapeHtml(p.ci)} · #${p.id}</small></div>
+      <div class="patient-result-item__info"><strong>${escapeHtml(name)}</strong><small>CI: ${escapeHtml(p.ci || 'Sin CI')} · Tel: ${escapeHtml(p.telefono || 'Sin teléfono')} · #${p.id}</small></div>
       <button class="btn btn--primary" type="button" style="padding:7px 14px;font-size:.82rem" data-pick-patient="${p.id}" data-pick-name="${escapeHtml(name)}">Seleccionar</button></div>`;
   }).join('');
 }
@@ -347,12 +348,14 @@ async function handleQuickPatientSave(event) {
   const nombre = form.elements.nombre.value.trim();
   const apellido = form.elements.apellido.value.trim();
   const ci = form.elements.ci.value.trim();
-  if (!nombre || !apellido || !ci) {
-    setFormStatus('quickPatientStatus', 'Nombre, apellido y cédula son requeridos.');
+  if (!nombre || !apellido) {
+    setFormStatus('quickPatientStatus', 'Nombre y apellido son requeridos.');
     return;
   }
   const patients = getPatients();
-  const existing = patients.find((p) => String(p.ci || '').trim() === ci);
+  const existing = ci
+    ? patients.find((p) => String(p.ci || '').trim() === ci)
+    : null;
   if (existing) {
     consultState.pendingPatient = existing;
     closePatientSearchModal();
@@ -444,7 +447,7 @@ function closeConsultModal() {
 function fillConsultForm(form, c) {
   setSelectedPatient(c.patientId, c.patientName);
   const fields = ['date','time','procedureResponsible','bp','hr','temp','weight','height','spo2',
-    'chiefComplaint','evolution','physicalExam','diagnosis','treatment','prescription','indications','nextControl','observations'];
+    'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','prescription','indications','nextControl','observations'];
   fields.forEach((name) => { if (form.elements[name]) form.elements[name].value = c[name] || ''; });
   renderServiceOptions(c.serviceId || c.serviceType);
   if (!form.elements.serviceType.value && c.serviceType) {
@@ -495,6 +498,7 @@ function consultationData(form) {
     requiresMedicalConsultation: Boolean(service?.requires_medical_consultation),
     generatesMedicalRecord: Boolean(service?.generates_medical_record),
     procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),
+    clinicalAntecedents: value('clinicalAntecedents'),
     bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
     height: value('height'), spo2: value('spo2'), evolution: value('evolution'),
     physicalExam: value('physicalExam'), diagnosis: value('diagnosis'), treatment: value('treatment'),
@@ -517,14 +521,28 @@ async function handleConsultSave(event) {
   setFormStatus('consultFormStatus');
   const data = consultationData(form);
   if (!data.patientId) return setFormStatus('consultFormStatus', 'Selecciona un paciente.');
-  if (!data.date || !data.chiefComplaint || !data.serviceType) {
-    return setFormStatus('consultFormStatus', 'Fecha, servicio y motivo son requeridos.');
+  if (!data.date || !data.serviceType) {
+    return setFormStatus('consultFormStatus', 'Fecha y servicio son requeridos.');
   }
   if (!data.requiresMedicalConsultation && !data.procedureResponsible) {
     return setFormStatus('consultFormStatus', 'Selecciona al responsable del procedimiento.');
   }
 
   const clinical = ['clinical', 'edit-clinical'].includes(consultState.mode);
+  if (clinical && [
+    data.chiefComplaint,
+    data.evolution,
+    data.clinicalAntecedents,
+    data.physicalExam,
+    data.diagnosis,
+    data.treatment,
+    data.indications,
+  ].some((value) => !String(value || '').trim())) {
+    return setFormStatus(
+      'consultFormStatus',
+      'Completa motivo, enfermedad actual, antecedentes, examen físico, diagnóstico, tratamiento e indicaciones.',
+    );
+  }
   let saved = null;
   let editIndex = -1;
   if (consultState.editingId !== null) {
@@ -538,11 +556,13 @@ async function handleConsultSave(event) {
     }
   } else {
     const medical = data.requiresMedicalConsultation;
+    const doctorStartsConsultation = medical && isDoctor();
     saved = {
       id: nextId(consultState.consultations), ...data,
-      status: medical ? 'Pendiente' : 'Finalizada',
+      status: doctorStartsConsultation ? 'En consulta' : medical ? 'Pendiente' : 'Finalizada',
       createdAt: new Date().toISOString(),
       finalizedAt: medical ? null : new Date().toISOString(),
+      acceptedAt: doctorStartsConsultation ? new Date().toISOString() : null,
     };
   }
   if (!saved) return setFormStatus('consultFormStatus', 'No se encontró la atención que deseas actualizar.');
@@ -555,7 +575,9 @@ async function handleConsultSave(event) {
   });
 
   try {
-    if (clinical || (data.generatesMedicalRecord && isDoctor())) await ensureMedicalRecord(data.patientId);
+    if ((clinical || (data.requiresMedicalConsultation && isDoctor())) && !consultState.pendingPatient?.isNew) {
+      await ensureMedicalRecord(data.patientId);
+    }
 
     if (editIndex >= 0) {
       if (window.MedSolutionData?.isConfigured()) saved = await window.MedSolutionData.saveAttention(saved);
@@ -582,11 +604,16 @@ async function handleConsultSave(event) {
 
     await saveConsultations();
     const successMessage = saved.requiresMedicalConsultation
-      ? 'Atención registrada y enviada correctamente al panel del doctor.'
+      ? (isDoctor()
+        ? 'Atención registrada. La Historia Clínica está lista para continuar la consulta.'
+        : 'Atención registrada y enviada correctamente al panel del doctor.')
       : 'Procedimiento registrado como realizado.';
     closeConsultModal();
     renderConsultations();
     showFlowMessage(successMessage);
+    if (saved.requiresMedicalConsultation && isDoctor() && saved.status === 'En consulta') {
+      openConsultModal('clinical', saved);
+    }
   } catch (error) {
     const message = error?.message || 'No se pudo registrar la atención.';
     setFormStatus('consultFormStatus', `No se guardó la atención: ${message}`);
@@ -615,10 +642,15 @@ async function cancelConsultation(id) {
 }
 async function deleteConsultation(id) {
   if (!confirm('¿Eliminar esta atención?')) return;
-  consultState.consultations = consultState.consultations.filter((c) => Number(c.id) !== Number(id));
-  localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deleteAttention(id);
-  renderConsultations();
+  try {
+    if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deleteAttention(id);
+    consultState.consultations = consultState.consultations.filter((c) => Number(c.id) !== Number(id));
+    localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
+    renderConsultations();
+    showFlowMessage('Atención eliminada correctamente.');
+  } catch (error) {
+    showFlowMessage(`No se pudo eliminar la atención: ${error.message}`, 'error');
+  }
 }
 
 async function setupAppointmentsModule() {
@@ -683,7 +715,7 @@ async function setupAppointmentsModule() {
   else if (patientId) {
     const patient = getPatients().find((p) => Number(p.id) === patientId);
     if (patient) { consultState.pendingPatient = patient; openServicePicker(); }
-  } else if (getUrlParam('action') === 'new' && !isDoctor()) openPatientSearchModal();
+  } else if (getUrlParam('action') === 'new') openPatientSearchModal();
 
   consultState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
     await loadConsultations(); renderConsultations();

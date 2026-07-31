@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Control de aplicaciones anticonceptivas de Med Solution." />
+    <title>Med Solution | Registro de Anticonceptivos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+    <style>
+      .control-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.control-filter{display:grid;gap:6px;min-width:180px;flex:1}.control-filter span{font-size:.78rem;font-weight:700;color:var(--gray-500)}.control-filter input,.control-filter select{width:100%;padding:10px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font:inherit;color:var(--gray-700);outline:none}.control-filter input:focus,.control-filter select:focus{border-color:var(--aqua);background:var(--white);box-shadow:0 0 0 4px rgba(47,183,166,.14)}.control-table-wrap{overflow-x:auto;margin-top:20px}.control-table{width:100%;border-collapse:collapse;font-size:.91rem}.control-table th{text-align:left;padding:12px 14px;background:var(--gray-50);color:var(--gray-500);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--gray-200)}.control-table td{padding:14px;border-bottom:1px solid var(--gray-200);vertical-align:middle}.control-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:800;font-size:.78rem}.control-status--current{background:#dcf7ed;color:#13765d}.control-status--soon{background:#fff5cc;color:#8a6500}.control-status--expired{background:#fde2e2;color:#a52d40}.control-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.control-form-grid .full-width{grid-column:1/-1}.control-next-date{padding:12px 14px;border-radius:12px;background:rgba(47,183,166,.09);color:var(--petroleum-dark);font-weight:800}.control-empty{text-align:center;padding:38px;color:var(--gray-500)}@media(max-width:680px){.control-form-grid{grid-template-columns:1fr}.control-form-grid .full-width{grid-column:1}}
+    </style>
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html"><span class="brand__mark">MS</span><span class="brand__text">Med Solution</span></a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Nueva Atención</a>
+          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link nav-link--active" data-nav-link href="contraceptives.html"><span class="nav-link__icon">◉</span>Registro de Anticonceptivos</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
+          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer"><strong>Control independiente</strong><span>Seguimiento de aplicaciones y próximas dosis.</span></div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box"><span>⌕</span><input id="topControlSearch" type="search" placeholder="Buscar paciente o teléfono" /></label>
+          <div class="topbar__actions"><div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>AU</span><div><span data-user-name>Usuario</span><small data-user-role></small></div></div></div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div><span class="eyebrow">Seguimiento operativo</span><h1>Registro de Anticonceptivos</h1><p>Controla aplicaciones mensuales y trimestrales sin incorporarlas a la Historia Clínica.</p></div>
+            <button class="btn btn--primary" id="newContraceptiveBtn" type="button">+ Nueva aplicación</button>
+          </div>
+
+          <article class="card" style="padding:24px">
+            <div class="control-toolbar">
+              <label class="control-filter"><span>Nombre o teléfono</span><input id="controlSearch" type="search" placeholder="Buscar…" /></label>
+              <label class="control-filter"><span>Fecha</span><input id="controlDateFilter" type="date" /></label>
+              <label class="control-filter"><span>Estado</span><select id="controlStatusFilter"><option value="">Todos</option><option>Vigente</option><option>Próximo</option><option>Vencido</option></select></label>
+              <span id="controlCount" style="color:var(--gray-500);font-size:.88rem;font-weight:700"></span>
+            </div>
+            <div class="control-table-wrap">
+              <table class="control-table">
+                <thead><tr><th>Paciente</th><th>Teléfono</th><th>Última aplicación</th><th>Próxima aplicación</th><th>Tipo</th><th>Responsable</th><th>Estado</th><th data-price-column>Precio</th><th>Acciones</th></tr></thead>
+                <tbody id="controlTableBody"><tr><td colspan="9" class="control-empty">Cargando controles…</td></tr></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <div class="nursing-modal" id="contraceptiveModal" role="dialog" aria-modal="true" aria-labelledby="contraceptiveModalTitle">
+      <div class="nursing-modal__overlay"></div>
+      <div class="nursing-modal__content">
+        <div class="nursing-modal__header"><div><span class="eyebrow">Control de aplicación</span><h2 id="contraceptiveModalTitle" style="margin:4px 0 0">Nueva aplicación</h2></div><button class="nursing-modal__close" id="closeContraceptiveModalBtn" type="button" aria-label="Cerrar">✕</button></div>
+        <form class="nursing-form" id="contraceptiveForm" novalidate>
+          <div class="control-form-grid">
+            <label class="form-field full-width"><span>Buscar paciente</span><input id="contraceptivePatientSearch" type="search" placeholder="Nombre, apellido, CI o teléfono…" /></label>
+            <label class="form-field full-width"><span>Paciente *</span><select name="patientId" id="contraceptivePatient" required><option value="">Seleccionar…</option></select></label>
+            <label class="form-field"><span>Fecha de aplicación *</span><input type="date" name="applicationDate" required /></label>
+            <label class="form-field"><span>Tipo de anticonceptivo *</span><select name="contraceptiveType" required><option value="">Seleccionar…</option><option value="Mensual">Mensual</option><option value="Trimestral">Trimestral</option></select></label>
+            <label class="form-field full-width"><span>Responsable *</span><select name="responsible" required><option value="">Seleccionar…</option></select></label>
+            <label class="form-field full-width"><span>Próxima aplicación</span><div class="control-next-date" id="nextApplicationPreview">Selecciona la fecha y el tipo.</div></label>
+            <label class="form-field full-width" id="contraceptivePriceField"><span>Precio (Bs, opcional)</span><input type="number" name="price" min="0" step="0.01" placeholder="Dejar vacío para registrar solo el control" /></label>
+            <label class="form-field full-width"><span>Observaciones</span><textarea name="observations" rows="3" placeholder="Observaciones opcionales…"></textarea></label>
+          </div>
+          <p id="contraceptiveFormStatus" role="status" style="display:none;margin:12px 0 0;font-size:.88rem"></p>
+          <div class="nursing-form__actions"><button class="btn btn--secondary" id="cancelContraceptiveModalBtn" type="button">Cancelar</button><button class="btn btn--primary" id="saveContraceptiveBtn" type="submit">Guardar aplicación</button></div>
+        </form>
+      </div>
+    </div>
+
+    <script src="../assets/vendor/supabase.js"></script>
+    <script src="../assets/js/supabase-client.js"></script>
+    <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/contraceptives.js"></script>
+  </body>
+</html>

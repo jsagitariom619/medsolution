@@ -221,6 +221,14 @@
     };
 
     try {
+      if (['En consulta', 'Finalizada'].includes(linkedAttention.status)
+        && linkedAttention.requiresMedicalConsultation !== false) {
+        const { error: recordError } = await connection.rpc(
+          'obtener_o_crear_historia',
+          { paciente_legacy_id: Number(persistedPatient.id) },
+        );
+        throwIfError(recordError);
+      }
       const persistedAttention = await saveAttention(linkedAttention);
       return {
         patient: persistedPatient,

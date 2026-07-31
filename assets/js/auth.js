@@ -31,6 +31,7 @@ const PAGE_ACCESS = {
   'appointments.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'medical-records.html': [ROLES.ADMIN, ROLES.MEDICO],
   'schedule.html': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
+  'contraceptives.html': [ROLES.ADMIN, ROLES.AUXILIAR],
   'services.html': [ROLES.ADMIN],
   'reports.html': [ROLES.ADMIN],
   'settings.html': [ROLES.ADMIN],
@@ -55,6 +56,9 @@ const FEATURE_PERMISSIONS = {
   'schedule.create': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'schedule.edit': [ROLES.ADMIN, ROLES.MEDICO, ROLES.AUXILIAR],
   'schedule.delete': [ROLES.ADMIN, ROLES.MEDICO],
+  'contraceptives.manage': [ROLES.ADMIN, ROLES.AUXILIAR],
+  'contraceptives.edit-price': [ROLES.ADMIN],
+  'contraceptives.delete': [ROLES.ADMIN],
   'users.manage': [ROLES.ADMIN],
   'services.manage': [ROLES.ADMIN],
 };

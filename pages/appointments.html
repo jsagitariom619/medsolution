@@ -200,11 +200,6 @@
                 <option value="">Cargando responsables…</option>
               </select>
             </label>
-            <label class="form-field full-width">
-              <span>Motivo u observación breve *</span>
-              <input type="text" name="chiefComplaint" placeholder="Motivo de llegada o procedimiento solicitado…" required />
-            </label>
-
             <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">
             <span class="section-label">Signos vitales</span>
 
@@ -235,21 +230,23 @@
 
             <!-- Consulta clínica -->
             <span class="section-label">Consulta clínica</span>
-            <label class="form-field full-width"><span>Evolución</span><textarea name="evolution" rows="3" placeholder="Evolución y enfermedad actual…"></textarea></label>
+            <label class="form-field full-width"><span>Motivo de consulta *</span><input type="text" name="chiefComplaint" placeholder="Motivo de consulta…" /></label>
+            <label class="form-field full-width"><span>Enfermedad actual *</span><textarea name="evolution" rows="3" placeholder="Evolución y enfermedad actual…"></textarea></label>
+            <label class="form-field full-width"><span>Antecedentes *</span><textarea name="clinicalAntecedents" rows="3" placeholder="Antecedentes relevantes para la consulta…"></textarea></label>
             <label class="form-field full-width" data-role-feature="appointments.edit-physical-exam">
-              <span>Examen físico</span>
+              <span>Examen físico *</span>
               <textarea name="physicalExam" rows="3" placeholder="Hallazgos al examen físico…"></textarea>
             </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-diagnosis">
-              <span>Diagnóstico</span>
+              <span>Diagnóstico *</span>
               <input type="text" name="diagnosis" placeholder="Ej. Hipertensión arterial, CIE-10 I10" />
             </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-treatment">
-              <span>Tratamiento</span>
+              <span>Tratamiento *</span>
               <textarea name="treatment" rows="3" placeholder="Plan terapéutico…"></textarea>
             </label>
             <label class="form-field full-width"><span>Receta</span><textarea name="prescription" rows="3" placeholder="Medicamentos, dosis, vía y duración…"></textarea></label>
-            <label class="form-field full-width"><span>Indicaciones</span><textarea name="indications" rows="2" placeholder="Cuidados e indicaciones para el paciente…"></textarea></label>
+            <label class="form-field full-width"><span>Indicaciones *</span><textarea name="indications" rows="2" placeholder="Cuidados e indicaciones para el paciente…"></textarea></label>
             <label class="form-field"><span>Próximo control</span><input type="date" name="nextControl" /></label>
             <label class="form-field full-width">
               <span>Observaciones</span>
@@ -275,8 +272,8 @@
           <button class="nursing-modal__close" id="closePatientSearchModalBtn" type="button" aria-label="Cerrar">✕</button>
         </div>
         <div style="padding:0 24px 24px">
-          <p style="color:var(--gray-500);font-size:.9rem;margin:0 0 14px">Busca por CI, nombre o apellido.</p>
-          <input id="patientSearchInput" class="patient-search-input" type="search" placeholder="CI, nombre o apellido…" autocomplete="off" />
+          <p style="color:var(--gray-500);font-size:.9rem;margin:0 0 14px">Busca por nombre, apellido, CI o teléfono.</p>
+          <input id="patientSearchInput" class="patient-search-input" type="search" placeholder="Nombre, apellido, CI o teléfono…" autocomplete="off" />
           <div class="patient-search-results" id="patientSearchResults">
             <p class="patient-result-empty">Escribe para buscar pacientes…</p>
           </div>
@@ -288,7 +285,7 @@
               <div class="quick-register-grid">
                 <label class="form-field"><span>Nombre *</span><input type="text" name="nombre" placeholder="Nombre" required /></label>
                 <label class="form-field"><span>Apellido *</span><input type="text" name="apellido" placeholder="Apellido" required /></label>
-                <label class="form-field"><span>CI *</span><input type="text" name="ci" placeholder="Cédula" required /></label>
+                <label class="form-field"><span>CI</span><input type="text" name="ci" placeholder="Opcional" /></label>
                 <label class="form-field"><span>Teléfono</span><input type="tel" name="telefono" placeholder="Ej. 0412-5551234" /></label>
                 <label class="form-field"><span>Género</span>
                   <select name="genero" style="width:100%;padding:12px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font-size:.93rem;font-family:inherit;outline:none;color:var(--gray-700)">

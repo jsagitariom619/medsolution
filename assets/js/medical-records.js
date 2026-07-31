@@ -24,7 +24,9 @@ function escapeHtml(value) {
 function getInitials(name) { return (name || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase(); }
 function formatDate(date) { if (!date) return '—'; const [y,m,d] = date.split('-'); return `${d}/${m}/${y}`; }
 function consultationsFor(patientId) {
-  return recordsState.consultations.filter((c) => Number(c.patientId) === Number(patientId))
+  return recordsState.consultations
+    .filter((c) => c.contraceptiveControl !== true)
+    .filter((c) => Number(c.patientId) === Number(patientId))
     .sort((a,b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
 }
 async function ensureRecord(patientId) {
@@ -65,7 +67,8 @@ function entryHtml(c) {
       ${field('Servicio realizado', c.serviceType || 'Servicio anterior', true)}
       ${field('Responsable', c.procedureResponsible, true)}
       ${field('Motivo', c.chiefComplaint, true)}
-      ${field('Evolución', c.evolution, true)}
+      ${field('Enfermedad actual', c.evolution, true)}
+      ${field('Antecedentes', c.clinicalAntecedents, true)}
       ${(c.bp || c.hr || c.temp || c.weight || c.height || c.spo2) ? `<div class="record-field record-field--vitals"><span>Signos vitales</span><div class="vitals-chips">
         ${c.bp ? `<span class="vital-chip">PA: ${escapeHtml(c.bp)} mmHg</span>` : ''}${c.hr ? `<span class="vital-chip">FC: ${escapeHtml(c.hr)} lpm</span>` : ''}
         ${c.temp ? `<span class="vital-chip">T°: ${escapeHtml(c.temp)} °C</span>` : ''}${c.weight ? `<span class="vital-chip">Peso: ${escapeHtml(c.weight)} kg</span>` : ''}
@@ -105,7 +108,7 @@ async function selectPatient(id) {
   renderPatientList();
   await renderPatientRecord(id);
 }
-function editPatient(id) {
+async function editPatient(id) {
   const patient = recordsState.patients.find((p) => Number(p.id) === Number(id));
   if (!patient) return;
   const telefono = prompt('Teléfono del paciente:', patient.telefono || '');
@@ -113,8 +116,12 @@ function editPatient(id) {
   const direccion = prompt('Dirección del paciente:', patient.direccion || '');
   if (direccion === null) return;
   patient.telefono = telefono.trim(); patient.direccion = direccion.trim();
+  if (window.MedSolutionData?.isConfigured()) {
+    const persisted = await window.MedSolutionData.savePatient(patient);
+    Object.assign(patient, persisted);
+  }
   localStorage.setItem(PATIENTS_KEY, JSON.stringify(recordsState.patients));
-  renderPatientRecord(id);
+  await renderPatientRecord(id);
 }
 function printDocument(title, patient, body) {
   const win = window.open('', '_blank', 'width=850,height=700');
@@ -129,7 +136,8 @@ function printDocument(title, patient, body) {
 function printRecord(patientId) {
   const patient = recordsState.patients.find((p) => Number(p.id) === Number(patientId));
   const body = consultationsFor(patientId).map((c) => `<div class="block"><h2>${formatDate(c.date)} · ${escapeHtml(c.chiefComplaint || '')}</h2>
-    <p><strong>Evolución:</strong> ${escapeHtml(c.evolution || '—')}<br><strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || '—')}<br>
+    <p><strong>Enfermedad actual:</strong> ${escapeHtml(c.evolution || '—')}<br><strong>Antecedentes:</strong> ${escapeHtml(c.clinicalAntecedents || '—')}<br>
+    <strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || '—')}<br>
     <strong>Tratamiento:</strong> ${escapeHtml(c.treatment || '—')}<br><strong>Receta:</strong> ${escapeHtml(c.prescription || '—')}<br>
     <strong>Indicaciones:</strong> ${escapeHtml(c.indications || '—')}<br><strong>Próximo control:</strong> ${formatDate(c.nextControl)}</p></div>`).join('');
   printDocument('Historia clínica', patient, body || '<p>Sin consultas registradas.</p>');
@@ -154,7 +162,7 @@ async function setupMedicalRecords() {
   document.getElementById('recordsDetailPanel')?.addEventListener('click', (e) => {
     const toggle = e.target.closest('[data-toggle-entry]');
     if (toggle) document.querySelector(`.record-entry[data-entry-id="${toggle.dataset.toggleEntry}"]`)?.classList.toggle('record-entry--collapsed');
-    const edit = e.target.closest('[data-edit-patient]'); if (edit) editPatient(edit.dataset.editPatient);
+    const edit = e.target.closest('[data-edit-patient]'); if (edit) editPatient(edit.dataset.editPatient).catch((error)=>alert(error.message));
     const record = e.target.closest('[data-print-record]'); if (record) printRecord(record.dataset.printRecord);
     const prescription = e.target.closest('[data-print-prescription]'); if (prescription) printPrescription(prescription.dataset.printPrescription);
   });
