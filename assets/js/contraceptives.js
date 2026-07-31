@@ -564,11 +564,9 @@ async function setupContraceptives() {
   const applySearch = (value) => {
     contraceptiveState.search = value;
     document.getElementById('controlSearch').value = value;
-    document.getElementById('topControlSearch').value = value;
     renderContraceptiveTable();
   };
   document.getElementById('controlSearch').addEventListener('input', (event) => applySearch(event.target.value));
-  document.getElementById('topControlSearch').addEventListener('input', (event) => applySearch(event.target.value));
   document.getElementById('controlDateFilter').addEventListener('change', (event) => {
     contraceptiveState.date = event.target.value;
     renderContraceptiveTable();

@@ -18,25 +18,7 @@
   </style>
 </head>
 <body class="app-body">
-<div class="app-shell">
-  <aside class="sidebar" aria-label="Navegación principal">
-    <a class="brand brand--light" href="dashboard.html"><span class="brand__mark">MS</span><span class="brand__text">Med Solution</span></a>
-    <nav class="sidebar__nav">
-      <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
-      <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-      <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Nueva Atención</a>
-      <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
-      <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
-      <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
-      <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
-      <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
-    </nav>
-    <div class="sidebar__footer"><strong>Configuración centralizada</strong><span>Catálogo sincronizado con Supabase.</span></div>
-  </aside>
-  <main class="main-area">
-    <header class="topbar"><label class="search-box"><span>⌕</span><input type="search" placeholder="Buscar configuración" /></label>
-      <div class="topbar__actions"><div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>AD</span><div><span data-user-name>Administrador</span><small data-user-role></small></div></div></div></header>
-    <section class="content">
+<section class="content module-content-view">
       <div class="page-header"><div><span class="eyebrow">Administración</span><h1>Catálogo de Servicios</h1><p>Configura servicios, precios y comportamiento sin modificar el código.</p></div>
         <button class="btn btn--primary" id="newServiceBtn" type="button">+ Nuevo servicio</button></div>
       <article class="card" style="padding:24px">
@@ -51,9 +33,7 @@
         <button class="btn btn--primary" id="newStaffBtn" type="button">+ Nuevo integrante</button></div>
       <article class="card" style="padding:24px"><div style="overflow-x:auto"><table class="patients-table"><thead><tr><th>Nombre completo</th><th>Cargo</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="staffTableBody"><tr><td colspan="4" class="patients-empty">Cargando personal…</td></tr></tbody></table></div></article>
-    </section>
-  </main>
-</div>
+</section>
 <div class="nursing-modal" id="serviceModal" role="dialog" aria-modal="true">
   <div class="nursing-modal__overlay"></div><div class="nursing-modal__content">
     <div class="nursing-modal__header"><h2 id="serviceModalTitle">Nuevo servicio</h2><button class="nursing-modal__close" id="closeServiceModalBtn" type="button">✕</button></div>
@@ -82,7 +62,7 @@
 </div>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="../assets/js/supabase-client.js"></script>
-<script type="module" src="../assets/js/main.js"></script>
+<script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
 <script src="../assets/js/services.js"></script>
 </body>
 </html>

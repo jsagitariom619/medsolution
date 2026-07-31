@@ -37,39 +37,7 @@
     </style>
   </head>
   <body class="app-body">
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegación principal">
-        <a class="brand brand--light" href="dashboard.html">
-          <span class="brand__mark">MS</span>
-          <span class="brand__text">Med Solution</span>
-        </a>
-        <nav class="sidebar__nav">
-          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
-          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Citas</a>
-          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
-          <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
-          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
-          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
-        </nav>
-        <div class="sidebar__footer">
-          <strong>Preparado para Supabase</strong>
-          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
-        </div>
-      </aside>
-      <main class="main-area">
-        <header class="topbar">
-          <label class="search-box">
-            <span>⌕</span>
-            <input type="search" placeholder="Buscar paciente, cita o historia clínica" />
-          </label>
-          <div class="topbar__actions">
-            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
-            <div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>DR</span><div><span data-user-name>Usuario</span><small data-user-role></small></div></div>
-          </div>
-        </header>
-        <section class="content">
+    <section class="content module-content-view">
           <div class="page-header">
             <div>
               <span class="eyebrow">Agenda</span>
@@ -122,9 +90,7 @@
               </table>
             </div>
           </article>
-        </section>
-      </main>
-    </div>
+    </section>
 
     <!-- Schedule Modal -->
     <div class="nursing-modal" id="scheduleModal" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
@@ -176,7 +142,7 @@
 
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
-    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
     <script src="../assets/js/schedule.js"></script>
   </body>
 </html>

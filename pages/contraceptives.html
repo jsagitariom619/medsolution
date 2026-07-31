@@ -15,29 +15,7 @@
     </style>
   </head>
   <body class="app-body">
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegación principal">
-        <a class="brand brand--light" href="dashboard.html"><span class="brand__mark">MS</span><span class="brand__text">Med Solution</span></a>
-        <nav class="sidebar__nav">
-          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
-          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
-          <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Nueva Atención</a>
-          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
-          <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
-          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
-          <a class="nav-link nav-link--active" data-nav-link href="contraceptives.html"><span class="nav-link__icon">◉</span>Registro de Anticonceptivos</a>
-          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
-          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
-        </nav>
-        <div class="sidebar__footer"><strong>Control independiente</strong><span>Seguimiento de aplicaciones y próximas dosis.</span></div>
-      </aside>
-
-      <main class="main-area">
-        <header class="topbar">
-          <label class="search-box"><span>⌕</span><input id="topControlSearch" type="search" placeholder="Buscar paciente o teléfono" /></label>
-          <div class="topbar__actions"><div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>AU</span><div><span data-user-name>Usuario</span><small data-user-role></small></div></div></div>
-        </header>
-        <section class="content">
+    <section class="content module-content-view">
           <div class="page-header">
             <div><span class="eyebrow">Seguimiento clínico</span><h1>Registro de Anticonceptivos</h1><p>Controla aplicaciones mensuales y trimestrales, próximas dosis e historial por paciente.</p></div>
             <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn--secondary" id="configureContraceptivePricesBtn" type="button">⚙ Configurar precios</button><button class="btn btn--primary" id="newContraceptiveBtn" type="button">+ Nueva aplicación</button></div>
@@ -58,9 +36,7 @@
               </table>
             </div>
           </article>
-        </section>
-      </main>
-    </div>
+    </section>
 
     <div class="nursing-modal" id="contraceptiveModal" role="dialog" aria-modal="true" aria-labelledby="contraceptiveModalTitle">
       <div class="nursing-modal__overlay"></div>
@@ -124,7 +100,7 @@
 
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
-    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
     <script src="../assets/js/contraceptives.js"></script>
   </body>
 </html>

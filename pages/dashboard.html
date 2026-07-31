@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
-    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260731-master-layout" />
   </head>
   <body class="app-body dashboard-page">
     <div class="app-shell">
@@ -35,6 +35,7 @@
           <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
           <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
           <a class="nav-link" href="#prescriptions" data-requires-role="Administrador,Médico"><span class="nav-link__icon">Rx</span>Recetas e Impresiones</a>
+          <a class="nav-link" data-nav-link href="contraceptives.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◉</span>Registro de Anticonceptivos</a>
           <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
         </nav>
         <div class="sidebar-security-card">
@@ -58,6 +59,7 @@
             <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>MD</span><div><strong data-user-name>Médico</strong><small data-user-role>Médico</small></div><span>⌄</span></div>
           </div>
         </header>
+        <div id="dashboardHomeView">
         <section class="content dashboard-content">
           <div class="dashboard-welcome">
             <div>
@@ -121,11 +123,13 @@
           </section>
         </section>
         <footer class="dashboard-shell-footer"><span>© 2025 Med Solution · Sistema Médico Integral.</span><span>Versión 1.0.0 ✚</span></footer>
+        </div>
+        <iframe class="dashboard-module-frame" id="dashboardModuleFrame" title="Módulo de MedSolution" hidden></iframe>
       </main>
     </div>
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
-    <script type="module" src="../assets/js/main.js"></script>
-    <script src="../assets/js/dashboard.js"></script>
+    <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
+    <script src="../assets/js/dashboard.js?v=20260731-master-layout"></script>
   </body>
 </html>

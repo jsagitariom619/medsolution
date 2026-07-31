@@ -1,5 +1,83 @@
 const DASHBOARD_SCHEDULE_KEY = 'medsolution.appointments';
 let dashboardSubscriptionsReady=false;
+const DASHBOARD_MODULES = new Set(['patients.html','appointments.html','medical-records.html','schedule.html','services.html','contraceptives.html','reports.html','settings.html']);
+
+function dashboardModuleTarget(value) {
+  if (!value) return null;
+  const url = new URL(value, window.location.href);
+  const page = url.pathname.split('/').pop();
+  return DASHBOARD_MODULES.has(page) ? `${page}${url.search}${url.hash}` : null;
+}
+
+function setDashboardActiveModule(target = '') {
+  const page = String(target).split(/[?#]/)[0];
+  document.querySelectorAll('.dashboard-sidebar [data-nav-link]').forEach((link) => {
+    const linkPage = new URL(link.href, location.href).pathname.split('/').pop();
+    link.classList.toggle('nav-link--active', page ? linkPage === page : linkPage === 'dashboard.html');
+  });
+}
+
+function showDashboardHome(pushState = true) {
+  const home = document.getElementById('dashboardHomeView');
+  const frame = document.getElementById('dashboardModuleFrame');
+  home.hidden = false;
+  frame.hidden = true;
+  frame.removeAttribute('src');
+  setDashboardActiveModule();
+  if (pushState) history.pushState({ module: '' }, '', 'dashboard.html');
+}
+
+function openDashboardModule(target, pushState = true) {
+  const moduleTarget = dashboardModuleTarget(target);
+  if (!moduleTarget) return false;
+  const home = document.getElementById('dashboardHomeView');
+  const frame = document.getElementById('dashboardModuleFrame');
+  home.hidden = true;
+  frame.hidden = false;
+  if (frame.dataset.currentTarget !== moduleTarget) {
+    frame.dataset.currentTarget = moduleTarget;
+    frame.src = moduleTarget;
+  }
+  setDashboardActiveModule(moduleTarget);
+  if (pushState) history.pushState({ module: moduleTarget }, '', `dashboard.html?module=${encodeURIComponent(moduleTarget)}`);
+  return true;
+}
+
+function setupDashboardShell() {
+  const frame = document.getElementById('dashboardModuleFrame');
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+    const raw = link.getAttribute('href');
+    if (!raw || raw.startsWith('#')) return;
+    const page = new URL(link.href, location.href).pathname.split('/').pop();
+    if (page === 'dashboard.html') {
+      event.preventDefault();
+      showDashboardHome();
+    } else if (dashboardModuleTarget(link.href)) {
+      event.preventDefault();
+      openDashboardModule(link.href);
+    }
+  });
+  frame.addEventListener('load', () => {
+    try {
+      const page = frame.contentWindow.location.pathname.split('/').pop();
+      if (page === 'dashboard.html') { showDashboardHome(false); return; }
+      const target = dashboardModuleTarget(`${page}${frame.contentWindow.location.search}${frame.contentWindow.location.hash}`);
+      if (target) {
+        frame.dataset.currentTarget = target;
+        setDashboardActiveModule(target);
+        history.replaceState({ module: target }, '', `dashboard.html?module=${encodeURIComponent(target)}`);
+      }
+    } catch { /* El módulo conserva su navegación aunque el navegador restrinja la inspección. */ }
+  });
+  window.addEventListener('popstate', () => {
+    const target = new URLSearchParams(location.search).get('module');
+    if (target) openDashboardModule(target, false); else showDashboardHome(false);
+  });
+  const initial = new URLSearchParams(location.search).get('module');
+  if (initial) openDashboardModule(initial, false); else setDashboardActiveModule();
+}
 
 function dashboardReadSchedule() {
   try { const value = JSON.parse(localStorage.getItem(DASHBOARD_SCHEDULE_KEY)); return Array.isArray(value) ? value : []; }
@@ -53,8 +131,9 @@ async function setupFunctionalDashboard() {
     const reminders=pending.length+contraceptiveDue+controlsDue+upcoming;document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
     const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
     renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
-    const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())location.href=`patients.html?search=${encodeURIComponent(search.value.trim())}`};
+    const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};
     if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard);window.addEventListener('storage',event=>{if(event.key===DASHBOARD_SCHEDULE_KEY)setupFunctionalDashboard()})}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }
 }
 document.addEventListener('DOMContentLoaded',setupFunctionalDashboard);
+document.addEventListener('DOMContentLoaded',setupDashboardShell);
