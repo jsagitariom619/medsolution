@@ -17,6 +17,9 @@
       .patients-table tr:last-child td { border-bottom: none; }
       .patients-empty { text-align: center; padding: 40px; color: var(--gray-500); }
       .service-value-input,.service-value-select{width:100%;min-width:120px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50);color:var(--gray-700);font:inherit}.service-value-input:focus,.service-value-select:focus{outline:none;border-color:var(--aqua);box-shadow:0 0 0 4px rgba(47,183,166,.12);background:white}.service-value-name{min-width:220px}.service-value-actions{display:flex;align-items:center;gap:10px}.service-value-status{font-size:.82rem;font-weight:700;color:var(--gray-500)}
+      .profile-preview{width:92px;height:92px;border-radius:24px;background:linear-gradient(135deg,var(--petroleum),var(--aqua));color:white;display:grid;place-items:center;font-size:1.35rem;font-weight:800;background-position:center;background-size:cover;box-shadow:var(--shadow-sm)}
+      .user-photo-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}.user-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.user-photo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--petroleum),var(--aqua));color:white;display:grid;place-items:center;font-size:.78rem;font-weight:800;background-position:center;background-size:cover}@media(max-width:650px){.user-config-grid{grid-template-columns:1fr}}
+      .modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}.modal--open{display:flex}.modal__backdrop{position:absolute;inset:0;background:rgba(8,37,46,.58);backdrop-filter:blur(4px)}.modal__panel{position:relative;width:min(100%,680px);max-height:calc(100vh - 40px);overflow:auto;background:white;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:28px}.modal__close{position:absolute;right:18px;top:16px;border:0;background:var(--gray-100);color:var(--gray-600);width:34px;height:34px;border-radius:10px;font-size:1.3rem;cursor:pointer}
     </style>
   </head>
   <body class="app-body">
@@ -81,9 +84,9 @@
           <section style="margin-top:40px" data-requires-role="Administrador">
             <div class="page-header" style="margin-bottom:20px">
               <div>
-                <span class="eyebrow">Usuarios predefinidos</span>
+                <span class="eyebrow">Perfiles configurables</span>
                 <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-0.04em">Usuarios del sistema</h2>
-                <p style="margin:6px 0 0;color:var(--gray-500)">El sistema utiliza únicamente los perfiles Administrador, Doctor y Auxiliar definidos en el código.</p>
+                <p style="margin:6px 0 0;color:var(--gray-500)">Configura los tres perfiles operativos. Los cambios se sincronizan con toda la plataforma.</p>
               </div>
             </div>
 
@@ -94,6 +97,7 @@
                     <tr>
                       <th>Usuario</th>
                       <th>Nombre</th>
+                      <th>Cargo profesional</th>
                       <th>Rol</th>
                       <th>Estado</th>
                       <th>Acciones</th>
@@ -101,7 +105,7 @@
                   </thead>
                   <tbody id="usersTableBody">
                     <tr id="usersEmptyRow" style="display:none">
-                      <td colspan="5" class="patients-empty">No hay usuarios registrados.</td>
+                      <td colspan="6" class="patients-empty">No hay usuarios registrados.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -109,9 +113,40 @@
             </article>
           </section>
     </section>
+    <div class="modal" id="systemUserModal" aria-hidden="true">
+      <div class="modal__backdrop" data-close-user-modal></div>
+      <section class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="systemUserModalTitle" style="max-width:680px">
+        <button class="modal__close" type="button" aria-label="Cerrar" data-close-user-modal>×</button>
+        <span class="eyebrow">Perfil del sistema</span>
+        <h2 id="systemUserModalTitle" style="margin:8px 0 22px;color:var(--petroleum-dark)">Editar usuario</h2>
+        <form id="systemUserForm">
+          <div class="user-photo-actions">
+            <span class="profile-preview" id="systemUserPhotoPreview">MS</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label class="btn btn--secondary" for="systemUserPhoto">Subir fotografía</label>
+              <input id="systemUserPhoto" type="file" accept="image/*" hidden />
+              <button class="btn btn--secondary" id="removeSystemUserPhoto" type="button">Eliminar fotografía</button>
+            </div>
+          </div>
+          <div class="user-config-grid">
+            <label class="form-field"><span>Nombre completo *</span><input name="name" required /></label>
+            <label class="form-field"><span>Usuario *</span><input name="username" required autocomplete="off" data-no-auto-capitalize /></label>
+            <label class="form-field"><span>Nueva contraseña</span><input name="password" type="password" autocomplete="new-password" placeholder="Conservar la actual" /></label>
+            <label class="form-field"><span>Cargo profesional</span><input name="position" placeholder="Ej. Medicina general" /></label>
+            <label class="form-field"><span>Rol</span><input name="role" readonly /></label>
+            <label class="form-field"><span>Estado</span><select name="active"><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
+          </div>
+          <p id="systemUserStatus" role="status" style="min-height:20px;color:var(--gray-500);font-size:.88rem"></p>
+          <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+            <button class="btn btn--secondary" type="button" data-close-user-modal>Cancelar</button>
+            <button class="btn btn--primary" id="saveSystemUserBtn" type="submit">Guardar cambios</button>
+          </div>
+        </form>
+      </section>
+    </div>
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/settings.js?v=20260731-service-values"></script>
+    <script src="../assets/js/settings.js?v=20260731-user-profiles"></script>
   </body>
 </html>

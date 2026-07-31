@@ -473,7 +473,7 @@ function closeConsultModal() {
 function fillConsultForm(form, c) {
   setSelectedPatient(c.patientId, c.patientName);
   const fields = ['date','time','procedureResponsible','bp','hr','temp','weight','height','spo2',
-    'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','prescription','indications','nextControl','observations'];
+    'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','medications','procedures','prescription','indications','nextControl','observations'];
   fields.forEach((name) => { if (form.elements[name]) form.elements[name].value = c[name] || ''; });
   renderServiceOptions(c.serviceId || c.serviceType);
   if (!form.elements.serviceType.value && c.serviceType) {
@@ -528,11 +528,15 @@ function consultationData(form) {
     bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
     height: value('height'), spo2: value('spo2'), evolution: value('evolution'),
     physicalExam: value('physicalExam'), diagnosis: value('diagnosis'), treatment: value('treatment'),
+    medications: value('medications'), procedures: value('procedures'),
     prescription: value('prescription'), indications: value('indications'),
     nextControl: value('nextControl'), observations: value('observations'),
     registeredBy: consultState.editingId !== null
       ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredBy
       : (getAuthUser()?.name || getAuthUser()?.username || 'Usuario'),
+    registeredByRole: consultState.editingId !== null
+      ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredByRole
+      : (getAuthUser()?.role || ''),
     registeredByUserId: consultState.editingId !== null
       ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredByUserId
       : (getAuthUser()?.id || null),
@@ -698,7 +702,7 @@ async function startScheduledAppointment(appointmentId) {
     id:nextId(consultState.consultations),patientId:patient.id,patientName:`${patient.nombre} ${patient.apellido}`.trim(),
     date:appointment.date,time:appointment.time,serviceId:service.id,serviceType:service.name,servicePrice:Number(service.price||0),
     requiresMedicalConsultation:medical,generatesMedicalRecord:Boolean(service.generates_medical_record),procedureResponsible:medical?'':appointment.professional,
-    chiefComplaint:'',observations:appointment.observations||'',appointmentObservations:appointment.observations||'',scheduledAppointmentId:appointment.id,
+    chiefComplaint:'',observations:'',appointmentObservations:appointment.observations||'',scheduledAppointmentId:appointment.id,
     scheduledProfessional:appointment.professional||'',status:doctorStarts?'En consulta':medical?'Pendiente':'Finalizada',
     createdAt:`${appointment.date}T${appointment.time||'00:00'}:00`,acceptedAt:doctorStarts?new Date().toISOString():null,
     finalizedAt:medical?null:new Date().toISOString(),registeredBy:getAuthUser()?.name||'Usuario',registeredByUserId:getAuthUser()?.id||null,
@@ -791,4 +795,5 @@ async function setupAppointmentsModule() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', setupAppointmentsModule);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupAppointmentsModule, { once: true });
+else setupAppointmentsModule();

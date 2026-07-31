@@ -62,6 +62,15 @@
   function mapStaff(row) {
     return { id: row.id, name: row.nombre_completo, position: row.cargo, active: row.activo };
   }
+  function mapSystemUser(row) {
+    const names = String(row.nombre_completo || '').trim().split(/\s+/);
+    return {
+      id: row.id, username: row.usuario, passwordHash: row.password_hash,
+      name: row.nombre_completo, role: row.rol, position: row.cargo_profesional || '',
+      photoPath: row.fotografia_path || '', active: row.activo !== false,
+      initials: names.slice(0, 2).map((part) => part[0] || '').join('').toUpperCase(),
+    };
+  }
   function mapPatient(row) {
     return {
       id: Number(row.legacy_id), remoteId: row.id, nombre: row.nombre, apellido: row.apellido || '',
@@ -126,6 +135,56 @@
     const { data, error } = await connection.from('personal_consultorio').update({ activo: active }).eq('id', id).select().single();
     throwIfError(error); return mapStaff(data);
   }
+  async function getSystemUsers() {
+    const connection = await db();
+    if (!connection) return [];
+    const { data, error } = await connection.from('perfiles_sistema').select('*').order('creado_en');
+    throwIfError(error);
+    const users = (data || []).map(mapSystemUser);
+    for (const user of users) {
+      if (!user.photoPath) continue;
+      const { data: signed } = await connection.storage.from('medsolution-archivos').createSignedUrl(user.photoPath, 3600);
+      user.photoUrl = signed?.signedUrl || '';
+    }
+    return users;
+  }
+  async function saveSystemUser(user) {
+    const connection = await db(true);
+    const payload = {
+      ...(user.id ? { id: user.id } : {}), rol: user.role, usuario: user.username,
+      password_hash: user.passwordHash, nombre_completo: user.name,
+      cargo_profesional: user.position || '', fotografia_path: user.photoPath || null,
+      activo: user.active !== false,
+    };
+    const { data, error } = await connection.from('perfiles_sistema').upsert(payload).select().single();
+    throwIfError(error); return mapSystemUser(data);
+  }
+  async function uploadProfilePhoto(role, file) {
+    const connection = await db(true);
+    const extension = String(file.name || '').split('.').pop().toLowerCase() || 'jpg';
+    const path = `perfiles/${String(role).normalize('NFD').replace(/[^a-zA-Z]/g, '').toLowerCase()}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await connection.storage.from('medsolution-archivos').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+    throwIfError(error); return path;
+  }
+  async function deleteStoredFile(path) {
+    if (!path) return;
+    const connection = await db(true);
+    const { error } = await connection.storage.from('medsolution-archivos').remove([path]); throwIfError(error);
+  }
+  async function uploadClinicalAttachment(attentionRemoteId, file) {
+    if (!attentionRemoteId) throw new Error('La evolución debe estar guardada antes de adjuntar archivos.');
+    const connection = await db(true);
+    const safeName = String(file.name || 'archivo').normalize('NFD').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `evoluciones/${attentionRemoteId}/${crypto.randomUUID()}-${safeName}`;
+    const { error } = await connection.storage.from('medsolution-archivos').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+    throwIfError(error);
+    return { id: crypto.randomUUID(), path, name: file.name, type: file.type, size: file.size, uploadedAt: new Date().toISOString() };
+  }
+  async function signedFileUrl(path, expiresIn = 900) {
+    const connection = await db(true);
+    const { data, error } = await connection.storage.from('medsolution-archivos').createSignedUrl(path, expiresIn);
+    throwIfError(error); return data?.signedUrl || '';
+  }
   async function getPatients() {
     const connection = await db();
     if (!connection) return localArray('medsolution.patients');
@@ -189,7 +248,9 @@
     const payload = {
       paciente_id: patientId, servicio_id: uuidOrNull(attention.serviceId),
       historia_clinica_id: medicalRecordId,
-      responsable_id: responsible?.id || null, registrado_por: uuidOrNull(attention.registeredByUserId),
+      // La autenticación es local: el responsable queda preservado en el snapshot,
+      // sin intentar vincularlo a public.usuarios (tabla reservada para Supabase Auth).
+      responsable_id: responsible?.id || null, registrado_por: null,
       fecha_hora: attention.createdAt || new Date().toISOString(), estado: attention.status,
       servicio_nombre_snapshot: attention.serviceType, precio_snapshot: Number(attention.servicePrice || 0),
       responsable_nombre_snapshot: attention.procedureResponsible || null,
@@ -295,6 +356,8 @@
     ready, configuration: () => config || {}, getClient: () => client, isConfigured: () => Boolean(client),
     testConnection, getServices, saveService, toggleService,
     getStaff: () => getStaff(false), getAllStaff: () => getStaff(true), saveStaff, toggleStaff,
+    getSystemUsers, saveSystemUser, uploadProfilePhoto, deleteStoredFile,
+    uploadClinicalAttachment, signedFileUrl,
     getPatients, findPatientByCi, savePatient, deletePatient,
     getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
     ensureMedicalRecord, getMedicalRecords, getSettings, saveSettings,
@@ -302,5 +365,6 @@
     subscribeStaff: (callback) => subscribe('personal_consultorio', callback),
     subscribePatients: (callback) => subscribe('pacientes', callback),
     subscribeAttentions: (callback) => subscribe('atenciones', callback),
+    subscribeSystemUsers: (callback) => subscribe('perfiles_sistema', callback),
   });
 })(window);

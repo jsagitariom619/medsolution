@@ -23,8 +23,10 @@
       .records-patient-item--active strong { color: var(--petroleum); }
       .records-detail-panel { min-height: 200px; }
       .record-patient-header { display: flex; align-items: center; gap: 16px; padding: 20px; border-bottom: 1px solid var(--gray-200); flex-wrap: wrap; }
-      .record-entries { padding: 20px; display: grid; gap: 16px; }
-      .record-entry { border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow: hidden; }
+      .record-entries { padding: 20px 20px 20px 34px; display: grid; gap: 16px; position:relative; }
+      .record-entries[data-record-panel="clinical"]::before{content:"";position:absolute;left:20px;top:62px;bottom:24px;width:2px;background:var(--gray-200)}
+      .record-entry { border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow:visible;position:relative;background:white; }
+      .record-entries[data-record-panel="clinical"] .record-entry::before{content:"";position:absolute;left:-21px;top:19px;width:12px;height:12px;border-radius:50%;background:var(--aqua);border:3px solid white;box-shadow:0 0 0 2px var(--gray-200)}
       .record-entry__header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
       .record-entry__date { font-weight: 700; color: var(--petroleum); font-size: .93rem; }
       .record-entry__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
@@ -51,6 +53,7 @@
       .record-tab { border:1px solid var(--gray-200);background:var(--gray-50);color:var(--gray-600);padding:10px 16px;border-radius:12px;font:inherit;font-weight:800;cursor:pointer; }
       .record-tab--active { background:var(--petroleum);border-color:var(--petroleum);color:white; }
       .record-tab-panel[hidden] { display:none; }
+      .record-attachments{grid-column:1/-1;padding:14px 16px;background:rgba(15,76,92,.035);border-top:1px solid var(--gray-200)}.record-attachments__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}.record-attachment{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--gray-200);border-radius:12px;background:white;min-width:0}.record-attachment__preview{width:48px;height:48px;border-radius:9px;object-fit:cover;background:var(--gray-100);display:grid;place-items:center;font-size:1.3rem;flex:none}.record-attachment__meta{min-width:0;flex:1}.record-attachment__meta strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.8rem}.record-attachment__meta small{color:var(--gray-500);font-size:.72rem}.record-attachment__actions{display:flex;gap:5px}.record-attachment__actions button,.record-attachment__actions a{border:0;background:transparent;color:var(--aqua);font-weight:800;cursor:pointer;text-decoration:none;padding:3px}
     </style>
   </head>
   <body class="app-body">
@@ -84,10 +87,11 @@
             </article>
           </div>
     </section>
+    <input id="clinicalAttachmentInput" type="file" multiple accept="image/*,application/pdf,.dcm,.dicom,.doc,.docx,.xls,.xlsx" hidden />
 
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/medical-records.js"></script>
+    <script src="../assets/js/medical-records.js?v=20260731-digital-record"></script>
   </body>
 </html>

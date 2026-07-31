@@ -371,4 +371,5 @@ async function setupScheduleModule() {
   if(new URLSearchParams(location.search).get('action')==='new')openScheduleModal('create');
 }
 
-document.addEventListener('DOMContentLoaded', setupScheduleModule);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupScheduleModule, { once: true });
+else setupScheduleModule();

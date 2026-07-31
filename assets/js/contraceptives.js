@@ -548,4 +548,5 @@ async function setupContraceptives() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', setupContraceptives);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupContraceptives, { once: true });
+else setupContraceptives();

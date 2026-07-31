@@ -1,12 +1,4 @@
-// Settings Module — muestra los tres usuarios predefinidos (solo lectura).
-// Non-module script: kept as regular script for compatibility with non-module
-// sibling scripts on this page. Refactor to ES module when migrating to Supabase.
-
-const PREDEFINED_USERS = Object.freeze([
-  { id: 1, username: 'admin', name: 'Administrador', role: 'Administrador', initials: 'AD', active: true },
-  { id: 2, username: 'doctor', name: 'Médico Demo', role: 'Médico', initials: 'MD', active: true },
-  { id: 3, username: 'auxiliar', name: 'Ana Martínez', role: 'Auxiliar', initials: 'AM', active: true },
-]);
+// Settings Module — perfiles operativos y parámetros centralizados.
 
 const REQUIRED_SERVICE_VALUES = Object.freeze([
   { label: 'Consulta médica', match: (value) => value.includes('consulta'), medical: true, record: true, responsible: 'Doctor' },
@@ -21,6 +13,7 @@ const REQUIRED_SERVICE_VALUES = Object.freeze([
 ]);
 
 const settingsServiceState = { services: [], savingId: null, subscribed: false };
+const systemUsersState = { users: [], editing: null, pendingPhoto: null, removePhoto: false, saving: false, subscribed: false };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,7 +27,107 @@ function getCurrentUser() {
 }
 
 async function loadUsers() {
-  return PREDEFINED_USERS.map((user) => ({ ...user }));
+  systemUsersState.users = await window.MedSolutionData.getSystemUsers();
+  return systemUsersState.users;
+}
+
+function hashPassword(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function setUserPhotoPreview(user, objectUrl = '') {
+  const preview = document.getElementById('systemUserPhotoPreview');
+  if (!preview) return;
+  const source = objectUrl || (!systemUsersState.removePhoto ? user?.photoUrl : '');
+  preview.style.backgroundImage = source ? `url("${String(source).replace(/"/g, '%22')}")` : '';
+  preview.textContent = source ? '' : getInitials(user?.name || 'Med Solution');
+}
+
+function openUserModal(user) {
+  systemUsersState.editing = user;
+  systemUsersState.pendingPhoto = null;
+  systemUsersState.removePhoto = false;
+  const modal = document.getElementById('systemUserModal');
+  const form = document.getElementById('systemUserForm');
+  form.elements.name.value = user.name || '';
+  form.elements.username.value = user.username || '';
+  form.elements.password.value = '';
+  form.elements.position.value = user.position || '';
+  form.elements.role.value = user.role || '';
+  form.elements.active.value = String(user.active !== false);
+  document.getElementById('systemUserStatus').textContent = '';
+  setUserPhotoPreview(user);
+  modal.classList.add('modal--open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeUserModal() {
+  const modal = document.getElementById('systemUserModal');
+  modal?.classList.remove('modal--open');
+  modal?.setAttribute('aria-hidden', 'true');
+  systemUsersState.pendingPhoto = null;
+  systemUsersState.editing = null;
+}
+
+function publishSystemUsers(users) {
+  localStorage.setItem('medsolution.systemUsers', JSON.stringify(users));
+  window.parent?.postMessage({ type: 'medsolution:users-updated' }, location.origin);
+}
+
+async function saveConfiguredUser(event) {
+  event.preventDefault();
+  if (systemUsersState.saving || !systemUsersState.editing) return;
+  const form = event.currentTarget;
+  const status = document.getElementById('systemUserStatus');
+  const button = document.getElementById('saveSystemUserBtn');
+  const name = form.elements.name.value.trim();
+  const username = form.elements.username.value.trim();
+  if (!name) { status.textContent = 'Ingrese el nombre completo.'; return; }
+  if (!username) { status.textContent = 'Ingrese el usuario.'; return; }
+  if (systemUsersState.users.some((user) => user.id !== systemUsersState.editing.id && user.username.toLowerCase() === username.toLowerCase())) {
+    status.textContent = 'Ese nombre de usuario ya está en uso.'; return;
+  }
+  systemUsersState.saving = true;
+  button.disabled = true;
+  button.textContent = 'Guardando…';
+  status.textContent = '';
+  let newPhotoPath = '';
+  try {
+    if (systemUsersState.pendingPhoto) {
+      newPhotoPath = await window.MedSolutionData.uploadProfilePhoto(systemUsersState.editing.role, systemUsersState.pendingPhoto);
+    }
+    const saved = await window.MedSolutionData.saveSystemUser({
+      ...systemUsersState.editing,
+      name,
+      username,
+      position: form.elements.position.value.trim(),
+      active: form.elements.active.value === 'true',
+      passwordHash: form.elements.password.value ? hashPassword(form.elements.password.value) : systemUsersState.editing.passwordHash,
+      photoPath: newPhotoPath || (systemUsersState.removePhoto ? '' : systemUsersState.editing.photoPath),
+    });
+    if ((newPhotoPath || systemUsersState.removePhoto) && systemUsersState.editing.photoPath) {
+      await window.MedSolutionData.deleteStoredFile(systemUsersState.editing.photoPath).catch(() => {});
+    }
+    await loadUsers();
+    publishSystemUsers(systemUsersState.users);
+    await renderUsersTable(false);
+    status.textContent = `✓ Perfil ${saved.role} actualizado.`;
+    status.style.color = 'var(--aqua)';
+    setTimeout(closeUserModal, 650);
+  } catch (error) {
+    if (newPhotoPath) await window.MedSolutionData.deleteStoredFile(newPhotoPath).catch(() => {});
+    status.textContent = error.message || 'No se pudo guardar el perfil.';
+    status.style.color = '#c93047';
+  } finally {
+    systemUsersState.saving = false;
+    button.disabled = false;
+    button.textContent = 'Guardar cambios';
+  }
 }
 
 function getInitials(name) {
@@ -160,12 +253,11 @@ async function saveServiceValue(button) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
-async function renderUsersTable() {
+async function renderUsersTable(reload = true) {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
 
-  const users = await loadUsers();
-  const currentUser = getCurrentUser();
+  const users = reload ? await loadUsers() : systemUsersState.users;
   const emptyRow = document.getElementById('usersEmptyRow');
 
   if (emptyRow) emptyRow.style.display = users.length ? 'none' : '';
@@ -178,14 +270,15 @@ async function renderUsersTable() {
     tr.innerHTML = `
       <td>
         <div class="patient-cell">
-          <span class="avatar" style="width:34px;height:34px;font-size:.78rem">${u.initials || getInitials(u.name)}</span>
-          <strong>${u.username}</strong>
+          <span class="user-photo" ${u.photoUrl ? `style="background-image:url('${escapeSettingsHtml(u.photoUrl)}')"` : ''}>${u.photoUrl ? '' : (u.initials || getInitials(u.name))}</span>
+          <strong>${escapeSettingsHtml(u.username)}</strong>
         </div>
       </td>
-      <td>${u.name}</td>
+      <td>${escapeSettingsHtml(u.name)}</td>
+      <td>${escapeSettingsHtml(u.position || '—')}</td>
       <td><span class="${roleBadgeClass(u.role)}">${u.role}</span></td>
       <td><span class="badge ${u.active === false ? 'badge--inactive' : ''}">${u.active === false ? 'Inactivo' : 'Activo'}</span></td>
-      <td><span style="color:var(--gray-500);font-size:.84rem">Definido en el sistema</span></td>
+      <td><button class="btn btn--secondary" type="button" data-edit-system-user="${u.id}">Editar</button></td>
     `;
     tbody.insertBefore(tr, emptyRow);
   });
@@ -199,8 +292,35 @@ async function setupSettingsModule() {
   const currentUser = getCurrentUser();
   if (!currentUser || !['Administrador', 'Médico'].includes(currentUser.role)) return;
 
-  renderUsersTable();
-  document.getElementById('newUserBtn')?.remove();
+  await renderUsersTable();
+  document.getElementById('usersTableBody')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-system-user]');
+    if (!button) return;
+    const user = systemUsersState.users.find((item) => String(item.id) === button.dataset.editSystemUser);
+    if (user) openUserModal(user);
+  });
+  document.querySelectorAll('[data-close-user-modal]').forEach((button) => button.addEventListener('click', closeUserModal));
+  document.getElementById('systemUserForm')?.addEventListener('submit', saveConfiguredUser);
+  document.getElementById('systemUserPhoto')?.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    systemUsersState.pendingPhoto = file;
+    systemUsersState.removePhoto = false;
+    setUserPhotoPreview(systemUsersState.editing, URL.createObjectURL(file));
+  });
+  document.getElementById('removeSystemUserPhoto')?.addEventListener('click', () => {
+    systemUsersState.pendingPhoto = null;
+    systemUsersState.removePhoto = true;
+    document.getElementById('systemUserPhoto').value = '';
+    setUserPhotoPreview(systemUsersState.editing);
+  });
+  if (!systemUsersState.subscribed) {
+    systemUsersState.subscribed = true;
+    window.MedSolutionData.subscribeSystemUsers(async () => {
+      await renderUsersTable();
+      publishSystemUsers(systemUsersState.users);
+    });
+  }
 
   try {
     await loadServiceValues();
@@ -259,4 +379,5 @@ async function setupSettingsModule() {
 
 }
 
-document.addEventListener('DOMContentLoaded', setupSettingsModule);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSettingsModule, { once: true });
+else setupSettingsModule();

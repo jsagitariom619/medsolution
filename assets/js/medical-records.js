@@ -3,7 +3,7 @@ const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
 const RECORDS_KEY = 'medsolution.medicalRecords';
 
-const recordsState = { patients: [], consultations: [], records: [], selectedPatientId: null, searchTerm: '' };
+const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, searchTerm: '', attachmentConsultationId: null, uploading: false };
 
 function readArray(key) {
   try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : []; }
@@ -19,12 +19,16 @@ async function loadData() {
   recordsState.records = window.MedSolutionData?.isConfigured()
     ? await window.MedSolutionData.getMedicalRecords()
     : readArray(RECORDS_KEY);
+  recordsState.users = window.MedSolutionData?.getSystemUsers
+    ? await window.MedSolutionData.getSystemUsers().catch(() => [])
+    : [];
 }
 function escapeHtml(value) {
   const div = document.createElement('div'); div.textContent = value == null ? '' : String(value); return div.innerHTML;
 }
 function getInitials(name) { return (name || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase(); }
 function formatDate(date) { if (!date) return '—'; const [y,m,d] = date.split('-'); return `${d}/${m}/${y}`; }
+function formatDateTime(value) { if (!value) return '—'; return new Intl.DateTimeFormat('es-BO', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)); }
 function consultationsFor(patientId) {
   return recordsState.consultations
     .filter((c) => c.contraceptiveControl !== true)
@@ -42,6 +46,12 @@ function canViewPrices() {
     const raw = sessionStorage.getItem('medsolution.authUser') || localStorage.getItem('medsolution.authUser');
     return ['Administrador', 'Médico'].includes(JSON.parse(raw || 'null')?.role);
   } catch { return false; }
+}
+function medicalResponsible(consultation) {
+  const byRole = recordsState.users.find((user) => user.role === consultation.registeredByRole);
+  if (byRole) return byRole.name;
+  const byName = recordsState.users.find((user) => user.name === consultation.registeredBy);
+  return byName?.name || recordsState.users.find((user) => user.role === 'Médico')?.name || consultation.registeredBy || 'Médico';
 }
 async function ensureRecord(patientId) {
   let record = recordsState.records.find((r) => Number(r.patientId) === Number(patientId));
@@ -75,7 +85,17 @@ function renderPatientList() {
   }).join('');
 }
 
+function attachmentHtml(attachment, consultationId) {
+  const image = String(attachment.type || '').startsWith('image/');
+  return `<div class="record-attachment" data-attachment-path="${escapeHtml(attachment.path)}">
+    ${image ? '<img class="record-attachment__preview" alt="Vista previa" />' : '<span class="record-attachment__preview">📄</span>'}
+    <div class="record-attachment__meta"><strong title="${escapeHtml(attachment.name)}">${escapeHtml(attachment.name)}</strong><small>${formatDateTime(attachment.uploadedAt)}</small></div>
+    <div class="record-attachment__actions"><a data-attachment-open target="_blank" title="Abrir">Ver</a><a data-attachment-download download="${escapeHtml(attachment.name)}" title="Descargar">↓</a><button type="button" data-delete-attachment="${escapeHtml(attachment.id)}" data-consultation-id="${consultationId}" title="Eliminar">×</button></div>
+  </div>`;
+}
+
 function entryHtml(c) {
+  const attachments = Array.isArray(c.attachments) ? c.attachments : [];
   return `<div class="record-entry record-entry--collapsed" data-entry-id="${c.id}">
     <div class="record-entry__header"><span class="record-entry__date">📅 ${formatDate(c.date)}${c.time ? ` — ${escapeHtml(c.time)}` : ''}</span>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -94,9 +114,12 @@ function entryHtml(c) {
         ${c.temp ? `<span class="vital-chip">T°: ${escapeHtml(c.temp)} °C</span>` : ''}${c.weight ? `<span class="vital-chip">Peso: ${escapeHtml(c.weight)} kg</span>` : ''}
         ${c.height ? `<span class="vital-chip">Talla: ${escapeHtml(c.height)} cm</span>` : ''}${c.spo2 ? `<span class="vital-chip">SpO₂: ${escapeHtml(c.spo2)}%</span>` : ''}</div></div>` : ''}
       ${field('Examen físico', c.physicalExam, true)}${field('Diagnóstico', c.diagnosis, true, true)}
-      ${field('Tratamiento', c.treatment, true)}${field('Receta', c.prescription, true)}
+      ${field('Tratamiento', c.treatment, true)}${field('Medicamentos', c.medications, true)}${field('Procedimientos', c.procedures, true)}${field('Receta', c.prescription, true)}
       ${field('Indicaciones', c.indications, true)}${field('Próximo control', formatDate(c.nextControl), false)}
       ${field('Observaciones', c.observations, true)}
+      ${field('Médico responsable', medicalResponsible(c), true)}
+      <section class="record-attachments"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><strong style="color:var(--petroleum)">Archivos Adjuntos (${attachments.length})</strong><button class="btn btn--secondary" style="padding:8px 12px;font-size:.8rem" type="button" data-attach-files="${c.id}">Adjuntar archivos</button></div>
+      <div class="record-attachments__list">${attachments.length ? attachments.map((item) => attachmentHtml(item, c.id)).join('') : '<small style="color:var(--gray-500)">Sin archivos adjuntos en esta evolución.</small>'}</div></section>
     </div></div>`;
 }
 function field(label, value, full = false, highlight = false) {
@@ -125,6 +148,7 @@ async function renderPatientRecord(patientId) {
     <p style="margin:4px 0 0;color:var(--gray-500);font-size:.88rem">CI: ${escapeHtml(patient.ci)} · ${escapeHtml(patient.genero || '—')} · Nac: ${formatDate(patient.fechaNacimiento)} · Tel: ${escapeHtml(patient.telefono || '—')}</p></div>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn--secondary" type="button" data-edit-patient="${patient.id}">Editar datos</button>
+      <button class="btn btn--secondary" type="button" data-view-full-record="${patient.id}">Ver Historia Clínica Completa</button>
       <button class="btn btn--secondary" type="button" data-print-record="${patient.id}">Imprimir historia</button>
       <button class="btn btn--secondary" type="button" data-export-record="${patient.id}">Exportar PDF</button>
       <a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}">+ Nueva atención</a>
@@ -134,6 +158,52 @@ async function renderPatientRecord(patientId) {
     ${consultations.length ? consultations.map(entryHtml).join('') : '<p style="color:var(--gray-500)">Este paciente todavía no tiene consultas médicas registradas.</p>'}</div>
     <div class="record-tab-panel record-entries" data-record-panel="contraceptives" hidden><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Seguimiento anticonceptivo (${contraceptives.length})</h3>
     ${contraceptives.length ? contraceptives.map(contraceptiveEntryHtml).join('') : '<p style="color:var(--gray-500)">Este paciente todavía no tiene aplicaciones registradas.</p>'}</div>`;
+  await hydrateAttachmentUrls(panel);
+}
+
+async function hydrateAttachmentUrls(scope) {
+  const nodes = [...scope.querySelectorAll('[data-attachment-path]')];
+  await Promise.all(nodes.map(async (node) => {
+    try {
+      const url = await window.MedSolutionData.signedFileUrl(node.dataset.attachmentPath);
+      const image = node.querySelector('img'); if (image) image.src = url;
+      const open = node.querySelector('[data-attachment-open]'); if (open) open.href = url;
+      const download = node.querySelector('[data-attachment-download]'); if (download) download.href = url;
+    } catch { node.querySelector('.record-attachment__meta small').textContent = 'Archivo no disponible'; }
+  }));
+}
+
+async function uploadClinicalFiles(files) {
+  if (recordsState.uploading || !recordsState.attachmentConsultationId || !files.length) return;
+  const consultation = recordsState.consultations.find((item) => Number(item.id) === Number(recordsState.attachmentConsultationId));
+  if (!consultation?.remoteId) throw new Error('Guarda la evolución antes de adjuntar archivos.');
+  recordsState.uploading = true;
+  const uploaded = [];
+  try {
+    const attachments = Array.isArray(consultation.attachments) ? [...consultation.attachments] : [];
+    for (const file of files) {
+      const attachment = await window.MedSolutionData.uploadClinicalAttachment(consultation.remoteId, file);
+      uploaded.push(attachment);
+      attachments.push(attachment);
+    }
+    const saved = await window.MedSolutionData.saveAttention({ ...consultation, attachments });
+    Object.assign(consultation, saved, { attachments });
+    await renderPatientRecord(recordsState.selectedPatientId);
+  } catch (error) {
+    await Promise.all(uploaded.map((item) => window.MedSolutionData.deleteStoredFile(item.path).catch(() => {})));
+    throw error;
+  } finally { recordsState.uploading = false; recordsState.attachmentConsultationId = null; }
+}
+
+async function deleteClinicalFile(consultationId, attachmentId) {
+  const consultation = recordsState.consultations.find((item) => Number(item.id) === Number(consultationId));
+  const attachment = consultation?.attachments?.find((item) => String(item.id) === String(attachmentId));
+  if (!attachment || !confirm(`¿Eliminar ${attachment.name}?`)) return;
+  const attachments = consultation.attachments.filter((item) => String(item.id) !== String(attachmentId));
+  const saved = await window.MedSolutionData.saveAttention({ ...consultation, attachments });
+  Object.assign(consultation, saved, { attachments });
+  await window.MedSolutionData.deleteStoredFile(attachment.path).catch(() => {});
+  await renderPatientRecord(recordsState.selectedPatientId);
 }
 
 async function selectPatient(id) {
@@ -170,9 +240,9 @@ function printRecord(patientId) {
   const patient = recordsState.patients.find((p) => Number(p.id) === Number(patientId));
   const body = consultationsFor(patientId).map((c) => `<div class="block"><h2>${formatDate(c.date)} · ${escapeHtml(c.chiefComplaint || '')}</h2>
     <p><strong>Enfermedad actual:</strong> ${escapeHtml(c.evolution || '—')}<br><strong>Antecedentes:</strong> ${escapeHtml(c.clinicalAntecedents || '—')}<br>
-    <strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || '—')}<br>
-    <strong>Tratamiento:</strong> ${escapeHtml(c.treatment || '—')}<br><strong>Receta:</strong> ${escapeHtml(c.prescription || '—')}<br>
-    <strong>Indicaciones:</strong> ${escapeHtml(c.indications || '—')}<br><strong>Próximo control:</strong> ${formatDate(c.nextControl)}</p></div>`).join('');
+    <strong>Examen físico:</strong> ${escapeHtml(c.physicalExam || '—')}<br><strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || '—')}<br>
+    <strong>Tratamiento:</strong> ${escapeHtml(c.treatment || '—')}<br><strong>Medicamentos:</strong> ${escapeHtml(c.medications || c.prescription || '—')}<br><strong>Procedimientos:</strong> ${escapeHtml(c.procedures || '—')}<br>
+    <strong>Indicaciones:</strong> ${escapeHtml(c.indications || '—')}<br><strong>Observaciones:</strong> ${escapeHtml(c.observations || '—')}<br><strong>Médico responsable:</strong> ${escapeHtml(medicalResponsible(c))}<br><strong>Próximo control:</strong> ${formatDate(c.nextControl)}</p></div>`).join('');
   printDocument('Historia clínica', patient, body || '<p>Sin consultas registradas.</p>');
 }
 function printPrescription(consultId) {
@@ -204,6 +274,21 @@ async function setupMedicalRecords() {
     const record = e.target.closest('[data-print-record]'); if (record) printRecord(record.dataset.printRecord);
     const exportRecord = e.target.closest('[data-export-record]'); if (exportRecord) printRecord(exportRecord.dataset.exportRecord);
     const prescription = e.target.closest('[data-print-prescription]'); if (prescription) printPrescription(prescription.dataset.printPrescription);
+    const full = e.target.closest('[data-view-full-record]');
+    if (full) {
+      document.querySelector('[data-record-tab="clinical"]')?.click();
+      document.querySelectorAll('.record-entry').forEach((entry) => entry.classList.remove('record-entry--collapsed'));
+      document.querySelector('[data-record-panel="clinical"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    const attach = e.target.closest('[data-attach-files]');
+    if (attach) { recordsState.attachmentConsultationId = Number(attach.dataset.attachFiles); document.getElementById('clinicalAttachmentInput')?.click(); }
+    const remove = e.target.closest('[data-delete-attachment]');
+    if (remove) deleteClinicalFile(remove.dataset.consultationId, remove.dataset.deleteAttachment).catch((error) => alert(error.message));
+  });
+  document.getElementById('clinicalAttachmentInput')?.addEventListener('change', (event) => {
+    const files = [...(event.target.files || [])];
+    event.target.value = '';
+    uploadClinicalFiles(files).catch((error) => alert(`No se pudieron adjuntar los archivos: ${error.message}`));
   });
   const patientId = Number(new URLSearchParams(location.search).get('patientId'));
   if (patientId) selectPatient(patientId);
@@ -217,4 +302,5 @@ async function setupMedicalRecords() {
     renderPatientList();
   });
 }
-document.addEventListener('DOMContentLoaded', setupMedicalRecords);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupMedicalRecords, { once: true });
+else setupMedicalRecords();

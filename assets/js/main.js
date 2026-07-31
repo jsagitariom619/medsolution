@@ -1,4 +1,4 @@
-import { login, logout, guardRoute, restoreSession, getUser, can } from './auth.js';
+import { login, logout, guardRoute, restoreSession, getUser, can, syncUsers } from './auth.js';
 
 // ── Route map ─────────────────────────────────────────────────────────────────
 
@@ -101,7 +101,11 @@ const updateUserChip = () => {
 
   document.querySelectorAll('[data-user-chip]').forEach((chip) => {
     const avatarEl = chip.querySelector('[data-user-avatar]');
-    if (avatarEl) avatarEl.textContent = user.initials;
+    if (avatarEl) {
+      avatarEl.textContent = user.photoUrl ? '' : user.initials;
+      avatarEl.style.backgroundImage = user.photoUrl ? `url("${user.photoUrl}")` : '';
+      avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center';
+    }
     const nameEl = chip.querySelector('[data-user-name]');
     if (nameEl) nameEl.textContent = user.name;
     const roleEl = chip.querySelector('[data-user-role]');
@@ -109,11 +113,15 @@ const updateUserChip = () => {
   });
 
   const doctorAvatar = document.querySelector('[data-doctor-avatar]');
-  if (doctorAvatar) doctorAvatar.textContent = user.initials;
+  if (doctorAvatar) {
+    doctorAvatar.textContent = user.photoUrl ? '' : user.initials;
+    doctorAvatar.style.backgroundImage = user.photoUrl ? `url("${user.photoUrl}")` : '';
+    doctorAvatar.style.backgroundSize = 'cover'; doctorAvatar.style.backgroundPosition = 'center';
+  }
   const doctorName = document.querySelector('[data-doctor-name]');
   if (doctorName) doctorName.textContent = user.name;
   const doctorRole = document.querySelector('[data-doctor-role]');
-  if (doctorRole) doctorRole.textContent = user.role;
+  if (doctorRole) doctorRole.textContent = user.position || user.role;
   const welcomeName = document.querySelector('[data-welcome-name]');
   if (welcomeName) welcomeName.textContent = `¡Bienvenido, ${user.name}!`;
 };
@@ -242,3 +250,9 @@ async function initializeApplication() {
 
 setupAutomaticCapitalization();
 initializeApplication();
+window.addEventListener('storage', async (event) => {
+  if (event.key !== 'medsolution.systemUsers') return;
+  await syncUsers();
+  if (window.MedSolutionAuth) window.MedSolutionAuth.user = getUser();
+  updateUserChip();
+});

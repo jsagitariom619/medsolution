@@ -23,6 +23,7 @@ function showDashboardHome(pushState = true) {
   home.hidden = false;
   frame.hidden = true;
   frame.removeAttribute('src');
+  delete frame.dataset.currentTarget;
   setDashboardActiveModule();
   if (pushState) history.pushState({ module: '' }, '', 'dashboard.html');
 }
@@ -34,10 +35,10 @@ function openDashboardModule(target, pushState = true) {
   const frame = document.getElementById('dashboardModuleFrame');
   home.hidden = true;
   frame.hidden = false;
-  if (frame.dataset.currentTarget !== moduleTarget) {
-    frame.dataset.currentTarget = moduleTarget;
-    frame.src = moduleTarget;
-  }
+  frame.dataset.currentTarget = moduleTarget;
+  const moduleUrl = new URL(moduleTarget, location.href);
+  moduleUrl.searchParams.set('_msLoad', String(Date.now()));
+  frame.src = `${moduleUrl.pathname.split('/').pop()}${moduleUrl.search}${moduleUrl.hash}`;
   setDashboardActiveModule(moduleTarget);
   if (pushState) history.pushState({ module: moduleTarget }, '', `dashboard.html?module=${encodeURIComponent(moduleTarget)}`);
   return true;
@@ -63,13 +64,19 @@ function setupDashboardShell() {
     try {
       const page = frame.contentWindow.location.pathname.split('/').pop();
       if (page === 'dashboard.html') { showDashboardHome(false); return; }
-      const target = dashboardModuleTarget(`${page}${frame.contentWindow.location.search}${frame.contentWindow.location.hash}`);
+      const loadedUrl = new URL(frame.contentWindow.location.href);
+      loadedUrl.searchParams.delete('_msLoad');
+      const target = dashboardModuleTarget(`${page}${loadedUrl.search}${loadedUrl.hash}`);
       if (target) {
         frame.dataset.currentTarget = target;
         setDashboardActiveModule(target);
         history.replaceState({ module: target }, '', `dashboard.html?module=${encodeURIComponent(target)}`);
       }
     } catch { /* El módulo conserva su navegación aunque el navegador restrinja la inspección. */ }
+  });
+  window.addEventListener('message', (event) => {
+    if (event.origin !== location.origin || event.data?.type !== 'medsolution:users-updated') return;
+    window.dispatchEvent(new StorageEvent('storage', { key: 'medsolution.systemUsers' }));
   });
   window.addEventListener('popstate', () => {
     const target = new URLSearchParams(location.search).get('module');
@@ -135,5 +142,11 @@ async function setupFunctionalDashboard() {
     if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard);window.addEventListener('storage',event=>{if(event.key===DASHBOARD_SCHEDULE_KEY)setupFunctionalDashboard()})}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }
 }
-document.addEventListener('DOMContentLoaded',setupFunctionalDashboard);
-document.addEventListener('DOMContentLoaded',setupDashboardShell);
+function bootDashboard() {
+  if (window.__medSolutionDashboardBooted) return;
+  window.__medSolutionDashboardBooted = true;
+  setupFunctionalDashboard();
+  setupDashboardShell();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootDashboard, { once: true });
+else bootDashboard();

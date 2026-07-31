@@ -53,4 +53,5 @@ async function setup(){
   document.getElementById('servicesTableBody').onclick=async e=>{const b=e.target.closest('[data-service-action]');if(!b)return;const item=catalogState.services.find(s=>String(s.id)===String(b.dataset.id));if(b.dataset.serviceAction==='edit')openService(item);else{await data().toggleService(b.dataset.id,item.active===false);await loadAll()}};
   document.getElementById('staffTableBody').onclick=async e=>{const b=e.target.closest('[data-staff-action]');if(!b)return;const item=catalogState.staff.find(p=>String(p.id)===String(b.dataset.id));if(b.dataset.staffAction==='edit')openStaff(item);else{await data().toggleStaff(b.dataset.id,item.active===false);await loadAll()}};
 }
-document.addEventListener('DOMContentLoaded',setup);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once: true });
+else setup();

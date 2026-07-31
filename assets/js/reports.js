@@ -19,4 +19,5 @@ function render(){
 }
 async function load(){reportState.items=await window.MedSolutionData.getAttentions();fillSelect('serviceFilter',unique('serviceType'));fillSelect('responsibleFilter',unique('procedureResponsible'));fillSelect('userFilter',unique('registeredBy'));render()}
 async function setup(){await window.MedSolutionData.ready;document.getElementById('referenceDate').value=new Date().toISOString().slice(0,10);load().catch(e=>alert(e.message));['periodFilter','referenceDate','serviceFilter','responsibleFilter','userFilter'].forEach(id=>document.getElementById(id).addEventListener('change',render));document.getElementById('printReportBtn').onclick=()=>window.print();window.MedSolutionData.subscribeAttentions(()=>load())}
-document.addEventListener('DOMContentLoaded',setup);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once: true });
+else setup();

@@ -404,4 +404,5 @@ async function setupPatientModule() {
   window.MedSolutionData?.subscribePatients(async () => { await loadPatients(); renderTable(); });
 }
 
-document.addEventListener('DOMContentLoaded', setupPatientModule);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupPatientModule, { once: true });
+else setupPatientModule();

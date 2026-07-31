@@ -14,6 +14,7 @@
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTH_KEY = 'medsolution.authUser';
+const USERS_KEY = 'medsolution.systemUsers';
 
 export const ROLES = Object.freeze({
   ADMIN: 'Administrador',
@@ -77,18 +78,49 @@ export function hashPassword(password) {
   return h.toString(16).padStart(8, '0');
 }
 
-// ── Usuarios predefinidos ─────────────────────────────────────────────────────
-// Son los únicos usuarios válidos y no dependen del almacenamiento del navegador.
+// ── Perfiles operativos ───────────────────────────────────────────────────────
+// Los valores base garantizan el primer acceso; Supabase conserva la configuración.
 
-const PREDEFINED_USERS = Object.freeze([
-  { id: 1, username: 'admin',      passwordHash: hashPassword('admin123'),   name: 'Administrador',      role: ROLES.ADMIN,      initials: 'AD', active: true },
-  { id: 2, username: 'doctor',     passwordHash: hashPassword('doctor123'),  name: 'Médico Demo',        role: ROLES.MEDICO,     initials: 'MD', active: true },
-  { id: 3, username: 'auxiliar',   passwordHash: hashPassword('aux123'),     name: 'Ana Martínez',       role: ROLES.AUXILIAR,   initials: 'AM', active: true },
+const DEFAULT_USERS = Object.freeze([
+  { id: 'admin', username: 'admin', passwordHash: hashPassword('admin123'), name: 'Administrador', role: ROLES.ADMIN, position: 'Administrador del sistema', initials: 'AD', active: true, photoPath: '', photoUrl: '' },
+  { id: 'doctor', username: 'doctor', passwordHash: hashPassword('doctor123'), name: 'Médico', role: ROLES.MEDICO, position: 'Médico', initials: 'M', active: true, photoPath: '', photoUrl: '' },
+  { id: 'auxiliar', username: 'auxiliar', passwordHash: hashPassword('aux123'), name: 'Auxiliar', role: ROLES.AUXILIAR, position: 'Auxiliar', initials: 'A', active: true, photoPath: '', photoUrl: '' },
 ]);
+
+function configuredUsers() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(USERS_KEY));
+    return Array.isArray(stored) && stored.length ? stored : DEFAULT_USERS;
+  } catch { return DEFAULT_USERS; }
+}
+
+export async function syncUsers() {
+  try {
+    const remote = await window.MedSolutionData?.getSystemUsers?.();
+    if (Array.isArray(remote) && remote.length) {
+      const localSession = sessionStorage.getItem(AUTH_KEY);
+      const persistentSession = localStorage.getItem(AUTH_KEY);
+      const cached = JSON.parse(localSession || persistentSession || 'null');
+      localStorage.setItem(USERS_KEY, JSON.stringify(remote));
+      const refreshed = remote.find((user) => user.role === cached?.role && user.active !== false);
+      if (refreshed) {
+        const payload = JSON.stringify({
+          id: refreshed.id, username: refreshed.username, name: refreshed.name,
+          role: refreshed.role, position: refreshed.position || '', initials: refreshed.initials,
+          photoPath: refreshed.photoPath || '', photoUrl: refreshed.photoUrl || '',
+        });
+        if (localSession) sessionStorage.setItem(AUTH_KEY, payload);
+        else if (persistentSession) localStorage.setItem(AUTH_KEY, payload);
+      }
+      return remote;
+    }
+  } catch { /* El acceso inicial continúa disponible con los perfiles base. */ }
+  return configuredUsers();
+}
 
 /** Devuelve una copia pública de los tres usuarios, sin sus contraseñas. */
 export function getUsers() {
-  return PREDEFINED_USERS.map(({ passwordHash, ...user }) => ({ ...user }));
+  return configuredUsers().map(({ passwordHash, ...user }) => ({ ...user }));
 }
 
 /** Devuelve el usuario de la sesión local activa o null. */
@@ -97,10 +129,8 @@ export function getSession() {
     const raw = sessionStorage.getItem(AUTH_KEY) || localStorage.getItem(AUTH_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw);
-    const user = PREDEFINED_USERS.find((item) =>
-      item.id === cached?.id
-      && item.username === cached?.username
-      && item.role === cached?.role);
+    const user = configuredUsers().find((item) =>
+      item.username === cached?.username && item.role === cached?.role && item.active !== false);
     if (!user) {
       localStorage.removeItem(AUTH_KEY);
       sessionStorage.removeItem(AUTH_KEY);
@@ -108,7 +138,8 @@ export function getSession() {
     }
     return {
       id: user.id, username: user.username, name: user.name,
-      role: user.role, initials: user.initials,
+      role: user.role, position: user.position || '', initials: user.initials,
+      photoPath: user.photoPath || '', photoUrl: user.photoUrl || '',
     };
   } catch {
     return null;
@@ -126,9 +157,10 @@ export function getSession() {
  *
  */
 export async function login(username, password, remember = false) {
+  await syncUsers();
   const normalizedUsername = username.trim().toLowerCase();
   const inputHash = hashPassword(password);
-  const user = PREDEFINED_USERS.find(
+  const user = configuredUsers().find(
     (u) => u.username.toLowerCase() === normalizedUsername
       && u.passwordHash === inputHash
       && u.active !== false,
@@ -140,7 +172,8 @@ export async function login(username, password, remember = false) {
     username: user.username,
     name: user.name,
     role: user.role,
-    initials: user.initials,
+    position: user.position || '', initials: user.initials,
+    photoPath: user.photoPath || '', photoUrl: user.photoUrl || '',
   };
   const payload = JSON.stringify(session);
 
@@ -213,5 +246,6 @@ export function guardRoute() {
 }
 
 export async function restoreSession() {
+  await syncUsers();
   return getSession();
 }
