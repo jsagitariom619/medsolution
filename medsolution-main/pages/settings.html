@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
+    <title>Med Solution | Configuración</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+    <style>
+      .patients-table { width: 100%; border-collapse: collapse; font-size: .93rem; }
+      .patients-table th { text-align: left; padding: 12px 16px; background: var(--gray-50); color: var(--gray-500); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--gray-200); }
+      .patients-table td { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+      .patients-table tr:last-child td { border-bottom: none; }
+      .patients-empty { text-align: center; padding: 40px; color: var(--gray-500); }
+    </style>
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand brand--light" href="dashboard.html">
+          <span class="brand__mark">MS</span>
+          <span class="brand__text">Med Solution</span>
+        </a>
+        <nav class="sidebar__nav">
+          <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+          <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+          <a class="nav-link" data-nav-link href="appointments.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">◷</span>Citas</a>
+          <a class="nav-link" data-nav-link href="medical-records.html" data-requires-role="Administrador,Médico"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+          <a class="nav-link" data-nav-link href="schedule.html" data-requires-role="Administrador,Médico,Auxiliar"><span class="nav-link__icon">□</span>Agenda</a>
+          <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+          <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
+          <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
+        </nav>
+        <div class="sidebar__footer">
+          <strong>Preparado para Supabase</strong>
+          <span>Autenticación, datos clínicos y agenda en próximas fases.</span>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <label class="search-box">
+            <span>⌕</span>
+            <input type="search" placeholder="Buscar paciente, cita o historia clínica" />
+          </label>
+          <div class="topbar__actions">
+            <button class="icon-btn" type="button" aria-label="Notificaciones">✦</button>
+            <div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>DR</span><div><span data-user-name>Usuario</span><small data-user-role></small></div></div>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Configuración</span>
+              <h1>Configuración del consultorio</h1>
+              <p>Centro de ajustes para perfiles, seguridad, especialidades y parámetros de operación.</p>
+            </div>
+            <a class="btn btn--primary" href="appointments.html">Nueva Atención</a>
+          </div>
+          <div class="module-grid">
+            <article class="card module-card"><h2>Registro inteligente</h2><p>Estructura lista para gestionar expedientes de pacientes con datos personales, contacto y antecedentes.</p></article>
+            <article class="card module-card"><h2>Flujo de atención</h2><p>Base preparada para iniciar una nueva atención y vincularla con historias clínicas y recetas.</p></article>
+            <article class="card module-card"><h2>Sincronización activa</h2><p>Servicios, personal y atenciones pueden sincronizarse en tiempo real mediante Supabase.</p></article>
+          </div>
+
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Conexión de datos</span>
+              <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Supabase</h2>
+              <p style="margin:6px 0 0;color:var(--gray-500)">La conexión se carga de forma segura desde las variables de entorno de Vercel.</p></div>
+              <a class="btn btn--primary" href="services.html">Administrar servicios</a></div>
+            <article class="card" style="padding:24px"><div id="supabaseConfigForm">
+              <strong>Proyecto: Registro Clínico</strong>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+                <span id="supabaseConnectionStatus" style="font-size:.88rem;color:var(--gray-500)">Comprobando conexión…</span>
+              </div>
+            </div></article>
+          </section>
+
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Parámetros</span>
+              <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Configuración general</h2>
+              <p style="margin:6px 0 0;color:var(--gray-500)">Parámetros operativos almacenados centralmente.</p></div></div>
+            <article class="card" style="padding:24px"><form id="generalSettingsForm">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <label class="form-field"><span>Nombre del consultorio</span><input name="clinicName" placeholder="Med Solution" /></label>
+                <label class="form-field"><span>Moneda</span><select name="currency"><option value="BOB">Bolivianos (Bs)</option><option value="USD">Dólares (USD)</option></select></label>
+                <label class="form-field"><span>Zona horaria</span><input name="timezone" value="America/La_Paz" /></label>
+              </div><div style="display:flex;align-items:center;gap:12px;margin-top:16px"><button class="btn btn--primary" type="submit">Guardar configuración</button>
+                <span id="generalSettingsStatus" style="font-size:.88rem;color:var(--gray-500)"></span></div>
+            </form></article>
+          </section>
+
+          <!-- User management — Administrador only -->
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px">
+              <div>
+                <span class="eyebrow">Usuarios predefinidos</span>
+                <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem);letter-spacing:-0.04em">Usuarios del sistema</h2>
+                <p style="margin:6px 0 0;color:var(--gray-500)">El sistema utiliza únicamente los perfiles Administrador, Doctor y Auxiliar definidos en el código.</p>
+              </div>
+            </div>
+
+            <article class="card" style="padding:24px">
+              <div style="overflow-x:auto">
+                <table class="patients-table" id="usersTable">
+                  <thead>
+                    <tr>
+                      <th>Usuario</th>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTableBody">
+                    <tr id="usersEmptyRow" style="display:none">
+                      <td colspan="5" class="patients-empty">No hay usuarios registrados.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="../assets/vendor/supabase.js"></script>
+    <script src="../assets/js/supabase-client.js"></script>
+    <script type="module" src="../assets/js/main.js"></script>
+    <script src="../assets/js/settings.js"></script>
+  </body>
+</html>

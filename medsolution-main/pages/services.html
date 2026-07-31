@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Med Solution | Catálogo de Servicios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <style>
+    .service-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.service-toolbar input{flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50)}
+    .service-status{padding:6px 10px;border-radius:999px;font-size:.78rem;font-weight:800;background:rgba(47,183,166,.14);color:var(--petroleum)}.service-status--inactive{background:#fde2e2;color:#9b2c2c}
+    .sync-indicator{display:inline-flex;align-items:center;gap:7px;font-size:.84rem;color:var(--gray-500)}.sync-indicator::before{content:'';width:8px;height:8px;border-radius:50%;background:#e6a23c}.sync-indicator--online::before{background:#2fb7a6}
+    .service-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.service-form-grid .full{grid-column:1/-1}.switch-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check-card{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px}
+    @media(max-width:640px){.service-form-grid,.switch-row{grid-template-columns:1fr}.service-form-grid .full{grid-column:auto}}
+  </style>
+</head>
+<body class="app-body">
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Navegación principal">
+    <a class="brand brand--light" href="dashboard.html"><span class="brand__mark">MS</span><span class="brand__text">Med Solution</span></a>
+    <nav class="sidebar__nav">
+      <a class="nav-link" data-nav-link href="dashboard.html"><span class="nav-link__icon">⌂</span>Dashboard</a>
+      <a class="nav-link" data-nav-link href="patients.html"><span class="nav-link__icon">👤</span>Pacientes</a>
+      <a class="nav-link" data-nav-link href="appointments.html"><span class="nav-link__icon">◷</span>Nueva Atención</a>
+      <a class="nav-link" data-nav-link href="medical-records.html"><span class="nav-link__icon">▣</span>Historias clínicas</a>
+      <a class="nav-link" data-nav-link href="schedule.html"><span class="nav-link__icon">□</span>Agenda</a>
+      <a class="nav-link" data-nav-link href="services.html" data-requires-role="Administrador"><span class="nav-link__icon">☷</span>Servicios</a>
+      <a class="nav-link" data-nav-link href="reports.html" data-requires-role="Administrador"><span class="nav-link__icon">◫</span>Reportes</a>
+      <a class="nav-link" data-nav-link href="settings.html" data-requires-role="Administrador"><span class="nav-link__icon">⚙</span>Configuración</a>
+    </nav>
+    <div class="sidebar__footer"><strong>Configuración centralizada</strong><span>Catálogo sincronizado con Supabase.</span></div>
+  </aside>
+  <main class="main-area">
+    <header class="topbar"><label class="search-box"><span>⌕</span><input type="search" placeholder="Buscar configuración" /></label>
+      <div class="topbar__actions"><div class="user-chip" data-user-chip><span class="avatar" data-user-avatar>AD</span><div><span data-user-name>Administrador</span><small data-user-role></small></div></div></div></header>
+    <section class="content">
+      <div class="page-header"><div><span class="eyebrow">Administración</span><h1>Catálogo de Servicios</h1><p>Configura servicios, precios y comportamiento sin modificar el código.</p></div>
+        <button class="btn btn--primary" id="newServiceBtn" type="button">+ Nuevo servicio</button></div>
+      <article class="card" style="padding:24px">
+        <div class="service-toolbar"><input id="serviceSearch" type="search" placeholder="Buscar servicio…" />
+          <label><input id="showInactive" type="checkbox" /> Mostrar inactivos</label><span class="sync-indicator" id="serviceSync">Comprobando conexión</span></div>
+        <div style="overflow-x:auto;margin-top:20px"><table class="patients-table"><thead><tr><th>Servicio</th><th>Precio</th><th>Comportamiento</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="servicesTableBody"><tr><td colspan="5" class="patients-empty">Cargando servicios…</td></tr></tbody></table></div>
+      </article>
+
+      <div class="page-header" style="margin-top:40px;margin-bottom:20px"><div><span class="eyebrow">Responsables</span><h2 style="margin:6px 0 0;color:var(--petroleum-dark)">Personal del Consultorio</h2>
+        <p style="margin:6px 0 0;color:var(--gray-500)">Personas que pueden figurar como responsables. No son usuarios del sistema.</p></div>
+        <button class="btn btn--primary" id="newStaffBtn" type="button">+ Nuevo integrante</button></div>
+      <article class="card" style="padding:24px"><div style="overflow-x:auto"><table class="patients-table"><thead><tr><th>Nombre completo</th><th>Cargo</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="staffTableBody"><tr><td colspan="4" class="patients-empty">Cargando personal…</td></tr></tbody></table></div></article>
+    </section>
+  </main>
+</div>
+<div class="nursing-modal" id="serviceModal" role="dialog" aria-modal="true">
+  <div class="nursing-modal__overlay"></div><div class="nursing-modal__content">
+    <div class="nursing-modal__header"><h2 id="serviceModalTitle">Nuevo servicio</h2><button class="nursing-modal__close" id="closeServiceModalBtn" type="button">✕</button></div>
+    <form class="nursing-form" id="serviceForm" novalidate><div class="service-form-grid">
+      <label class="form-field"><span>Nombre *</span><input name="name" required /></label>
+      <label class="form-field"><span>Precio (Bs) *</span><input name="price" type="number" min="0" step=".01" required /></label>
+      <label class="form-field full"><span>Descripción</span><textarea name="description" rows="3"></textarea></label>
+      <div class="switch-row full"><label class="check-card"><input name="requires_medical_consultation" type="checkbox" /><span>Requiere consulta médica</span></label>
+        <label class="check-card"><input name="generates_medical_record" type="checkbox" /><span>Genera historia clínica</span></label></div>
+      <label class="form-field full"><span>Responsable permitido *</span><select name="allowed_responsible" required><option value="Doctor">Doctor</option><option value="Auxiliar">Auxiliar</option><option value="Ambos">Ambos</option></select></label>
+    </div><p id="serviceFormError" style="display:none;color:#c93047;font-size:.88rem"></p>
+      <div class="nursing-form__actions"><button class="btn btn--secondary" id="cancelServiceModalBtn" type="button">Cancelar</button><button class="btn btn--primary" type="submit">Guardar servicio</button></div>
+    </form>
+  </div>
+</div>
+<div class="nursing-modal" id="staffModal" role="dialog" aria-modal="true">
+  <div class="nursing-modal__overlay"></div><div class="nursing-modal__content">
+    <div class="nursing-modal__header"><h2 id="staffModalTitle">Nuevo integrante</h2><button class="nursing-modal__close" id="closeStaffModalBtn" type="button">✕</button></div>
+    <form class="nursing-form" id="staffForm"><div class="service-form-grid">
+      <label class="form-field"><span>Nombre completo *</span><input name="name" required /></label>
+      <label class="form-field"><span>Cargo *</span><input name="position" placeholder="Doctor o Auxiliar" required /></label>
+    </div><p id="staffFormError" style="display:none;color:#c93047;font-size:.88rem"></p>
+      <div class="nursing-form__actions"><button class="btn btn--secondary" id="cancelStaffModalBtn" type="button">Cancelar</button><button class="btn btn--primary" type="submit">Guardar integrante</button></div>
+    </form>
+  </div>
+</div>
+<script src="../assets/vendor/supabase.js"></script>
+<script src="../assets/js/supabase-client.js"></script>
+<script type="module" src="../assets/js/main.js"></script>
+<script src="../assets/js/services.js"></script>
+</body>
+</html>

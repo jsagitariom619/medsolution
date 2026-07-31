@@ -1,0 +1,12 @@
+[
+  {"name":"Consulta médica","category":"Consulta","price":0,"duration_minutes":30,"description":"Evaluación y atención médica general.","active":true,"requires_medical_consultation":true,"generates_medical_record":true,"allowed_responsible":"Doctor"},
+  {"name":"Inyectable","category":"Enfermería","price":0,"duration_minutes":15,"description":"Administración de medicamento inyectable.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Curación","category":"Enfermería","price":0,"duration_minutes":20,"description":"Limpieza, cuidado y curación de heridas.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Nebulización","category":"Enfermería","price":0,"duration_minutes":20,"description":"Procedimiento de nebulización.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Sueroterapia","category":"Enfermería","price":0,"duration_minutes":60,"description":"Administración de soluciones intravenosas.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Anticonceptivos","category":"Enfermería","price":0,"duration_minutes":15,"description":"Administración de anticonceptivos.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Procedimiento estético","category":"Estética","price":0,"duration_minutes":45,"description":"Procedimiento estético ambulatorio.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Podología","category":"Podología","price":0,"duration_minutes":45,"description":"Atención podológica.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Otro","category":"Otros","price":0,"duration_minutes":30,"description":"Otro servicio configurable.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"},
+  {"name":"Procedimientos","category":"Enfermería","price":0,"duration_minutes":30,"description":"Procedimiento general de enfermería.","active":true,"requires_medical_consultation":false,"generates_medical_record":false,"allowed_responsible":"Ambos"}
+]

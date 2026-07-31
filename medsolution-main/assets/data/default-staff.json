@@ -1,0 +1,6 @@
+[
+  {"id":"doctor-jeason","name":"Dr. Jeason Flores","staff_type":"Doctor","active":true},
+  {"id":"aux-carmen","name":"Aux. Carmen","staff_type":"Auxiliar","active":true},
+  {"id":"aux-jeniffer","name":"Aux. Jeniffer","staff_type":"Auxiliar","active":true},
+  {"id":"aux-jhelen","name":"Aux. Jhelen","staff_type":"Auxiliar","active":true}
+]
