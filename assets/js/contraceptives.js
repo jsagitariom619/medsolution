@@ -65,18 +65,18 @@ function statusBadge(record) {
   return `<span class="control-status ${config[1]}">${config[0]} ${status}</span>`;
 }
 
-function serviceForType(type) {
-  const normalizedType = String(type || '').toLowerCase();
-  const specific = contraceptiveState.services.find((service) => {
-    const name = String(service.name || '').toLowerCase();
-    return service.active !== false && name.includes('anticoncept') && name.includes(normalizedType);
-  });
-  return specific || contraceptiveState.services.find((service) =>
-    service.active !== false && String(service.name || '').toLowerCase().includes('anticoncept'));
+function contraceptiveService() {
+  const active = contraceptiveState.services.filter((service) => service.active !== false);
+  return active.find((service) => String(service.description || '').includes('[MedSolution:anticonceptivos]'))
+    || active.find((service) => /^(registro de )?anticonceptivos?$/i.test(String(service.name || '').trim()))
+    || active.find((service) => {
+      const name = String(service.name || '').toLowerCase();
+      return name.includes('anticoncept') && !name.includes('mensual') && !name.includes('trimestral');
+    });
 }
 
-function configuredPrice(type) {
-  return Number(serviceForType(type)?.price || 0);
+function configuredPrice() {
+  return Number(contraceptiveService()?.price || 0);
 }
 
 async function loadContraceptiveData() {
@@ -303,7 +303,7 @@ function openContraceptiveModal(record = null) {
   form.elements.applicationDate.value = record?.applicationDate || new Date().toISOString().slice(0, 10);
   form.elements.contraceptiveType.value = record?.contraceptiveType || '';
   form.elements.observations.value = record?.contraceptiveObservations || '';
-  form.elements.price.value = Number(record?.servicePrice ?? configuredPrice(record?.contraceptiveType)) || 0;
+  form.elements.price.value = Number(record?.servicePrice ?? configuredPrice()) || 0;
   document.getElementById('contraceptivePriceField').style.display = hasFullAccess() ? '' : 'none';
   document.getElementById('contraceptiveResponsibleField').style.display = hasFullAccess() ? '' : 'none';
   form.elements.price.disabled = true;
@@ -382,9 +382,9 @@ async function saveContraceptive(event) {
   }
 
   const previous = contraceptiveState.records.find((item) => Number(item.id) === Number(contraceptiveState.editingId));
-  const service = serviceForType(type);
+  const service = contraceptiveService();
   const sameType = previous?.contraceptiveType === type;
-  const price = Number(sameType ? previous.servicePrice : configuredPrice(type));
+  const price = Number(sameType ? previous.servicePrice : configuredPrice());
   const user = currentUser();
   const record = {
     ...(previous || {}),
@@ -464,64 +464,6 @@ function closePatientHistory() {
   document.getElementById('contraceptiveHistoryModal').classList.remove('nursing-modal--active');
 }
 
-function openPriceConfiguration() {
-  if (!hasFullAccess()) return;
-  const form = document.getElementById('contraceptivePriceConfigForm');
-  form.elements.monthlyPrice.value = configuredPrice('Mensual');
-  form.elements.quarterlyPrice.value = configuredPrice('Trimestral');
-  document.getElementById('contraceptivePriceConfigStatus').textContent = '';
-  document.getElementById('contraceptivePriceConfigModal').classList.add('nursing-modal--active');
-}
-
-function closePriceConfiguration() {
-  document.getElementById('contraceptivePriceConfigModal').classList.remove('nursing-modal--active');
-}
-
-async function savePriceConfiguration(event) {
-  event.preventDefault();
-  if (!hasFullAccess()) return;
-  const form = event.currentTarget;
-  const button = form.querySelector('[type="submit"]');
-  const status = document.getElementById('contraceptivePriceConfigStatus');
-  const prices = {
-    Mensual: Number(form.elements.monthlyPrice.value),
-    Trimestral: Number(form.elements.quarterlyPrice.value),
-  };
-  if (Object.values(prices).some((price) => !Number.isFinite(price) || price < 0)) {
-    status.textContent = 'Los precios deben ser valores iguales o mayores a 0 Bs.';
-    return;
-  }
-  button.disabled = true;
-  button.textContent = '⏳ Guardando…';
-  status.textContent = '';
-  try {
-    for (const type of ['Mensual', 'Trimestral']) {
-      const existing = contraceptiveState.services.find((service) => {
-        const name = String(service.name || '').toLowerCase();
-        return name.includes('anticoncept') && name.includes(type.toLowerCase());
-      });
-      await window.MedSolutionData.saveService({
-        ...(existing || {}),
-        name: `Anticonceptivo ${type.toLowerCase()}`,
-        price: prices[type],
-        description: existing?.description || `Aplicación de anticonceptivo ${type.toLowerCase()}`,
-        requires_medical_consultation: false,
-        generates_medical_record: false,
-        allowed_responsible: 'Ambos',
-        active: true,
-      });
-    }
-    await loadContraceptiveData();
-    closePriceConfiguration();
-    showContraceptiveToast('Precios de anticonceptivos actualizados. Se aplicarán a los registros nuevos.');
-  } catch (error) {
-    status.textContent = error.message || 'No se pudo guardar la configuración.';
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Guardar precios';
-  }
-}
-
 async function setupContraceptives() {
   await window.MedSolutionData?.ready;
   try {
@@ -532,7 +474,6 @@ async function setupContraceptives() {
   }
   renderContraceptiveTable();
   renderResponsibleFilter();
-  document.getElementById('configureContraceptivePricesBtn').style.display = hasFullAccess() ? '' : 'none';
   document.getElementById('newContraceptiveBtn').addEventListener('click', () => openContraceptiveModal());
   document.getElementById('closeContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
   document.getElementById('cancelContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
@@ -554,7 +495,7 @@ async function setupContraceptives() {
   document.querySelector('#contraceptiveForm [name="contraceptiveType"]').addEventListener('change', () => {
     showContraceptiveStatus();
     updateNextApplicationPreview();
-    document.querySelector('#contraceptiveForm [name="price"]').value = configuredPrice(document.querySelector('#contraceptiveForm [name="contraceptiveType"]').value);
+    document.querySelector('#contraceptiveForm [name="price"]').value = configuredPrice();
   });
   document.querySelector('#contraceptiveForm [name="patientId"]').addEventListener('change', () => showContraceptiveStatus());
   document.querySelector('#contraceptiveForm [name="responsible"]').addEventListener('change', () => showContraceptiveStatus());
@@ -579,11 +520,6 @@ async function setupContraceptives() {
     contraceptiveState.responsible = event.target.value;
     renderContraceptiveTable();
   });
-  document.getElementById('configureContraceptivePricesBtn').addEventListener('click', openPriceConfiguration);
-  document.getElementById('contraceptivePriceConfigForm').addEventListener('submit', savePriceConfiguration);
-  document.getElementById('closePriceConfigBtn').addEventListener('click', closePriceConfiguration);
-  document.getElementById('cancelPriceConfigBtn').addEventListener('click', closePriceConfiguration);
-  document.querySelector('#contraceptivePriceConfigModal .nursing-modal__overlay').addEventListener('click', closePriceConfiguration);
   document.getElementById('closeContraceptiveHistoryBtn').addEventListener('click', closePatientHistory);
   document.querySelector('#contraceptiveHistoryModal .nursing-modal__overlay').addEventListener('click', closePatientHistory);
   document.getElementById('controlTableBody').addEventListener('click', (event) => {

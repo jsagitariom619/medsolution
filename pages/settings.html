@@ -16,6 +16,7 @@
       .patients-table td { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
       .patients-table tr:last-child td { border-bottom: none; }
       .patients-empty { text-align: center; padding: 40px; color: var(--gray-500); }
+      .service-value-input,.service-value-select{width:100%;min-width:120px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50);color:var(--gray-700);font:inherit}.service-value-input:focus,.service-value-select:focus{outline:none;border-color:var(--aqua);box-shadow:0 0 0 4px rgba(47,183,166,.12);background:white}.service-value-name{min-width:220px}.service-value-actions{display:flex;align-items:center;gap:10px}.service-value-status{font-size:.82rem;font-weight:700;color:var(--gray-500)}
     </style>
   </head>
   <body class="app-body">
@@ -45,6 +46,21 @@
                 <span id="supabaseConnectionStatus" style="font-size:.88rem;color:var(--gray-500)">Comprobando conexión…</span>
               </div>
             </div></article>
+          </section>
+
+          <section style="margin-top:40px" data-requires-role="Administrador">
+            <div class="page-header" style="margin-bottom:20px"><div><span class="eyebrow">Configuración operativa</span>
+              <h2 style="margin:6px 0 0;color:var(--petroleum-dark);font-size:clamp(1.4rem,3vw,2rem)">Servicios y Valores</h2>
+              <p style="margin:6px 0 0;color:var(--gray-500)">Administra nombres, precios y estado desde una única fuente sincronizada con Supabase.</p></div></div>
+            <article class="card" style="padding:24px">
+              <div style="overflow-x:auto">
+                <table class="patients-table">
+                  <thead><tr><th>Nombre</th><th>Precio (Bs)</th><th>Estado</th><th>Acción</th></tr></thead>
+                  <tbody id="serviceValuesTableBody"><tr><td colspan="4" class="patients-empty">Cargando servicios y valores…</td></tr></tbody>
+                </table>
+              </div>
+              <p id="serviceValuesStatus" role="status" style="margin:14px 0 0;font-size:.88rem;color:var(--gray-500)"></p>
+            </article>
           </section>
 
           <section style="margin-top:40px" data-requires-role="Administrador">
@@ -96,6 +112,6 @@
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/settings.js"></script>
+    <script src="../assets/js/settings.js?v=20260731-service-values"></script>
   </body>
 </html>
