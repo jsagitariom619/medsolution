@@ -148,14 +148,15 @@
   async function savePatient(patient) {
     const connection = await db(true);
     const payload = {
-      ...(patient.remoteId ? { id: patient.remoteId } : {}),
-      ...(patient.remoteId && Number(patient.id) ? { legacy_id: Number(patient.id) } : {}),
       nombre: patient.nombre, apellido: patient.apellido || '', ci: patient.ci || null,
       fecha_nacimiento: patient.fechaNacimiento || null, genero: patient.genero || null,
       telefono: patient.telefono || null, email: patient.email || null,
       direccion: patient.direccion || null, registrado_en: patient.registrado || new Date().toISOString().slice(0, 10),
     };
-    const { data, error } = await connection.from('pacientes').upsert(payload, { onConflict: 'legacy_id' }).select().single();
+    const mutation = patient.remoteId
+      ? connection.from('pacientes').update(payload).eq('id', patient.remoteId)
+      : connection.from('pacientes').insert(payload);
+    const { data, error } = await mutation.select().single();
     throwIfError(error); return mapPatient(data);
   }
   async function deletePatient(id) {
@@ -186,8 +187,6 @@
       'treatment','prescription','indications','nextControl',
     ].forEach((key) => delete clinical[key]);
     const payload = {
-      ...(attention.remoteId ? { id: attention.remoteId } : {}),
-      ...(attention.remoteId && Number(attention.id) ? { legacy_id: Number(attention.id) } : {}),
       paciente_id: patientId, servicio_id: uuidOrNull(attention.serviceId),
       historia_clinica_id: medicalRecordId,
       responsable_id: responsible?.id || null, registrado_por: uuidOrNull(attention.registeredByUserId),
@@ -200,7 +199,10 @@
       receta: attention.prescription || '', indicaciones: attention.indications || '',
       proximo_control: attention.nextControl || null, datos_clinicos: clinical,
     };
-    const { data, error } = await connection.from('atenciones').upsert(payload, { onConflict: 'legacy_id' }).select().single();
+    const mutation = attention.remoteId
+      ? connection.from('atenciones').update(payload).eq('id', attention.remoteId)
+      : connection.from('atenciones').insert(payload);
+    const { data, error } = await mutation.select().single();
     throwIfError(error);
     return { ...attention, id: Number(data.legacy_id), remoteId: data.id };
   }

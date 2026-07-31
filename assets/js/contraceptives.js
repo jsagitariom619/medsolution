@@ -130,13 +130,16 @@ function renderContraceptiveTable() {
 
 function renderPatientOptions(term = '', selectedId = '') {
   const select = document.getElementById('contraceptivePatient');
+  const currentSelection = selectedId || select.value;
   const query = term.toLowerCase().trim();
   const patients = contraceptiveState.patients.filter((patient) =>
     !query || `${patientName(patient)} ${patient.ci || ''} ${patient.telefono || ''}`.toLowerCase().includes(query));
   select.innerHTML = '<option value="">Seleccionar…</option>' + patients
     .map((patient) => `<option value="${patient.id}">${escapeControlHtml(patientName(patient))} · ${escapeControlHtml(patient.telefono || 'Sin teléfono')}</option>`)
     .join('');
-  if (selectedId) select.value = String(selectedId);
+  if (currentSelection && patients.some((patient) => String(patient.id) === String(currentSelection))) {
+    select.value = String(currentSelection);
+  }
 }
 
 function renderStaffOptions(selected = '') {
@@ -160,6 +163,90 @@ function showContraceptiveStatus(message = '', type = 'error') {
   element.textContent = message;
   element.style.display = message ? '' : 'none';
   element.style.color = type === 'error' ? '#c93047' : 'var(--aqua)';
+}
+
+function showQuickPatientStatus(message = '', type = 'error') {
+  const element = document.getElementById('quickPatientStatus');
+  element.textContent = message;
+  element.style.display = message ? '' : 'none';
+  element.style.color = type === 'error' ? '#c93047' : 'var(--aqua)';
+}
+
+function resetQuickPatientForm() {
+  ['quickPatientName', 'quickPatientLastName', 'quickPatientCi', 'quickPatientPhone']
+    .forEach((id) => { document.getElementById(id).value = ''; });
+  showQuickPatientStatus();
+}
+
+function showQuickPatientForm() {
+  resetQuickPatientForm();
+  document.getElementById('quickPatientPanel').style.display = '';
+  document.getElementById('showQuickPatientBtn').style.display = 'none';
+  document.getElementById('quickPatientName').focus();
+}
+
+function hideQuickPatientForm() {
+  document.getElementById('quickPatientPanel').style.display = 'none';
+  document.getElementById('showQuickPatientBtn').style.display = '';
+  resetQuickPatientForm();
+}
+
+async function saveQuickPatient() {
+  const button = document.getElementById('saveQuickPatientBtn');
+  if (button.disabled) return;
+  const nombre = document.getElementById('quickPatientName').value.trim();
+  const apellido = document.getElementById('quickPatientLastName').value.trim();
+  const ci = document.getElementById('quickPatientCi').value.trim();
+  const telefono = document.getElementById('quickPatientPhone').value.trim();
+
+  if (!nombre) {
+    showQuickPatientStatus('Debe ingresar el nombre.');
+    document.getElementById('quickPatientName').focus();
+    return;
+  }
+  if (!apellido) {
+    showQuickPatientStatus('Debe ingresar el apellido.');
+    document.getElementById('quickPatientLastName').focus();
+    return;
+  }
+
+  button.disabled = true;
+  button.dataset.originalText = button.textContent;
+  button.textContent = '⏳ Guardando…';
+  showQuickPatientStatus();
+  try {
+    let patient = ci ? await window.MedSolutionData.findPatientByCi(ci) : null;
+    const reused = Boolean(patient);
+    if (!patient) {
+      patient = await window.MedSolutionData.savePatient({
+        nombre,
+        apellido,
+        ci,
+        telefono,
+        fechaNacimiento: '',
+        genero: '',
+        email: '',
+        direccion: '',
+        registrado: new Date().toISOString().slice(0, 10),
+      });
+    }
+    const index = contraceptiveState.patients.findIndex((item) => Number(item.id) === Number(patient.id));
+    if (index >= 0) contraceptiveState.patients[index] = patient;
+    else contraceptiveState.patients.push(patient);
+    document.getElementById('contraceptivePatientSearch').value = '';
+    renderPatientOptions('', patient.id);
+    hideQuickPatientForm();
+    showContraceptiveStatus();
+    showContraceptiveToast(reused
+      ? 'El paciente ya existía y fue seleccionado automáticamente.'
+      : 'Paciente creado y seleccionado correctamente.');
+  } catch (error) {
+    showQuickPatientStatus(`No se pudo guardar el paciente: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = button.dataset.originalText || 'Guardar paciente';
+    delete button.dataset.originalText;
+  }
 }
 
 function showContraceptiveToast(message, type = 'success') {
@@ -189,6 +276,7 @@ function openContraceptiveModal(record = null) {
   contraceptiveState.editingId = record?.id || null;
   document.getElementById('contraceptiveModalTitle').textContent = record ? 'Editar aplicación' : 'Nueva aplicación';
   document.getElementById('contraceptivePatientSearch').value = '';
+  hideQuickPatientForm();
   renderPatientOptions('', record?.patientId);
   renderStaffOptions(record?.procedureResponsible);
   form.elements.applicationDate.value = record?.applicationDate || new Date().toISOString().slice(0, 10);
@@ -204,6 +292,8 @@ function openContraceptiveModal(record = null) {
 }
 
 function closeContraceptiveModal() {
+  document.getElementById('contraceptiveForm').reset();
+  hideQuickPatientForm();
   document.getElementById('contraceptiveModal').classList.remove('nursing-modal--active');
   contraceptiveState.editingId = null;
 }
@@ -244,8 +334,24 @@ async function saveContraceptive(event) {
   const type = form.elements.contraceptiveType.value;
   const nextDate = nextApplicationDate(applicationDate, type);
   const responsible = form.elements.responsible.value;
-  if (!patient || !applicationDate || !type || !responsible) {
-    showContraceptiveStatus('Selecciona paciente, fecha, tipo y responsable.');
+  if (!patient) {
+    showContraceptiveStatus('Debe seleccionar un paciente.');
+    form.elements.patientId.focus();
+    return;
+  }
+  if (!applicationDate) {
+    showContraceptiveStatus('Debe seleccionar la fecha de aplicación.');
+    form.elements.applicationDate.focus();
+    return;
+  }
+  if (!type) {
+    showContraceptiveStatus('Debe seleccionar el tipo de anticonceptivo.');
+    form.elements.contraceptiveType.focus();
+    return;
+  }
+  if (!responsible) {
+    showContraceptiveStatus('Debe seleccionar un responsable.');
+    form.elements.responsible.focus();
     return;
   }
 
@@ -283,9 +389,13 @@ async function saveContraceptive(event) {
   showContraceptiveStatus();
   setContraceptiveSaving(true);
   try {
-    await window.MedSolutionData.saveAttention(record);
+    const saved = await window.MedSolutionData.saveAttention(record);
+    if (!saved?.remoteId || !Number(saved.id)) {
+      throw new Error('Supabase no confirmó la creación del registro.');
+    }
     await loadContraceptiveData();
     renderContraceptiveTable();
+    form.reset();
     closeContraceptiveModal();
     showContraceptiveToast(price > 0
       ? 'Aplicación guardada y registrada en los ingresos.'
@@ -325,10 +435,27 @@ async function setupContraceptives() {
   document.getElementById('cancelContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
   document.querySelector('#contraceptiveModal .nursing-modal__overlay').addEventListener('click', closeContraceptiveModal);
   document.getElementById('contraceptiveForm').addEventListener('submit', saveContraceptive);
-  document.querySelector('#contraceptiveForm [name="applicationDate"]').addEventListener('change', updateNextApplicationPreview);
-  document.querySelector('#contraceptiveForm [name="contraceptiveType"]').addEventListener('change', updateNextApplicationPreview);
+  document.getElementById('showQuickPatientBtn').addEventListener('click', showQuickPatientForm);
+  document.getElementById('cancelQuickPatientBtn').addEventListener('click', hideQuickPatientForm);
+  document.getElementById('saveQuickPatientBtn').addEventListener('click', saveQuickPatient);
+  document.getElementById('quickPatientPanel').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveQuickPatient();
+    }
+  });
+  document.querySelector('#contraceptiveForm [name="applicationDate"]').addEventListener('change', () => {
+    showContraceptiveStatus();
+    updateNextApplicationPreview();
+  });
+  document.querySelector('#contraceptiveForm [name="contraceptiveType"]').addEventListener('change', () => {
+    showContraceptiveStatus();
+    updateNextApplicationPreview();
+  });
+  document.querySelector('#contraceptiveForm [name="patientId"]').addEventListener('change', () => showContraceptiveStatus());
+  document.querySelector('#contraceptiveForm [name="responsible"]').addEventListener('change', () => showContraceptiveStatus());
   document.getElementById('contraceptivePatientSearch').addEventListener('input', (event) => {
-    renderPatientOptions(event.target.value);
+    renderPatientOptions(event.target.value, document.getElementById('contraceptivePatient').value);
   });
   const applySearch = (value) => {
     contraceptiveState.search = value;
