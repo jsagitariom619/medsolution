@@ -58,7 +58,6 @@
     const references = [
       ...parseArray(KEYS.histories),
       ...parseArray(KEYS.consultations),
-      ...parseArray('medsolution.appointments'),
     ].map((item) => ({ id: Number(item?.patientId) }));
     Object.values(getNursingRecords()).forEach((records) => {
       (Array.isArray(records) ? records : []).forEach((record) => references.push({ id: Number(record?.patientId) }));

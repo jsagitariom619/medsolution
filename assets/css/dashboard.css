@@ -27,6 +27,14 @@
   box-shadow: none;
 }
 
+.dashboard-brand .brand__logo {
+  width: 54px;
+  height: 54px;
+  flex-basis: 54px;
+  border-radius: 17px;
+  box-shadow: none;
+}
+
 .dashboard-brand .brand__text {
   display: grid;
   gap: 3px;
@@ -389,7 +397,7 @@
 
 .dashboard-page .appointment-row {
   display: grid;
-  grid-template-columns: 62px 40px minmax(0, 1fr) auto 28px;
+  grid-template-columns: 76px 40px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   min-height: 58px;
@@ -401,6 +409,7 @@
 
 .dashboard-page .appointment-row:last-child { border-bottom: 0; }
 .dashboard-page .appointment-row time { color: var(--petroleum); font-weight: 900; }
+.dashboard-page .appointment-row time small { display:block;margin-top:2px;color:var(--gray-500);font-size:.72rem;font-weight:700; }
 .dashboard-page .appointment-row strong,
 .recent-patient-row strong { display: block; font-size: 0.92rem; color: #111a33; }
 .dashboard-page .appointment-row small,
@@ -415,14 +424,16 @@
 
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
 }
 
 .quick-action-card {
   display: grid;
   min-height: 154px;
-  place-items: center;
+  grid-template-rows: 48px auto;
+  align-content: center;
+  justify-items: center;
   gap: 12px;
   padding: 18px;
   text-align: center;
@@ -440,6 +451,10 @@
 }
 
 .quick-action-card span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
   color: var(--aqua);
   font-size: 2.1rem;
   font-weight: 900;
@@ -479,6 +494,8 @@
 .recent-patient-row p { margin: 0; }
 .patient-photo { width: 38px; height: 38px; color: var(--petroleum); background: linear-gradient(135deg, #ffffff, #dff8f4); font-size: 0.82rem; }
 .recent-patient-row > span { display: flex; gap: 8px; }
+.recent-patient-row .action-links { justify-content: flex-start; }
+.recent-patient-row .action-links a { display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 10px;border-radius:9px;background:#eafaf7;color:var(--petroleum);font-size:.78rem;font-weight:800; }
 .recent-patient-row button { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; color: var(--petroleum); background: #eafaf7; }
 
 @media (max-width: 1240px) {
@@ -563,6 +580,20 @@
   font-weight: 800;
 }
 
+.dashboard-install-button {
+  width: 100%;
+  flex: 0 0 auto;
+  margin-top: 14px;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.dashboard-install-button:disabled {
+  cursor: default;
+  opacity: 0.64;
+}
+
 .dashboard-page .dashboard-card-row {
   position: relative;
   isolation: isolate;
@@ -606,7 +637,7 @@
 .dashboard-month-bar small { color:var(--gray-500); font-weight:700; }
 .dashboard-empty { grid-column:1/-1; margin:auto; padding:22px; color:var(--gray-500); text-align:center; }
 .dashboard-reminders-panel { padding:22px; margin-bottom:22px; }
-.dashboard-reminders-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.dashboard-reminders-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
 .dashboard-reminder { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--gray-100); border-radius:15px; background:var(--gray-50); color:inherit; text-decoration:none; }
 .dashboard-reminder:hover { border-color:var(--aqua); background:rgba(47,183,166,.07); }
 .dashboard-reminder>span { font-size:1.45rem; }
@@ -614,3 +645,20 @@
 .dashboard-reminder small { margin-top:4px;color:var(--aqua);font-weight:900; }
 @media (max-width:900px){.dashboard-reminders-grid{grid-template-columns:1fr 1fr}.dashboard-care-actions{justify-content:flex-start}}
 @media (max-width:600px){.dashboard-reminders-grid{grid-template-columns:1fr}.dashboard-month-bars{gap:5px}.dashboard-care-button{min-width:0}}
+
+/* Alineación final del centro de trabajo. */
+.dashboard-page .dashboard-content { width: min(100%, 1600px); margin-inline: auto; }
+.dashboard-page .dashboard-stats { align-items: stretch; }
+.dashboard-page .dashboard-stat { height: 100%; }
+.dashboard-page .dashboard-stat > div { min-width: 0; }
+.dashboard-page .dashboard-grid { align-items: stretch; }
+.dashboard-page .dashboard-grid > .panel { height: 100%; min-width: 0; }
+.dashboard-page .panel__header { min-height: 46px; }
+.dashboard-page .quick-actions-grid { align-items: stretch; }
+.dashboard-page .quick-action-card { height: 100%; }
+.dashboard-page .quick-action-card strong { max-width: 100%; text-align: center; line-height: 1.35; }
+.dashboard-page .appointment-table { min-height: 92px; }
+.dashboard-page .appointment-row > * { min-width: 0; }
+.dashboard-page .appointment-row .badge { justify-self: end; }
+.dashboard-page .recent-patients-head > *:last-child,
+.dashboard-page .recent-patient-row > *:last-child { justify-self: start; }

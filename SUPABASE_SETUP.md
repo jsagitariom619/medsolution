@@ -17,6 +17,11 @@ SQL Editor del proyecto **Registro Clínico**. La migración
 `202607310002_perfiles_y_archivos_clinicos.sql` agrega los tres perfiles
 configurables y el bucket privado de adjuntos clínicos.
 
+Si una instalación existente todavía no tiene `public.perfiles_sistema`, ejecuta
+`202607310003_asegurar_perfiles_sistema.sql`. Esta migración es independiente de
+Storage, crea sus índices y políticas RLS, e incorpora los tres perfiles iniciales
+sin sobrescribir configuraciones existentes.
+
 La migración crea `usuarios`, `personal_consultorio`, `servicios`, `pacientes`,
 `historias_clinicas` y `atenciones`; activa RLS, índices, relaciones y Realtime.
 

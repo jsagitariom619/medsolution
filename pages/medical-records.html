@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Med Solution — Historias clínicas y evolución de pacientes." />
     <title>Med Solution | Historias clínicas</title>
+    <meta name="theme-color" content="#0F5F5C" />
+    <link rel="manifest" href="../manifest.json" /><link rel="icon" href="../assets/icons/favicon.ico" sizes="any" /><link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/icon-32x32.png" /><link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/icon-16x16.png" /><link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/icon-180x180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -15,6 +17,7 @@
       .records-sidebar-panel { position: sticky; top: calc(var(--topbar-height) + 16px); }
       .records-search-wrap { margin-bottom: 14px; }
       .records-search-wrap input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; font-family: inherit; }
+      .records-filter-stack{display:grid;gap:8px;margin-bottom:14px}.records-filter-stack input,.records-filter-stack select{width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font:inherit;color:var(--gray-700)}
       .records-search-wrap input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
       .records-patient-list { display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 240px); overflow-y: auto; }
       .records-patient-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: none; background: transparent; cursor: pointer; width: 100%; transition: background 140ms ease; }
@@ -75,6 +78,7 @@
                 <div class="records-search-wrap">
                   <input id="recordsSearch" type="search" placeholder="Buscar paciente…" />
                 </div>
+                <div class="records-filter-stack"><select id="recordsDoctorFilter"><option value="">Todos los médicos</option></select><input id="recordsDateFilter" type="date" title="Filtrar por fecha" /><input id="recordsDiagnosisFilter" type="search" placeholder="Buscar diagnóstico…" /></div>
                 <div class="records-patient-list" id="recordsPatientList">
                   <p style="color:var(--gray-500)">Cargando…</p>
                 </div>
@@ -91,6 +95,7 @@
 
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
+    <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
     <script src="../assets/js/medical-records.js?v=20260731-digital-record"></script>
   </body>

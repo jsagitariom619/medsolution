@@ -63,7 +63,7 @@ async function loadConsultations() {
 }
 
 async function saveConsultations(changed = null) {
-  if (changed && window.MedSolutionData?.isConfigured()) await window.MedSolutionData.saveAttention(changed);
+  if (changed) await window.MedSolutionData.saveAttention(changed);
   localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
   window.dispatchEvent(new CustomEvent('medsolution:consultations-updated'));
 }
@@ -75,6 +75,10 @@ function nextId(items) {
   return numeric.length ? Math.max(...numeric) + 1 : 1;
 }
 function getUrlParam(name) { return new URLSearchParams(window.location.search).get(name); }
+function boliviaNowParts() {
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+  return { date:`${parts.year}-${parts.month}-${parts.day}`, time:`${parts.hour}:${parts.minute}` };
+}
 function getInitials(name) {
   return (name || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase();
 }
@@ -449,8 +453,7 @@ function openConsultModal(mode, consult = null) {
   if (consult) {
     fillConsultForm(form, consult);
   } else {
-    form.elements.date.value = new Date().toISOString().slice(0, 10);
-    form.elements.time.value = new Date().toTimeString().slice(0, 5);
+    const now=boliviaNowParts();form.elements.date.value=now.date;form.elements.time.value=now.time;
   }
 
   const titles = {
@@ -550,6 +553,9 @@ async function handleConsultSave(event) {
   const saveButton = document.getElementById('consultSaveBtn');
   setFormStatus('consultFormStatus');
   const data = consultationData(form);
+  if (consultState.editingId === null) {
+    const now=boliviaNowParts();data.date=now.date;data.time=now.time;
+  }
   if (!data.patientId) return setFormStatus('consultFormStatus', 'Selecciona un paciente.');
   if (!data.date || !data.serviceType) {
     return setFormStatus('consultFormStatus', 'Fecha y servicio son requeridos.');
@@ -605,6 +611,9 @@ async function handleConsultSave(event) {
   });
 
   try {
+    if (!window.MedSolutionData?.isConfigured()) {
+      throw new Error('Supabase no está conectado. La atención no se guardó para evitar datos locales sin sincronizar.');
+    }
     if ((clinical || (data.requiresMedicalConsultation && isDoctor())) && !consultState.pendingPatient?.isNew) {
       await ensureMedicalRecord(data.patientId);
     }
@@ -684,13 +693,19 @@ async function deleteConsultation(id) {
 }
 
 async function startScheduledAppointment(appointmentId) {
-  let appointments=[];
-  try { appointments=JSON.parse(localStorage.getItem('medsolution.appointments')||'[]'); } catch { appointments=[]; }
+  const appointments=await window.MedSolutionData.getAppointments();
   const appointment=appointments.find((item)=>Number(item.id)===Number(appointmentId));
   if(!appointment)throw new Error('No se encontró la cita programada.');
   if(appointment.attentionId){
     const existing=consultState.consultations.find((item)=>Number(item.id)===Number(appointment.attentionId));
-    if(existing){if(isDoctor()&&requiresMedical(existing))openConsultModal(existing.status==='Finalizada'?'edit-clinical':'clinical',existing);return}
+    if(existing){
+      if(isDoctor()&&requiresMedical(existing)&&existing.status!=='Finalizada'){
+        await ensureMedicalRecord(existing.patientId);existing.status='En consulta';existing.acceptedAt=new Date().toISOString();
+        const persisted=await window.MedSolutionData.saveAttention(existing);
+        Object.assign(existing,persisted);renderConsultations();openConsultModal('clinical',existing);
+      } else if(isDoctor()&&requiresMedical(existing)) openConsultModal('edit-clinical',existing);
+      return;
+    }
   }
   const patient=getPatients().find((item)=>Number(item.id)===Number(appointment.patientId));
   if(!patient)throw new Error('El paciente de la cita ya no está disponible.');
@@ -709,7 +724,6 @@ async function startScheduledAppointment(appointmentId) {
   };
   if(window.MedSolutionData?.isConfigured())attention=await window.MedSolutionData.saveAttention(attention);
   consultState.consultations.push(attention);await saveConsultations();
-  appointment.status='Atendida';appointment.attentionId=attention.id;localStorage.setItem('medsolution.appointments',JSON.stringify(appointments));
   renderConsultations();showFlowMessage('La cita se convirtió correctamente en una atención.');
   if(doctorStarts)openConsultModal('clinical',attention);
 }

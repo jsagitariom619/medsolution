@@ -1,6 +1,5 @@
-// Schedule Module — Agenda Médica (localStorage)
+// Schedule Module — Agenda Médica (Supabase: public.citas)
 
-const SCHEDULE_KEY = 'medsolution.appointments';
 const PATIENTS_KEY = 'medsolution.patients';
 
 const scheduleState = {
@@ -10,6 +9,7 @@ const scheduleState = {
   filterStatus: '',
   filterPatient: '',
   filterTiming: '',
+  filterPeriod: '',
   calendarView: 'month',
   calendarDate: new Date(),
   patients: [],
@@ -40,50 +40,24 @@ function authCan(feature) {
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
-function loadAppointments() {
+async function loadAppointments() {
   try {
-    const stored = localStorage.getItem(SCHEDULE_KEY);
-    scheduleState.appointments = (stored ? JSON.parse(stored) : getScheduleSeed()).map((item) => ({
-      ...item,
-      status: item.status === 'Pendiente' ? 'Programada' : (item.status || 'Programada'),
-      observations: item.observations || item.reason || '',
-      serviceId: item.serviceId || scheduleState.services.find((service)=>service.requires_medical_consultation)?.id || '',
-      serviceName: item.serviceName || scheduleState.services.find((service)=>service.requires_medical_consultation)?.name || '',
-      professional: item.professional || scheduleState.staff.find((person)=>/doctor|médic|medic/i.test(person.position||''))?.name || '',
-    }));
-    if (!stored) saveAppointments();
-  } catch {
+    scheduleState.appointments = await window.MedSolutionData.getAppointments();
+  } catch (error) {
     scheduleState.appointments = [];
+    throw error;
   }
-}
-
-function saveAppointments() {
-  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduleState.appointments));
 }
 
 function getPatients() {
   return scheduleState.patients;
 }
 
-function getScheduleSeed() {
-  const today = new Date().toISOString().slice(0, 10);
-  return [
-    { id: 1, patientId: 1, patientName: 'María Fernanda López', date: today, time: '09:00', reason: 'Control general', status: 'Confirmada', createdAt: today },
-    { id: 2, patientId: 2, patientName: 'Carlos Alberto Rojas', date: today, time: '10:00', reason: 'Dolor lumbar', status: 'Programada', createdAt: today },
-    { id: 3, patientId: 3, patientName: 'Ana Gabriela Méndez', date: today, time: '11:30', reason: 'Control prenatal', status: 'Confirmada', createdAt: today },
-  ];
-}
-
-function nextScheduleId() {
-  const ids = scheduleState.appointments.map((a) => a.id);
-  return ids.length ? Math.max(...ids) + 1 : 1;
-}
-
 // ── Render ────────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE = {
-  Programada: 'badge--programmed',
-  Confirmada: 'badge--confirmed',
+  Pendiente: 'badge--pending',
+  'En Atención': 'badge--in-progress',
   Reprogramada: 'badge--rescheduled',
   Atendida: 'badge--attended',
   Cancelada: 'badge--cancelled',
@@ -97,12 +71,17 @@ function renderSchedule() {
   const fs = scheduleState.filterStatus;
   const fp = scheduleState.filterPatient.toLowerCase();
   const ft = scheduleState.filterTiming;
-  const today = new Date().toISOString().slice(0, 10);
+  const period = scheduleState.filterPeriod;
+  const today = isoLocal(new Date());
+  const todayDate=new Date(`${today}T12:00:00-04:00`);const weekStart=new Date(todayDate);weekStart.setUTCDate(weekStart.getUTCDate()-((weekStart.getUTCDay()+6)%7));const weekEnd=new Date(weekStart);weekEnd.setUTCDate(weekEnd.getUTCDate()+6);const weekStartIso=isoLocal(weekStart),weekEndIso=isoLocal(weekEnd);const monthStart=`${today.slice(0,7)}-01`;const [currentYear,currentMonth]=today.split('-').map(Number);const monthEnd=isoLocal(new Date(Date.UTC(currentYear,currentMonth,0,16)));
 
   const visible = scheduleState.appointments.filter((a) => {
     if (fd && a.date !== fd) return false;
     if (fs && a.status !== fs) return false;
     if (fp && !a.patientName.toLowerCase().includes(fp)) return false;
+    if (period === 'today' && a.date !== today) return false;
+    if (period === 'week' && (a.date < weekStartIso || a.date > weekEndIso)) return false;
+    if (period === 'month' && (a.date < monthStart || a.date > monthEnd)) return false;
     if (ft === 'upcoming' && a.date < today) return false;
     if (ft === 'expired' && (a.date >= today || ['Atendida','Cancelada'].includes(a.status))) return false;
     return true;
@@ -146,7 +125,7 @@ function renderSchedule() {
   renderCalendar();
 }
 
-function isoLocal(date) { return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function isoLocal(date) { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));return `${parts.year}-${parts.month}-${parts.day}`; }
 function startOfWeek(date) { const value=new Date(date);const offset=(value.getDay()+6)%7;value.setDate(value.getDate()-offset);value.setHours(12,0,0,0);return value; }
 function calendarDates() {
   const current=new Date(scheduleState.calendarDate);
@@ -222,7 +201,7 @@ function openScheduleModal(mode, appt = null) {
     title.textContent = 'Nueva Cita';
     // Default to today
     const dateInput = form.elements.date;
-    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (dateInput) dateInput.value = isoLocal(new Date());
   } else if (mode === 'edit' && appt) {
     title.textContent = 'Editar Cita';
     scheduleState.editingId = appt.id;
@@ -244,7 +223,7 @@ function fillScheduleForm(form, appt) {
   if (form.elements.date) form.elements.date.value = appt.date || '';
   if (form.elements.time) form.elements.time.value = appt.time || '';
   if (form.elements.observations) form.elements.observations.value = appt.observations || appt.reason || '';
-  if (form.elements.status) form.elements.status.value = appt.status || 'Programada';
+  if (form.elements.status) form.elements.status.value = appt.status || 'Pendiente';
   // Patient select is already populated; set value
   const select = document.getElementById('apptPatientSelect');
   if (select) select.value = appt.patientId;
@@ -252,7 +231,7 @@ function fillScheduleForm(form, appt) {
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
-function handleScheduleSave(event) {
+async function handleScheduleSave(event) {
   event.preventDefault();
   const form = document.getElementById('scheduleForm');
   if (!form) return;
@@ -283,40 +262,34 @@ function handleScheduleSave(event) {
     return;
   }
 
-  if (scheduleState.editingId !== null) {
-    const idx = scheduleState.appointments.findIndex((a) => a.id === scheduleState.editingId);
-    if (idx > -1) {
-      const previous=scheduleState.appointments[idx];
+  const submitButton=form.querySelector('[type="submit"]');submitButton.disabled=true;submitButton.textContent='Guardando…';
+  try {
+    if (scheduleState.editingId !== null) {
+      const previous=scheduleState.appointments.find((a) => a.id === scheduleState.editingId);
+      if (!previous) throw new Error('No se encontró la cita a editar.');
       if((previous.date!==data.date||previous.time!==data.time)&&!['Cancelada','Atendida'].includes(previous.status))data.status='Reprogramada';
-      scheduleState.appointments[idx] = { ...previous, ...data };
+      await window.MedSolutionData.saveAppointment({ ...previous, ...data });
+    } else {
+      await window.MedSolutionData.saveAppointment({
+        ...data, createdAt: new Date().toISOString(), registeredBy: getAuthUser()?.name || '',
+      });
     }
-  } else {
-    scheduleState.appointments.push({
-      id: nextScheduleId(),
-      createdAt: new Date().toISOString().slice(0, 10),
-      ...data,
-    });
-  }
-
-  saveAppointments();
-  closeScheduleModal();
-  renderSchedule();
+    await loadAppointments();closeScheduleModal();renderSchedule();
+  } catch(error) { alert(`No se pudo guardar la cita: ${error.message}`); }
+  finally { submitButton.disabled=false;submitButton.textContent='Guardar Cita'; }
 }
 
-function handleScheduleDelete(id) {
+async function handleScheduleDelete(id) {
   if (!confirm('¿Cancelar esta cita?')) return;
-  const idx = scheduleState.appointments.findIndex((a) => a.id === id);
-  if (idx > -1) {
-    scheduleState.appointments[idx].status = 'Cancelada';
-    saveAppointments();
-    renderSchedule();
-  }
+  try { await window.MedSolutionData.updateAppointmentStatus(id,'Cancelada');await loadAppointments();renderSchedule(); }
+  catch(error) { alert(`No se pudo cancelar la cita: ${error.message}`); }
 }
 
-function handleAttend(id) {
-  // Mark as Atendida and redirect to Nueva Atención with patientId param
+async function handleAttend(id) {
   const appt = scheduleState.appointments.find((a) => a.id === id);
   if (!appt) return;
+  try { await window.MedSolutionData.updateAppointmentStatus(id,'En Atención'); }
+  catch(error) { alert(`No se pudo iniciar la atención: ${error.message}`);return; }
   window.location.href = `appointments.html?appointmentId=${appt.id}&startScheduled=1`;
 }
 
@@ -327,8 +300,8 @@ async function setupScheduleModule() {
   try {
     [scheduleState.patients,scheduleState.services,scheduleState.staff]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getServices(false),window.MedSolutionData.getStaff()]);
     localStorage.setItem(PATIENTS_KEY,JSON.stringify(scheduleState.patients));
+    await loadAppointments();
   } catch(error) { alert(`No se pudo cargar la agenda: ${error.message}`);return; }
-  loadAppointments();
   renderSchedule();
 
   document.getElementById('newApptBtn')?.addEventListener('click', () => openScheduleModal('create'));
@@ -351,6 +324,7 @@ async function setupScheduleModule() {
     renderSchedule();
   });
   document.getElementById('filterTiming')?.addEventListener('change',(e)=>{scheduleState.filterTiming=e.target.value;renderSchedule()});
+  document.getElementById('filterPeriod')?.addEventListener('change',(e)=>{scheduleState.filterPeriod=e.target.value;renderSchedule()});
   document.querySelectorAll('[data-calendar-view]').forEach(button=>button.addEventListener('click',()=>{scheduleState.calendarView=button.dataset.calendarView;renderCalendar()}));
   document.getElementById('todayCalendarBtn')?.addEventListener('click',()=>{scheduleState.calendarDate=new Date();renderCalendar()});
   document.getElementById('previousCalendarBtn')?.addEventListener('click',()=>{const date=scheduleState.calendarDate;if(scheduleState.calendarView==='day')date.setDate(date.getDate()-1);else if(scheduleState.calendarView==='week')date.setDate(date.getDate()-7);else{date.setDate(1);date.setMonth(date.getMonth()-1)}renderCalendar()});
@@ -369,6 +343,10 @@ async function setupScheduleModule() {
     else if (btn.dataset.action === 'attend') handleAttend(id);
   });
   if(new URLSearchParams(location.search).get('action')==='new')openScheduleModal('create');
+  scheduleState.unsubscribeAppointments = window.MedSolutionData.subscribeAppointments(async () => {
+    try { await loadAppointments();renderSchedule(); }
+    catch(error) { console.error('[Agenda] No se pudo actualizar:', error); }
+  });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupScheduleModule, { once: true });

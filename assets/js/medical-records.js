@@ -3,7 +3,7 @@ const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
 const RECORDS_KEY = 'medsolution.medicalRecords';
 
-const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, searchTerm: '', attachmentConsultationId: null, uploading: false };
+const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, searchTerm: '', doctorFilter: '', dateFilter: '', diagnosisFilter: '', attachmentConsultationId: null, uploading: false };
 
 function readArray(key) {
   try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : []; }
@@ -33,6 +33,9 @@ function consultationsFor(patientId) {
   return recordsState.consultations
     .filter((c) => c.contraceptiveControl !== true)
     .filter((c) => Number(c.patientId) === Number(patientId))
+    .filter((c) => !recordsState.doctorFilter || medicalResponsible(c) === recordsState.doctorFilter)
+    .filter((c) => !recordsState.dateFilter || c.date === recordsState.dateFilter)
+    .filter((c) => !recordsState.diagnosisFilter || String(c.diagnosis || '').toLowerCase().includes(recordsState.diagnosisFilter.toLowerCase()))
     .sort((a,b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
 }
 function contraceptivesFor(patientId) {
@@ -48,10 +51,19 @@ function canViewPrices() {
   } catch { return false; }
 }
 function medicalResponsible(consultation) {
-  const byRole = recordsState.users.find((user) => user.role === consultation.registeredByRole);
+  if (consultation.scheduledProfessional) return consultation.scheduledProfessional;
+  const clinicalRoles=['Administrador','Médico'];
+  const byRole = clinicalRoles.includes(consultation.registeredByRole)
+    ? recordsState.users.find((user) => user.role === consultation.registeredByRole) : null;
   if (byRole) return byRole.name;
-  const byName = recordsState.users.find((user) => user.name === consultation.registeredBy);
-  return byName?.name || recordsState.users.find((user) => user.role === 'Médico')?.name || consultation.registeredBy || 'Médico';
+  const byName = recordsState.users.find((user) => user.name === consultation.registeredBy && clinicalRoles.includes(user.role));
+  return byName?.name || recordsState.users.find((user) => user.role === 'Médico')?.name || 'Médico';
+}
+function populateDoctorFilter() {
+  const select=document.getElementById('recordsDoctorFilter');if(!select)return;const current=select.value;
+  const names=[...new Set(recordsState.consultations.filter(item=>item.contraceptiveControl!==true).map(medicalResponsible).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  select.innerHTML='<option value="">Todos los médicos</option>'+names.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+  select.value=names.includes(current)?current:'';recordsState.doctorFilter=select.value;
 }
 async function ensureRecord(patientId) {
   let record = recordsState.records.find((r) => Number(r.patientId) === Number(patientId));
@@ -69,10 +81,11 @@ function renderPatientList() {
   const list = document.getElementById('recordsPatientList');
   const q = recordsState.searchTerm.toLowerCase();
   const historyPatientIds=new Set(recordsState.records.map(record=>Number(record.patientId)));
+  const hasClinicalFilters=Boolean(recordsState.doctorFilter||recordsState.dateFilter||recordsState.diagnosisFilter);
   const patients = recordsState.patients
-    .filter((patient)=>historyPatientIds.has(Number(patient.id))
+    .filter((patient)=>hasClinicalFilters?consultationsFor(patient.id).length>0:(historyPatientIds.has(Number(patient.id))
       || consultationsFor(patient.id).some(item=>item.requiresMedicalConsultation!==false)
-      || contraceptivesFor(patient.id).length > 0)
+      || contraceptivesFor(patient.id).length > 0))
     .filter((p) => !q || `${p.nombre} ${p.apellido} ${p.ci}`.toLowerCase().includes(q));
   if (!patients.length) { list.innerHTML = '<p style="color:var(--gray-500);padding:16px 0">No se encontraron pacientes.</p>'; return; }
   list.innerHTML = patients.map((p) => {
@@ -257,8 +270,12 @@ async function setupMedicalRecords() {
   await window.MedSolutionData?.ready;
   try { await loadData(); } catch (error) { alert(`No se pudo cargar la información clínica: ${error.message}`); return; }
   renderPatientList();
+  populateDoctorFilter();
   document.getElementById('recordsDetailPanel').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-500)">Selecciona un paciente para ver su historia clínica.</div>';
   document.getElementById('recordsSearch')?.addEventListener('input', (e) => { recordsState.searchTerm = e.target.value; renderPatientList(); });
+  document.getElementById('recordsDoctorFilter')?.addEventListener('change',(e)=>{recordsState.doctorFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
+  document.getElementById('recordsDateFilter')?.addEventListener('change',(e)=>{recordsState.dateFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
+  document.getElementById('recordsDiagnosisFilter')?.addEventListener('input',(e)=>{recordsState.diagnosisFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
   document.getElementById('recordsPatientList')?.addEventListener('click', (e) => {
     const button = e.target.closest('[data-patient-id]'); if (button) selectPatient(button.dataset.patientId).catch((error)=>alert(error.message));
   });
@@ -294,6 +311,7 @@ async function setupMedicalRecords() {
   if (patientId) selectPatient(patientId);
   window.MedSolutionData?.subscribeAttentions(async () => {
     await loadData();
+    populateDoctorFilter();
     if (recordsState.selectedPatientId) await renderPatientRecord(recordsState.selectedPatientId);
     renderPatientList();
   });

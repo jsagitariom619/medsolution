@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medsolution-pwa-v1';
+const CACHE_NAME = 'medsolution-pwa-v5';
 const APP_SHELL = [
   '/',
   '/index.html',

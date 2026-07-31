@@ -1,4 +1,3 @@
-const DASHBOARD_SCHEDULE_KEY = 'medsolution.appointments';
 let dashboardSubscriptionsReady=false;
 const DASHBOARD_MODULES = new Set(['patients.html','appointments.html','medical-records.html','schedule.html','services.html','contraceptives.html','reports.html','settings.html']);
 
@@ -86,14 +85,11 @@ function setupDashboardShell() {
   if (initial) openDashboardModule(initial, false); else setDashboardActiveModule();
 }
 
-function dashboardReadSchedule() {
-  try { const value = JSON.parse(localStorage.getItem(DASHBOARD_SCHEDULE_KEY)); return Array.isArray(value) ? value : []; }
-  catch { return []; }
-}
 function dashboardEscape(value) { const element=document.createElement('div');element.textContent=value==null?'':String(value);return element.innerHTML; }
 function dashboardInitials(name) { return String(name||'').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase(); }
 function dashboardFormatDate(date) { if(!date)return '—';const [year,month,day]=date.split('-');return `${day}/${month}/${year}`; }
-function dashboardToday() { const now=new Date();return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function dashboardBoliviaNow() { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(part=>[part.type,part.value]));return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${parts.minute}`}; }
+function dashboardToday() { return dashboardBoliviaNow().date; }
 
 function renderDashboardChart(attentions) {
   const target=document.getElementById('dashboardMonthlyChart');
@@ -104,10 +100,10 @@ function renderDashboardChart(attentions) {
 }
 
 function renderDashboardAppointments(schedule) {
-  const today=dashboardToday();const currentTime=new Date().toTimeString().slice(0,5);
-  const items=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
-  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${dashboardEscape(item.time||'—')}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita programada')}</small></div><span class="badge ${item.status==='Confirmada'?'':'badge--pending'}">${dashboardEscape(item.status||'Programada')}</span></div>`).join(''):'<p class="dashboard-empty">No hay citas pendientes para hoy.</p>';
-  return items.filter(item=>String(item.time||'')>=currentTime).length;
+  const current=dashboardBoliviaNow();const today=current.date;const currentTime=current.time;
+  const items=schedule.filter(item=>item.date>=today&&!['Cancelada','Atendida'].includes(item.status)).sort((a,b)=>`${a.date}${a.time||''}`.localeCompare(`${b.date}${b.time||''}`));
+  document.getElementById('dashboardTodayAppointments').innerHTML=items.length?items.slice(0,6).map(item=>`<div class="appointment-row"><time>${item.date===today?dashboardEscape(item.time||'—'):`${dashboardFormatDate(item.date)}<small>${dashboardEscape(item.time||'—')}</small>`}</time><span class="patient-initials">${dashboardInitials(item.patientName)}</span><div><strong>${dashboardEscape(item.patientName)}</strong><small>${dashboardEscape(item.serviceName||item.reason||'Cita pendiente')}</small></div><span class="badge badge--pending">${dashboardEscape(item.status||'Pendiente')}</span></div>`).join(''):'<p class="dashboard-empty">No existen citas programadas.</p>';
+  return items.filter(item=>item.date===today&&String(item.time||'')>=currentTime).length;
 }
 
 function renderDashboardPatients(patients,attentions) {
@@ -119,8 +115,8 @@ function renderDashboardPatients(patients,attentions) {
 async function setupFunctionalDashboard() {
   await window.MedSolutionData?.ready;
   try {
-    const [patients,attentions,histories]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords()]);
-    const schedule=dashboardReadSchedule(),today=dashboardToday(),month=today.slice(0,7);
+    const [patients,attentions,histories,schedule]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords(),window.MedSolutionData.getAppointments()]);
+    const today=dashboardToday(),month=today.slice(0,7);
     const medical=attentions.filter(item=>item.contraceptiveControl!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
     const pending=medical.filter(item=>['Pendiente','Pendiente de consulta','En consulta'].includes(item.status));
     const todaySchedule=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status));
@@ -139,7 +135,7 @@ async function setupFunctionalDashboard() {
     const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
     renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
     const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};
-    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard);window.addEventListener('storage',event=>{if(event.key===DASHBOARD_SCHEDULE_KEY)setupFunctionalDashboard()})}
+    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard);window.MedSolutionData.subscribeAppointments(setupFunctionalDashboard)}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }
 }
 function bootDashboard() {

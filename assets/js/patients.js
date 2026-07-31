@@ -7,6 +7,7 @@ const patientsState = {
   editingId: null,
   searchTerm: '',
   registrationDate: '',
+  sort: 'az',
 };
 
 // ── Auth helper (mirrors auth.js without ES module import) ────────────────────
@@ -127,6 +128,11 @@ function renderTable() {
       String(p.ci || '').toLowerCase().includes(term) ||
       String(p.telefono || '').toLowerCase().includes(term)
     );
+  }).sort((a,b) => {
+    if (patientsState.sort === 'recent') return String(b.registrado || '').localeCompare(String(a.registrado || ''));
+    if (patientsState.sort === 'oldest') return String(a.registrado || '').localeCompare(String(b.registrado || ''));
+    const left=`${a.nombre || ''} ${a.apellido || ''}`,right=`${b.nombre || ''} ${b.apellido || ''}`;
+    return patientsState.sort === 'za' ? right.localeCompare(left,'es') : left.localeCompare(right,'es');
   });
 
   const emptyRow = document.getElementById('patientsEmptyRow');
@@ -389,6 +395,10 @@ async function setupPatientModule() {
   });
   document.getElementById('patientRegistrationDate')?.addEventListener('change', (e) => {
     patientsState.registrationDate = e.target.value;
+    renderTable();
+  });
+  document.getElementById('patientSort')?.addEventListener('change', (e) => {
+    patientsState.sort = e.target.value;
     renderTable();
   });
   const params = new URLSearchParams(location.search);
