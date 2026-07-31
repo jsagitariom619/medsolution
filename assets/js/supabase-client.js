@@ -40,9 +40,7 @@
     if (error) {
       const details = [error.message, error.details, error.hint]
         .filter(Boolean).join(' · ');
-      const databaseError = new Error(details || `Error de Supabase${error.code ? ` (${error.code})` : ''}.`);
-      databaseError.code = error.code || '';
-      throw databaseError;
+      throw new Error(details || `Error de Supabase${error.code ? ` (${error.code})` : ''}.`);
     }
   };
   const db = async (required = false) => {

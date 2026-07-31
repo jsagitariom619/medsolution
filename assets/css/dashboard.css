@@ -27,14 +27,6 @@
   box-shadow: none;
 }
 
-.dashboard-brand .brand__logo {
-  width: 54px;
-  height: 54px;
-  flex-basis: 54px;
-  border-radius: 17px;
-  box-shadow: none;
-}
-
 .dashboard-brand .brand__text {
   display: grid;
   gap: 3px;
@@ -569,20 +561,6 @@
   padding: 24px 8px 4px;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 800;
-}
-
-.dashboard-install-button {
-  width: 100%;
-  flex: 0 0 auto;
-  margin-top: 14px;
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.dashboard-install-button:disabled {
-  cursor: default;
-  opacity: 0.64;
 }
 
 .dashboard-page .dashboard-card-row {
