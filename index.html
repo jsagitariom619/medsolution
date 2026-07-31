@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
     <title>Med Solution | Acceso</title>
+    <meta name="theme-color" content="#0F5F5C" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180x180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -14,7 +20,7 @@
     <main class="auth-shell">
       <section class="auth-hero" aria-label="Presentación de Med Solution">
         <div class="brand brand--light">
-          <span class="brand__mark">MS</span>
+          <img class="brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
           <span class="brand__text">Med Solution</span>
         </div>
         <div class="auth-hero__content">
@@ -36,7 +42,7 @@
       <section class="auth-panel" aria-label="Formulario de acceso">
         <div class="auth-panel__header">
           <div class="brand">
-            <span class="brand__mark">MS</span>
+            <img class="brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
             <span class="brand__text">Med Solution</span>
           </div>
           <span class="secure-badge">Acceso seguro</span>
@@ -68,6 +74,7 @@
           </div>
 
           <button class="btn btn--primary btn--full" type="submit">Entrar al sistema</button>
+          <button class="btn btn--secondary btn--full" type="button" data-install-medsolution disabled>Instalar MedSolution</button>
           <p class="form-note">Modo demo local: <strong>admin</strong> / admin123 · <strong>doctor</strong> / doctor123 · <strong>auxiliar</strong> / aux123</p>
         </form>
       </section>
@@ -75,6 +82,7 @@
 
     <script src="assets/vendor/supabase.js"></script>
     <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/pwa.js"></script>
     <script type="module" src="assets/js/main.js"></script>
   </body>
 </html>

@@ -50,10 +50,14 @@ function renderServiceValuesError(error) {
 }
 
 function renderSystemUsersError(error) {
-  const message = settingsErrorMessage(error, 'No se pudieron cargar los usuarios');
+  const missingTable = error?.code === '42P01'
+    || /perfiles_sistema.*(does not exist|no existe|schema cache)/i.test(error?.message || '');
+  const message = missingTable
+    ? 'No existe public.perfiles_sistema. Ejecuta la migración 202607310003_asegurar_perfiles_sistema.sql en Supabase.'
+    : settingsErrorMessage(error, 'No se pudieron cargar los usuarios');
   console.error('[Configuración] Error al consultar public.perfiles_sistema:', error);
   const body = document.getElementById('usersTableBody');
-  if (body) body.innerHTML = `<tr><td colspan="6" class="patients-empty" style="color:#c93047">${escapeSettingsHtml(message)} Verifica la migración 202607310002 y sus políticas RLS.</td></tr>`;
+  if (body) body.innerHTML = `<tr><td colspan="6" class="patients-empty" style="color:#c93047">${escapeSettingsHtml(message)}</td></tr>`;
 }
 
 async function ensureSupabaseReady() {
