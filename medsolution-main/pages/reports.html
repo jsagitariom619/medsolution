@@ -5,9 +5,8 @@
 .report-filters{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px}.report-filters label{display:grid;gap:6px;font-size:.78rem;font-weight:800;color:var(--gray-500);text-transform:uppercase}.report-filters select,.report-filters input{padding:11px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50)}
 .report-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}.report-summary article{padding:18px}.report-summary small{display:block;color:var(--gray-500);font-weight:700}.report-summary strong{display:block;margin-top:6px;color:var(--petroleum-dark);font-size:1.65rem}
 @media(max-width:760px){.report-filters,.report-summary{grid-template-columns:1fr}}
-</style></head><body class="app-body"><div class="app-shell">
-<main class="main-area">
-<section class="content"><div class="page-header"><div><span class="eyebrow">Administración</span><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div><button class="btn btn--secondary" id="printReportBtn" type="button">Imprimir reporte</button></div>
+</style></head><body class="app-body">
+<section class="content module-content-view"><div class="page-header"><div><span class="eyebrow">Administración</span><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div><button class="btn btn--secondary" id="printReportBtn" type="button">Imprimir reporte</button></div>
 <article class="card" style="padding:22px"><div class="report-filters">
 <label>Período<select id="periodFilter"><option value="day">Día</option><option value="week">Semana</option><option value="month" selected>Mes</option></select></label>
 <label>Fecha de referencia<input id="referenceDate" type="date"/></label><label>Servicio<select id="serviceFilter"><option value="">Todos</option></select></label>
@@ -15,5 +14,5 @@
 </div></article>
 <div class="report-summary"><article class="card"><small>Atenciones</small><strong id="totalAttentions">0</strong></article><article class="card"><small>Total registrado</small><strong id="totalRevenue">0.00 Bs</strong></article><article class="card"><small>Ticket promedio</small><strong id="averageTicket">0.00 Bs</strong></article></div>
 <article class="card" style="padding:22px;overflow-x:auto"><table class="patients-table"><thead><tr><th>Fecha / Hora</th><th>Paciente</th><th>Servicio</th><th>Precio histórico</th><th>Responsable</th><th>Registrado por</th><th>Estado</th></tr></thead>
-<tbody id="reportTableBody"><tr><td colspan="7" class="patients-empty">Cargando atenciones…</td></tr></tbody></table></article></section></main></div>
+<tbody id="reportTableBody"><tr><td colspan="7" class="patients-empty">Cargando atenciones…</td></tr></tbody></table></article></section>
 <script src="../assets/vendor/supabase.js"></script><script src="../assets/js/supabase-client.js"></script><script type="module" src="../assets/js/main.js"></script><script src="../assets/js/reports.js"></script></body></html>
