@@ -120,12 +120,27 @@
       time: `${parts.hour}:${parts.minute}`,
     };
   }
+
+  async function fetchAllPages(queryFactory, pageSize = 1000) {
+    const rows = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await queryFactory().range(from, from + pageSize - 1);
+      throwIfError(error);
+      const page = data || [];
+      rows.push(...page);
+      if (page.length < pageSize) return rows;
+    }
+  }
+
   async function getServices(includeInactive = false) {
     const connection = await db();
     if (!connection) return [];
-    let query = connection.from('servicios').select('*').order('nombre');
-    if (!includeInactive) query = query.eq('activo', true);
-    const { data, error } = await query; throwIfError(error); return (data || []).map(mapService);
+    const data = await fetchAllPages(() => {
+      let query = connection.from('servicios').select('*').order('nombre');
+      if (!includeInactive) query = query.eq('activo', true);
+      return query;
+    });
+    return data.map(mapService);
   }
   async function saveService(item) {
     const connection = await db(true);
@@ -140,9 +155,12 @@
   async function getStaff(includeInactive = false) {
     const connection = await db();
     if (!connection) return [];
-    let query = connection.from('personal_consultorio').select('*').order('nombre_completo');
-    if (!includeInactive) query = query.eq('activo', true);
-    const { data, error } = await query; throwIfError(error); return (data || []).map(mapStaff);
+    const data = await fetchAllPages(() => {
+      let query = connection.from('personal_consultorio').select('*').order('nombre_completo');
+      if (!includeInactive) query = query.eq('activo', true);
+      return query;
+    });
+    return data.map(mapStaff);
   }
   async function saveStaff(item) {
     const connection = await db(true);

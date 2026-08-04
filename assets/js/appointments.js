@@ -411,17 +411,20 @@ async function handleQuickPatientSave(event) {
 function toggleServiceFields() {
   const serviceId = document.getElementById('serviceType')?.value;
   const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));
-  const procedure = Boolean(service && !service.requires_medical_consultation);
   const field = document.getElementById('procedureResponsibleField');
   const select = document.getElementById('procedureResponsible');
-  field.classList.toggle('hidden-section', !procedure);
-  select.required = procedure;
-  if (!procedure) { select.value = ''; return; }
+  field.classList.toggle('hidden-section', !service);
+  select.required = Boolean(service);
+  if (!service) {
+    select.innerHTML = '<option value="">Primero selecciona un servicio…</option>';
+    select.value = '';
+    return;
+  }
   const allowed = service.allowed_responsible || 'Ambos';
   const current = select.value;
   const staff = consultState.staff.filter((person) =>
     allowed === 'Ambos' || staffRole(person.position) === allowed);
-  select.innerHTML = '<option value="">Seleccionar…</option>' + staff
+  select.innerHTML = `<option value="">${staff.length ? 'Seleccionar…' : 'No hay responsables activos autorizados'}</option>` + staff
     .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(person.name)}</option>`).join('');
   if (staff.some((person) => person.name === current)) select.value = current;
 }
@@ -563,8 +566,8 @@ async function handleConsultSave(event) {
   if (!data.date || !data.serviceType) {
     return setFormStatus('consultFormStatus', 'Fecha y servicio son requeridos.');
   }
-  if (!data.requiresMedicalConsultation && !data.procedureResponsible) {
-    return setFormStatus('consultFormStatus', 'Selecciona al responsable del procedimiento.');
+  if (!data.procedureResponsible) {
+    return setFormStatus('consultFormStatus', 'Selecciona al responsable del servicio.');
   }
 
   const clinical = ['clinical', 'edit-clinical'].includes(consultState.mode);

@@ -62,7 +62,7 @@
       .role-context-card strong { color:var(--petroleum-dark); }
       .role-context-card p { margin:3px 0 0;color:var(--gray-500);font-size:.88rem; }
       .hidden-section { display:none !important; }
-      .service-picker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 24px 24px;max-height:60vh;overflow:auto}
+      .service-picker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 24px 24px;max-height:60vh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
       .service-choice{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:16px;border:1px solid var(--gray-200);border-radius:14px;background:var(--white);cursor:pointer;text-align:left;transition:all 140ms}
       .service-choice:hover{border-color:var(--aqua);background:rgba(47,183,166,.06);transform:translateY(-1px)}.service-choice strong{color:var(--petroleum-dark)}.service-choice small{color:var(--gray-500)}.service-choice em{font-style:normal;color:var(--aqua);font-weight:800}
       @media(max-width:560px){.service-picker-grid{grid-template-columns:1fr}}
@@ -169,9 +169,9 @@
               </select>
             </label>
             <label class="form-field hidden-section" id="procedureResponsibleField">
-              <span>Responsable del procedimiento *</span>
-              <select name="procedureResponsible" id="procedureResponsible">
-                <option value="">Cargando responsables…</option>
+              <span>Responsable del servicio *</span>
+              <select name="procedureResponsible" id="procedureResponsible" required>
+                <option value="">Primero selecciona un servicio…</option>
               </select>
             </label>
             <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">
