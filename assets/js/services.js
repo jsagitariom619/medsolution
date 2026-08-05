@@ -32,6 +32,7 @@ function populateLogFilters(){
 function filteredServiceLog(){
   const filter=catalogState.logFilters;let [from,to]=dateLimits(filter.period);if(filter.period==='range'){from=filter.from;to=filter.to}
   return catalogState.attentions.filter(item=>{
+    if(item.contraceptiveSchedule===true)return false;
     if(from&&String(item.date)<from)return false;if(to&&String(item.date)>to)return false;
     if(filter.service&&item.serviceType!==filter.service)return false;
     if(filter.responsible&&attentionResponsible(item)!==filter.responsible)return false;

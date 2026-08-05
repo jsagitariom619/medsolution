@@ -94,7 +94,7 @@ function dashboardToday() { return dashboardBoliviaNow().date; }
 function renderDashboardChart(attentions) {
   const target=document.getElementById('dashboardMonthlyChart');
   const now=new Date();const months=[];
-  for(let offset=5;offset>=0;offset--){const date=new Date(now.getFullYear(),now.getMonth()-offset,1);const key=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;months.push({key,label:date.toLocaleDateString('es',{month:'short'}),count:attentions.filter(item=>String(item.date||'').startsWith(key)&&item.contraceptiveControl!==true).length})}
+  for(let offset=5;offset>=0;offset--){const date=new Date(now.getFullYear(),now.getMonth()-offset,1);const key=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;months.push({key,label:date.toLocaleDateString('es',{month:'short'}),count:attentions.filter(item=>String(item.date||'').startsWith(key)&&item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true).length})}
   const max=Math.max(1,...months.map(item=>item.count));
   target.innerHTML=months.map(item=>`<div class="dashboard-month-bar"><strong>${item.count}</strong><i style="height:${Math.max(6,(item.count/max)*175)}px"></i><small>${dashboardEscape(item.label)}</small></div>`).join('');
 }
@@ -109,7 +109,7 @@ function renderDashboardAppointments(schedule) {
 function renderDashboardPatients(patients,attentions) {
   const recent=[...patients].sort((a,b)=>String(b.registrado||'').localeCompare(String(a.registrado||''))).slice(0,5);const target=document.getElementById('dashboardRecentPatients');
   const head='<div class="recent-patients-head"><span>Paciente</span><span>Última atención</span><span>Acciones</span></div>';
-  target.innerHTML=head+(recent.length?recent.map(patient=>{const last=attentions.filter(item=>Number(item.patientId)===Number(patient.id)&&item.contraceptiveControl!==true).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];return `<div class="recent-patient-row"><div><span class="patient-photo">${dashboardInitials(`${patient.nombre} ${patient.apellido}`)}</span><p><strong>${dashboardEscape(`${patient.nombre} ${patient.apellido}`)}</strong><small>${dashboardEscape(patient.telefono||patient.ci||'Sin contacto')}</small></p></div><time>${dashboardFormatDate(last?.date||patient.registrado)}</time><span class="action-links"><a href="patients.html?patientId=${patient.id}">Ver</a><a href="appointments.html?action=new&patientId=${patient.id}">Atender</a></span></div>`}).join(''):'<p class="dashboard-empty">No hay pacientes registrados.</p>');
+  target.innerHTML=head+(recent.length?recent.map(patient=>{const last=attentions.filter(item=>Number(item.patientId)===Number(patient.id)&&item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];return `<div class="recent-patient-row"><div><span class="patient-photo">${dashboardInitials(`${patient.nombre} ${patient.apellido}`)}</span><p><strong>${dashboardEscape(`${patient.nombre} ${patient.apellido}`)}</strong><small>${dashboardEscape(patient.telefono||patient.ci||'Sin contacto')}</small></p></div><time>${dashboardFormatDate(last?.date||patient.registrado)}</time><span class="action-links"><a href="patients.html?patientId=${patient.id}">Ver</a><a href="appointments.html?action=new&patientId=${patient.id}">Atender</a></span></div>`}).join(''):'<p class="dashboard-empty">No hay pacientes registrados.</p>');
 }
 
 async function setupFunctionalDashboard() {
@@ -118,7 +118,7 @@ async function setupFunctionalDashboard() {
     const [patients,attentions,histories]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords()]);
     const schedule=attentions.filter(item=>item.contraceptiveControl!==true).map(item=>({...item,serviceName:item.serviceType,status:item.scheduleStatus||({'Pendiente de consulta':'Pendiente','En consulta':'En Atención',Finalizada:'Atendida'}[item.status]||item.status)}));
     const today=dashboardToday(),month=today.slice(0,7);
-    const medical=attentions.filter(item=>item.contraceptiveControl!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
+    const medical=attentions.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
     const pending=medical.filter(item=>['Pendiente','Pendiente de consulta','En consulta'].includes(item.status));
     const todaySchedule=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status));
     const contraceptiveDue=attentions.filter(item=>item.contraceptiveControl===true&&item.nextApplicationDate===today).length;
@@ -132,7 +132,8 @@ async function setupFunctionalDashboard() {
     document.getElementById('dashboardContraceptiveDue').textContent=contraceptiveDue;
     document.getElementById('dashboardControlsDue').textContent=controlsDue;
     const upcoming=renderDashboardAppointments(schedule);document.getElementById('dashboardUpcomingToday').textContent=upcoming;
-    const reminders=pending.length+contraceptiveDue+controlsDue+upcoming;document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
+    const scheduledContraceptiveToday=schedule.filter(item=>item.contraceptiveSchedule===true&&item.date===today&&!['Cancelada','Atendida'].includes(item.status)).length;
+    const reminders=pending.length+contraceptiveDue+controlsDue+upcoming-Math.min(contraceptiveDue,scheduledContraceptiveToday);document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
     const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
     renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
     const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};

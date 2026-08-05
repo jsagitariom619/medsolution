@@ -161,7 +161,7 @@ function requiresMedical(attention) {
 function visibleConsultations() {
   const term = consultState.searchTerm.toLowerCase();
   return consultState.consultations
-    .filter((c) => c.contraceptiveControl !== true)
+    .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
     .filter((c) => !consultState.monthView || String(c.date || '').startsWith(new Date().toISOString().slice(0, 7)))
     .filter((c) => consultState.monthView || !isDoctor() || requiresMedical(c))
     .filter((c) => consultState.monthView || !isDoctor() || ['Pendiente', 'Pendiente de consulta', 'En Atención', 'En consulta'].includes(c.status))
@@ -285,7 +285,7 @@ function configureMonthlyAttentionView() {
   document.getElementById('monthlyAttentionFilters').style.display='flex';
   document.getElementById('roleContextTitle').textContent='Atenciones del mes';
   document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas este mes.';
-  const services=[...new Set(consultState.consultations.filter(item=>!item.contraceptiveControl).map(item=>item.serviceType).filter(Boolean))].sort();
+  const services=[...new Set(consultState.consultations.filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule).map(item=>item.serviceType).filter(Boolean))].sort();
   const responsible=[...new Set(consultState.consultations.map(item=>item.procedureResponsible||item.registeredBy).filter(Boolean))].sort();
   document.getElementById('monthlyAttentionService').innerHTML='<option value="">Todos los servicios</option>'+services.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
   document.getElementById('monthlyAttentionResponsible').innerHTML='<option value="">Todos los responsables</option>'+responsible.map(value=>`<option>${escapeHtml(value)}</option>`).join('');

@@ -31,7 +31,7 @@ function formatDate(date) { if (!date) return '—'; const [y,m,d] = date.split(
 function formatDateTime(value) { if (!value) return '—'; return new Intl.DateTimeFormat('es-BO', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)); }
 function consultationsFor(patientId) {
   return recordsState.consultations
-    .filter((c) => c.contraceptiveControl !== true)
+    .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
     .filter((c) => Number(c.patientId) === Number(patientId))
     .filter((c) => !recordsState.doctorFilter || medicalResponsible(c) === recordsState.doctorFilter)
     .filter((c) => !recordsState.dateFilter || c.date === recordsState.dateFilter)

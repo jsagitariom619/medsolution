@@ -1,5 +1,6 @@
 const contraceptiveState = {
   records: [],
+  attentions: [],
   patients: [],
   staff: [],
   services: [],
@@ -7,6 +8,9 @@ const contraceptiveState = {
   saving: false,
   search: '',
   date: '',
+  dateFrom: '',
+  dateTo: '',
+  type: '',
   status: '',
   responsible: '',
 };
@@ -89,6 +93,7 @@ async function loadContraceptiveData() {
   contraceptiveState.patients = patients;
   contraceptiveState.staff = staff;
   contraceptiveState.services = services;
+  contraceptiveState.attentions = attentions;
   contraceptiveState.records = attentions.filter((item) => item.contraceptiveControl === true);
 }
 
@@ -103,6 +108,12 @@ function filteredRecords() {
     .filter((record) => !contraceptiveState.date
       || record.applicationDate === contraceptiveState.date
       || record.nextApplicationDate === contraceptiveState.date)
+    .filter((record) => !contraceptiveState.dateFrom
+      || record.applicationDate >= contraceptiveState.dateFrom)
+    .filter((record) => !contraceptiveState.dateTo
+      || record.applicationDate <= contraceptiveState.dateTo)
+    .filter((record) => !contraceptiveState.type
+      || record.contraceptiveType === contraceptiveState.type)
     .filter((record) => !contraceptiveState.status || controlStatus(record) === contraceptiveState.status)
     .filter((record) => !contraceptiveState.responsible
       || record.procedureResponsible === contraceptiveState.responsible)
@@ -157,7 +168,8 @@ function renderPatientOptions(term = '', selectedId = '') {
 
 function renderStaffOptions(selected = '') {
   const select = document.querySelector('#contraceptiveForm [name="responsible"]');
-  select.innerHTML = '<option value="">Seleccionar…</option>' + contraceptiveState.staff
+  const staff = [...contraceptiveState.staff].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  select.innerHTML = `<option value="">${staff.length ? 'Seleccionar…' : 'No hay personal activo configurado'}</option>` + staff
     .map((person) => `<option value="${escapeControlHtml(person.name)}">${escapeControlHtml(person.name)}</option>`)
     .join('');
   if (selected) select.value = selected;
@@ -165,7 +177,10 @@ function renderStaffOptions(selected = '') {
 
 function renderResponsibleFilter() {
   const select = document.getElementById('controlResponsibleFilter');
-  const names = [...new Set(contraceptiveState.records.map((record) => record.procedureResponsible).filter(Boolean))].sort();
+  const names = [...new Set([
+    ...contraceptiveState.staff.map((person) => person.name),
+    ...contraceptiveState.records.map((record) => record.procedureResponsible),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   select.innerHTML = '<option value="">Todos</option>'
     + names.map((name) => `<option value="${escapeControlHtml(name)}">${escapeControlHtml(name)}</option>`).join('');
   select.value = names.includes(contraceptiveState.responsible) ? contraceptiveState.responsible : '';
@@ -175,7 +190,7 @@ function updateNextApplicationPreview() {
   const form = document.getElementById('contraceptiveForm');
   const next = nextApplicationDate(form.elements.applicationDate.value, form.elements.contraceptiveType.value);
   document.getElementById('nextApplicationPreview').textContent = next
-    ? formatControlDate(next)
+    ? `📅 ${formatControlDate(next)}`
     : 'Selecciona la fecha y el tipo.';
 }
 
@@ -305,9 +320,9 @@ function openContraceptiveModal(record = null) {
   form.elements.observations.value = record?.contraceptiveObservations || '';
   form.elements.price.value = Number(record?.servicePrice ?? configuredPrice()) || 0;
   document.getElementById('contraceptivePriceField').style.display = hasFullAccess() ? '' : 'none';
-  document.getElementById('contraceptiveResponsibleField').style.display = hasFullAccess() ? '' : 'none';
+  document.getElementById('contraceptiveResponsibleField').style.display = '';
   form.elements.price.disabled = true;
-  form.elements.responsible.disabled = !hasFullAccess();
+  form.elements.responsible.disabled = false;
   showContraceptiveStatus();
   updateNextApplicationPreview();
   document.getElementById('contraceptiveModal').classList.add('nursing-modal--active');
@@ -342,10 +357,47 @@ function setContraceptiveSaving(saving) {
     button.removeAttribute('aria-busy');
     delete button.dataset.originalText;
     document.getElementById('contraceptivePriceField').style.display = hasFullAccess() ? '' : 'none';
-    document.getElementById('contraceptiveResponsibleField').style.display = hasFullAccess() ? '' : 'none';
+    document.getElementById('contraceptiveResponsibleField').style.display = '';
     form.elements.price.disabled = true;
-    form.elements.responsible.disabled = !hasFullAccess();
+    form.elements.responsible.disabled = false;
   }
+}
+
+function scheduledDoseFor(controlRemoteId) {
+  return contraceptiveState.attentions.find((item) =>
+    item.contraceptiveSchedule === true
+    && item.sourceContraceptiveRemoteId === controlRemoteId);
+}
+
+async function saveScheduledDose(control, service, user) {
+  const existing = scheduledDoseFor(control.remoteId);
+  const schedule = {
+    ...(existing || {}),
+    patientId: control.patientId,
+    patientName: control.patientName,
+    serviceId: service?.id || control.serviceId || null,
+    serviceType: `Próxima aplicación · ${control.contraceptiveType}`,
+    servicePrice: 0,
+    procedureResponsible: control.procedureResponsible,
+    registeredByUserId: existing?.registeredByUserId || user?.id || null,
+    registeredBy: existing?.registeredBy || user?.name || user?.username || 'Usuario',
+    status: 'Pendiente',
+    scheduleStatus: 'Pendiente',
+    createdAt: `${control.nextApplicationDate}T12:00:00-04:00`,
+    date: control.nextApplicationDate,
+    time: '12:00',
+    chiefComplaint: '',
+    requiresMedicalConsultation: false,
+    generatesMedicalRecord: false,
+    contraceptiveControl: false,
+    contraceptiveSchedule: true,
+    sourceContraceptiveRemoteId: control.remoteId,
+    contraceptiveType: control.contraceptiveType,
+    applicationDate: control.applicationDate,
+    nextApplicationDate: control.nextApplicationDate,
+    appointmentObservations: `Próxima dosis ${control.contraceptiveType.toLowerCase()}`,
+  };
+  return window.MedSolutionData.saveAttention(schedule);
 }
 
 async function saveContraceptive(event) {
@@ -357,9 +409,7 @@ async function saveContraceptive(event) {
   const applicationDate = form.elements.applicationDate.value;
   const type = form.elements.contraceptiveType.value;
   const nextDate = nextApplicationDate(applicationDate, type);
-  const responsible = hasFullAccess()
-    ? form.elements.responsible.value
-    : (currentUser()?.name || currentUser()?.username || 'Auxiliar');
+  const responsible = form.elements.responsible.value;
   if (!patient) {
     showContraceptiveStatus('Debe seleccionar un paciente.');
     form.elements.patientId.focus();
@@ -375,8 +425,8 @@ async function saveContraceptive(event) {
     form.elements.contraceptiveType.focus();
     return;
   }
-  if (hasFullAccess() && !responsible) {
-    showContraceptiveStatus('Debe seleccionar un responsable.');
+  if (!responsible) {
+    showContraceptiveStatus('Debe seleccionar al responsable de la aplicación.');
     form.elements.responsible.focus();
     return;
   }
@@ -418,6 +468,17 @@ async function saveContraceptive(event) {
     if (!saved?.remoteId || !Number(saved.id)) {
       throw new Error('Supabase no confirmó la creación del registro.');
     }
+    try {
+      await saveScheduledDose(saved, service, user);
+    } catch (scheduleError) {
+      try {
+        if (previous) await window.MedSolutionData.saveAttention(previous);
+        else await window.MedSolutionData.deleteAttention(saved.id);
+      } catch (rollbackError) {
+        throw new Error(`No se pudo crear la próxima dosis en Agenda: ${scheduleError.message}. Tampoco se pudo revertir el registro: ${rollbackError.message}`);
+      }
+      throw new Error(`No se pudo crear la próxima dosis en Agenda: ${scheduleError.message}`);
+    }
     await loadContraceptiveData();
     renderResponsibleFilter();
     renderContraceptiveTable();
@@ -438,6 +499,8 @@ async function saveContraceptive(event) {
 async function deleteContraceptive(record) {
   if (!hasFullAccess() || !confirm('¿Eliminar este control de anticonceptivo?')) return;
   try {
+    const scheduled = scheduledDoseFor(record.remoteId);
+    if (scheduled) await window.MedSolutionData.deleteAttention(scheduled.id);
     await window.MedSolutionData.deleteAttention(record.id);
     await loadContraceptiveData();
     renderResponsibleFilter();
@@ -512,6 +575,18 @@ async function setupContraceptives() {
     contraceptiveState.date = event.target.value;
     renderContraceptiveTable();
   });
+  document.getElementById('controlDateFromFilter').addEventListener('change', (event) => {
+    contraceptiveState.dateFrom = event.target.value;
+    renderContraceptiveTable();
+  });
+  document.getElementById('controlDateToFilter').addEventListener('change', (event) => {
+    contraceptiveState.dateTo = event.target.value;
+    renderContraceptiveTable();
+  });
+  document.getElementById('controlTypeFilter').addEventListener('change', (event) => {
+    contraceptiveState.type = event.target.value;
+    renderContraceptiveTable();
+  });
   document.getElementById('controlStatusFilter').addEventListener('change', (event) => {
     contraceptiveState.status = event.target.value;
     renderContraceptiveTable();
@@ -544,6 +619,12 @@ async function setupContraceptives() {
   window.MedSolutionData.subscribeServices(async () => {
     await loadContraceptiveData();
     renderResponsibleFilter();
+    renderContraceptiveTable();
+  });
+  window.MedSolutionData.subscribeStaff(async () => {
+    await loadContraceptiveData();
+    renderResponsibleFilter();
+    renderStaffOptions(document.querySelector('#contraceptiveForm [name="responsible"]')?.value || '');
     renderContraceptiveTable();
   });
 }
