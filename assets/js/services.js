@@ -1,4 +1,4 @@
-const catalogState={services:[],staff:[],attentions:[],editingServiceId:null,editingStaffId:null,search:'',showInactive:false,logFilters:{period:'',from:'',to:'',service:'',responsible:'',status:'',patient:''}};
+const catalogState={services:[],staff:[],attentions:[],editingServiceId:null,editingStaffId:null,search:'',showInactive:false,logFilters:{service:'',responsible:'',month:'',year:''},realtimeTimers:new Map()};
 const data=()=>window.MedSolutionData;
 let catalogSaving=false;
 function esc(v){const e=document.createElement('div');e.textContent=v==null?'':String(v);return e.innerHTML}
@@ -9,7 +9,6 @@ function authUser(){try{return JSON.parse(sessionStorage.getItem('medsolution.au
 function canManageClinical(){return ['Administrador','Médico'].includes(authUser()?.role)}
 function formatDate(value){if(!value)return '—';const [year,month,day]=String(value).split('-');return `${day}/${month}/${year}`}
 function boliviaDate(date=new Date()){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));return `${parts.year}-${parts.month}-${parts.day}`}
-function dateLimits(period){const today=boliviaDate();const base=new Date(`${today}T12:00:00-04:00`);if(period==='today')return [today,today];if(period==='week'){const start=new Date(base);start.setUTCDate(start.getUTCDate()-((start.getUTCDay()+6)%7));return [boliviaDate(start),today]}if(period==='month')return [`${today.slice(0,7)}-01`,today];return ['', '']}
 function displayAttentionStatus(status){return ({'En consulta':'En atención',Finalizada:'Atendida','Pendiente de consulta':'Pendiente'}[status]||status||'Pendiente')}
 function attentionResponsible(item){return item.procedureResponsible||item.scheduledProfessional||item.registeredBy||'—'}
 async function loadAll(){
@@ -20,24 +19,31 @@ async function loadAll(){
     sync.classList.toggle('sync-indicator--online',data().isConfigured());
   }catch(error){alert(error.message)}
 }
+function scheduleCatalogRefresh(collection,loader){clearTimeout(catalogState.realtimeTimers.get(collection));catalogState.realtimeTimers.set(collection,setTimeout(async()=>{catalogState.realtimeTimers.delete(collection);try{await loader()}catch(error){console.error(`[Servicios] No se pudo actualizar ${collection}:`,error)}},100))}
+async function refreshServices(){catalogState.services=await data().getServices(true);renderServices()}
+async function refreshStaff(){catalogState.staff=await data().getAllStaff();renderStaff()}
+async function refreshAttentions(){catalogState.attentions=await data().getAttentions();populateLogFilters();renderServiceLog()}
 function populateLogFilters(){
-  const service=document.getElementById('serviceLogService'),responsible=document.getElementById('serviceLogResponsible');if(!service||!responsible)return;
-  const serviceValue=service.value,responsibleValue=responsible.value;
+  const service=document.getElementById('serviceLogService'),responsible=document.getElementById('serviceLogResponsible'),month=document.getElementById('serviceLogMonth'),year=document.getElementById('serviceLogYear');if(!service||!responsible||!month||!year)return;
+  const values={service:service.value,responsible:responsible.value,month:month.value,year:year.value};
   const serviceNames=[...new Set(catalogState.attentions.map(item=>item.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const responsibleNames=[...new Set(catalogState.attentions.map(attentionResponsible).filter(name=>name&&name!=='—'))].sort((a,b)=>a.localeCompare(b,'es'));
+  const months=[...new Set(catalogState.attentions.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort();
+  const years=[...new Set(catalogState.attentions.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
   service.innerHTML='<option value="">Todos los servicios</option>'+serviceNames.map(name=>`<option>${esc(name)}</option>`).join('');
   responsible.innerHTML='<option value="">Todos los responsables</option>'+responsibleNames.map(name=>`<option>${esc(name)}</option>`).join('');
-  service.value=serviceValue;responsible.value=responsibleValue;
+  month.innerHTML='<option value="">Todos los meses</option>'+months.map(value=>`<option value="${value}">${new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1))}</option>`).join('');
+  year.innerHTML='<option value="">Todos los años</option>'+years.map(value=>`<option>${value}</option>`).join('');
+  service.value=values.service;responsible.value=values.responsible;month.value=values.month;year.value=values.year;
 }
 function filteredServiceLog(){
-  const filter=catalogState.logFilters;let [from,to]=dateLimits(filter.period);if(filter.period==='range'){from=filter.from;to=filter.to}
+  const filter=catalogState.logFilters;
   return catalogState.attentions.filter(item=>{
     if(item.contraceptiveSchedule===true)return false;
-    if(from&&String(item.date)<from)return false;if(to&&String(item.date)>to)return false;
     if(filter.service&&item.serviceType!==filter.service)return false;
     if(filter.responsible&&attentionResponsible(item)!==filter.responsible)return false;
-    if(filter.status&&displayAttentionStatus(item.status)!==filter.status)return false;
-    if(filter.patient&&!String(item.patientName||'').toLowerCase().includes(filter.patient.toLowerCase()))return false;
+    if(filter.month&&String(item.date||'').slice(5,7)!==filter.month)return false;
+    if(filter.year&&String(item.date||'').slice(0,4)!==filter.year)return false;
     return true;
   }).sort((a,b)=>`${b.date}${b.time||''}`.localeCompare(`${a.date}${a.time||''}`));
 }
@@ -83,17 +89,16 @@ async function saveStaff(e){e.preventDefault();if(catalogSaving)return;const f=e
 function show(id,message){const e=document.getElementById(id);e.textContent=message;e.style.display=''}
 async function setup(){
   await data().ready;
-  loadAll();data().subscribeServices(loadAll);data().subscribeStaff(loadAll);
+  loadAll();data().subscribeServices(()=>scheduleCatalogRefresh('servicios',refreshServices));data().subscribeStaff(()=>scheduleCatalogRefresh('personal',refreshStaff));
   document.getElementById('newServiceBtn').onclick=()=>openService();document.getElementById('closeServiceModalBtn').onclick=closeService;document.getElementById('cancelServiceModalBtn').onclick=closeService;document.getElementById('serviceForm').onsubmit=saveService;
   document.getElementById('newStaffBtn').onclick=()=>openStaff();document.getElementById('closeStaffModalBtn').onclick=closeStaff;document.getElementById('cancelStaffModalBtn').onclick=closeStaff;document.getElementById('staffForm').onsubmit=saveStaff;
   document.getElementById('serviceSearch').oninput=e=>{catalogState.search=e.target.value;renderServices()};document.getElementById('showInactive').onchange=e=>{catalogState.showInactive=e.target.checked;renderServices()};
-  ['serviceLogFrom','serviceLogTo','serviceLogService','serviceLogResponsible','serviceLogStatus','serviceLogPatient'].forEach(id=>document.getElementById(id).addEventListener(id==='serviceLogPatient'?'input':'change',event=>{const key={serviceLogFrom:'from',serviceLogTo:'to',serviceLogService:'service',serviceLogResponsible:'responsible',serviceLogStatus:'status',serviceLogPatient:'patient'}[id];catalogState.logFilters[key]=event.target.value;renderServiceLog()}));
-  document.getElementById('serviceLogPeriod').onchange=event=>{catalogState.logFilters.period=event.target.value;const custom=event.target.value==='range';document.getElementById('serviceLogFrom').disabled=!custom;document.getElementById('serviceLogTo').disabled=!custom;renderServiceLog()};
+  ['serviceLogService','serviceLogResponsible','serviceLogMonth','serviceLogYear'].forEach(id=>document.getElementById(id).addEventListener('change',event=>{const key={serviceLogService:'service',serviceLogResponsible:'responsible',serviceLogMonth:'month',serviceLogYear:'year'}[id];catalogState.logFilters[key]=event.target.value;renderServiceLog()}));
   document.getElementById('serviceLogBody').onclick=event=>{const button=event.target.closest('[data-log-action]');if(!button)return;const item=catalogState.attentions.find(entry=>Number(entry.id)===Number(button.dataset.id));if(!item)return;if(button.dataset.logAction==='view')openServiceDetail(item);else printServiceLog(item)};
   document.getElementById('closeServiceDetailBtn').onclick=closeServiceDetail;document.getElementById('closeServiceDetailAction').onclick=closeServiceDetail;document.querySelector('#serviceDetailModal .nursing-modal__overlay').onclick=closeServiceDetail;
   document.getElementById('servicesTableBody').onclick=async e=>{const b=e.target.closest('[data-service-action]');if(!b)return;const item=catalogState.services.find(s=>String(s.id)===String(b.dataset.id));if(b.dataset.serviceAction==='edit')openService(item);else{await data().toggleService(b.dataset.id,item.active===false);await loadAll()}};
   document.getElementById('staffTableBody').onclick=async e=>{const b=e.target.closest('[data-staff-action]');if(!b)return;const item=catalogState.staff.find(p=>String(p.id)===String(b.dataset.id));if(b.dataset.staffAction==='edit')openStaff(item);else{await data().toggleStaff(b.dataset.id,item.active===false);await loadAll()}};
-  data().subscribeAttentions(loadAll);
+  data().subscribeAttentions(()=>scheduleCatalogRefresh('atenciones',refreshAttentions));
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once: true });
 else setup();

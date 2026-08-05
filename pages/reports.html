@@ -8,9 +8,10 @@
 </style></head><body class="app-body">
 <section class="content module-content-view"><div class="page-header"><div><span class="eyebrow">Administración</span><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div><button class="btn btn--secondary" id="printReportBtn" type="button">Imprimir reporte</button></div>
 <article class="card" style="padding:22px"><div class="report-filters">
-<label>Período<select id="periodFilter"><option value="day">Día</option><option value="week">Semana</option><option value="month" selected>Mes</option></select></label>
-<label>Fecha de referencia<input id="referenceDate" type="date"/></label><label>Servicio<select id="serviceFilter"><option value="">Todos</option></select></label>
-<label>Responsable<select id="responsibleFilter"><option value="">Todos</option></select></label><label>Usuario registrador<select id="userFilter"><option value="">Todos</option></select></label>
+<label>Servicio<select id="serviceFilter"><option value="">Todos</option></select></label>
+<label>Responsable<select id="responsibleFilter"><option value="">Todos</option></select></label>
+<label>Mes<select id="monthFilter"><option value="">Todos</option></select></label>
+<label>Año<select id="yearFilter"><option value="">Todos</option></select></label>
 </div></article>
 <div class="report-summary"><article class="card"><small>Atenciones</small><strong id="totalAttentions">0</strong></article><article class="card"><small>Total registrado</small><strong id="totalRevenue">0.00 Bs</strong></article><article class="card"><small>Ticket promedio</small><strong id="averageTicket">0.00 Bs</strong></article></div>
 <article class="card" style="padding:22px;overflow-x:auto"><table class="patients-table"><thead><tr><th>Fecha / Hora</th><th>Paciente</th><th>Servicio</th><th>Precio histórico</th><th>Responsable</th><th>Registrado por</th><th>Estado</th></tr></thead>

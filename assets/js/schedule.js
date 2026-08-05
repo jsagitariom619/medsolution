@@ -5,11 +5,7 @@ const PATIENTS_KEY = 'medsolution.patients';
 const scheduleState = {
   appointments: [],
   editingId: null,
-  filterDate: '',
-  filterStatus: '',
-  filterPatient: '',
-  filterTiming: '',
-  filterPeriod: '',
+  filters: { service: '', responsible: '', month: '', year: '' },
   calendarView: 'month',
   calendarDate: new Date(),
   patients: [],
@@ -99,25 +95,7 @@ function renderSchedule() {
   const tbody = document.getElementById('scheduleTableBody');
   if (!tbody) return;
 
-  const fd = scheduleState.filterDate;
-  const fs = scheduleState.filterStatus;
-  const fp = scheduleState.filterPatient.toLowerCase();
-  const ft = scheduleState.filterTiming;
-  const period = scheduleState.filterPeriod;
-  const today = isoLocal(new Date());
-  const todayDate=new Date(`${today}T12:00:00-04:00`);const weekStart=new Date(todayDate);weekStart.setUTCDate(weekStart.getUTCDate()-((weekStart.getUTCDay()+6)%7));const weekEnd=new Date(weekStart);weekEnd.setUTCDate(weekEnd.getUTCDate()+6);const weekStartIso=isoLocal(weekStart),weekEndIso=isoLocal(weekEnd);const monthStart=`${today.slice(0,7)}-01`;const [currentYear,currentMonth]=today.split('-').map(Number);const monthEnd=isoLocal(new Date(Date.UTC(currentYear,currentMonth,0,16)));
-
-  const visible = scheduleState.appointments.filter((a) => {
-    if (fd && a.date !== fd) return false;
-    if (fs && a.status !== fs) return false;
-    if (fp && !a.patientName.toLowerCase().includes(fp)) return false;
-    if (period === 'today' && a.date !== today) return false;
-    if (period === 'week' && (a.date < weekStartIso || a.date > weekEndIso)) return false;
-    if (period === 'month' && (a.date < monthStart || a.date > monthEnd)) return false;
-    if (ft === 'upcoming' && a.date < today) return false;
-    if (ft === 'expired' && (a.date >= today || ['Atendida','Cancelada'].includes(a.status))) return false;
-    return true;
-  });
+  const visible = filteredAppointments();
 
   // Sort by date then time
   visible.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
@@ -157,6 +135,15 @@ function renderSchedule() {
   renderCalendar();
 }
 
+function filteredAppointments(){
+  const filters=scheduleState.filters;
+  return scheduleState.appointments.filter(item=>(!filters.service||item.serviceName===filters.service)&&(!filters.responsible||item.professional===filters.responsible)&&(!filters.month||String(item.date||'').slice(5,7)===filters.month)&&(!filters.year||String(item.date||'').slice(0,4)===filters.year));
+}
+function populateScheduleFilters(){
+  const definitions=[['filterService','Todos los servicios',[...new Set(scheduleState.appointments.map(item=>item.serviceName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['filterResponsible','Todos los responsables',[...new Set(scheduleState.appointments.map(item=>item.professional).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['filterMonth','Todos los meses',[...new Set(scheduleState.appointments.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort()],['filterYear','Todos los años',[...new Set(scheduleState.appointments.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
+  definitions.forEach(([id,label,values])=>{const select=document.getElementById(id);if(!select)return;const current=select.value;select.innerHTML=`<option value="">${label}</option>`+values.map(value=>`<option value="${value}">${id==='filterMonth'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):value}</option>`).join('');select.value=current});
+}
+
 function isoLocal(date) { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));return `${parts.year}-${parts.month}-${parts.day}`; }
 function startOfWeek(date) { const value=new Date(date);const offset=(value.getDay()+6)%7;value.setDate(value.getDate()-offset);value.setHours(12,0,0,0);return value; }
 function calendarDates() {
@@ -167,10 +154,10 @@ function calendarDates() {
 }
 function renderCalendar() {
   const target=document.getElementById('scheduleCalendar');if(!target)return;
-  const dates=calendarDates(),view=scheduleState.calendarView,today=isoLocal(new Date());
+  const dates=calendarDates(),view=scheduleState.calendarView,today=isoLocal(new Date()),visible=filteredAppointments();
   target.className=`calendar-grid calendar-grid--${view}`;target.style.setProperty('--calendar-columns',view==='day'?1:7);
   const headers=view==='day'?['Día']:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=scheduleState.appointments.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${item.status}" title="${item.patientName}">${item.time} · ${item.patientName}</span>`).join('')}</div>`}).join('');
+  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=visible.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${item.status}" title="${item.patientName}">${item.time} · ${item.patientName}</span>`).join('')}</div>`}).join('');
   const label=document.getElementById('calendarPeriodLabel');
   label.textContent=view==='day'?scheduleState.calendarDate.toLocaleDateString('es',{dateStyle:'full'}):view==='week'?`Semana del ${formatDisplayDate(isoLocal(dates[0]))}`:scheduleState.calendarDate.toLocaleDateString('es',{month:'long',year:'numeric'});
   document.querySelectorAll('[data-calendar-view]').forEach(button=>button.classList.toggle('active',button.dataset.calendarView===view));
@@ -372,7 +359,7 @@ async function setupScheduleModule() {
     localStorage.setItem(PATIENTS_KEY,JSON.stringify(scheduleState.patients));
     await loadAppointments();
   } catch(error) { alert(`No se pudo cargar la agenda: ${error.message}`);return; }
-  renderSchedule();
+  populateScheduleFilters();renderSchedule();
 
   document.getElementById('newApptBtn')?.addEventListener('click', () => openScheduleModal('create'));
   document.getElementById('closeScheduleModalBtn')?.addEventListener('click', closeScheduleModal);
@@ -381,20 +368,7 @@ async function setupScheduleModule() {
   document.getElementById('scheduleForm')?.addEventListener('submit', handleScheduleSave);
 
   // Filters
-  document.getElementById('filterDate')?.addEventListener('input', (e) => {
-    scheduleState.filterDate = e.target.value;
-    renderSchedule();
-  });
-  document.getElementById('filterStatus')?.addEventListener('change', (e) => {
-    scheduleState.filterStatus = e.target.value;
-    renderSchedule();
-  });
-  document.getElementById('filterPatient')?.addEventListener('input', (e) => {
-    scheduleState.filterPatient = e.target.value;
-    renderSchedule();
-  });
-  document.getElementById('filterTiming')?.addEventListener('change',(e)=>{scheduleState.filterTiming=e.target.value;renderSchedule()});
-  document.getElementById('filterPeriod')?.addEventListener('change',(e)=>{scheduleState.filterPeriod=e.target.value;renderSchedule()});
+  [['filterService','service'],['filterResponsible','responsible'],['filterMonth','month'],['filterYear','year']].forEach(([id,key])=>document.getElementById(id)?.addEventListener('change',event=>{scheduleState.filters[key]=event.target.value;renderSchedule()}));
   document.querySelectorAll('[data-calendar-view]').forEach(button=>button.addEventListener('click',()=>{scheduleState.calendarView=button.dataset.calendarView;renderCalendar()}));
   document.getElementById('todayCalendarBtn')?.addEventListener('click',()=>{scheduleState.calendarDate=new Date();renderCalendar()});
   document.getElementById('previousCalendarBtn')?.addEventListener('click',()=>{const date=scheduleState.calendarDate;if(scheduleState.calendarView==='day')date.setDate(date.getDate()-1);else if(scheduleState.calendarView==='week')date.setDate(date.getDate()-7);else{date.setDate(1);date.setMonth(date.getMonth()-1)}renderCalendar()});
@@ -414,7 +388,7 @@ async function setupScheduleModule() {
   });
   if(new URLSearchParams(location.search).get('action')==='new')openScheduleModal('create');
   scheduleState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
-    try { await loadAppointments();renderSchedule(); }
+    try { await loadAppointments();populateScheduleFilters();renderSchedule(); }
     catch(error) { console.error('[Agenda] No se pudo actualizar:', error); }
   });
 }

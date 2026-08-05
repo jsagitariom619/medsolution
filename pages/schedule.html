@@ -55,23 +55,15 @@
             <div class="calendar-grid" id="scheduleCalendar"></div>
             <div class="schedule-toolbar">
               <div class="schedule-filter-wrap">
-                <input class="schedule-filter" id="filterDate" type="date" title="Filtrar por fecha" />
+                <select class="schedule-filter" id="filterService"><option value="">Todos los servicios</option></select>
               </div>
               <div class="schedule-filter-wrap">
-                <input class="schedule-filter" id="filterPatient" type="text" placeholder="Buscar paciente…" />
+                <select class="schedule-filter" id="filterResponsible"><option value="">Todos los responsables</option></select>
               </div>
-              <div class="schedule-filter-wrap"><select class="schedule-filter" id="filterPeriod"><option value="">Todas</option><option value="today">Hoy</option><option value="week">Semana</option><option value="month">Mes</option></select></div>
+              <div class="schedule-filter-wrap"><select class="schedule-filter" id="filterMonth"><option value="">Todos los meses</option></select></div>
               <div class="schedule-filter-wrap">
-                <select class="schedule-filter" id="filterStatus">
-                  <option value="">Todos los estados</option>
-                  <option>Pendiente</option>
-                  <option>En Atención</option>
-                  <option>Reprogramada</option>
-                  <option>Atendida</option>
-                  <option>Cancelada</option>
-                </select>
+                <select class="schedule-filter" id="filterYear"><option value="">Todos los años</option></select>
               </div>
-              <div class="schedule-filter-wrap"><select class="schedule-filter" id="filterTiming"><option value="">Todas las fechas</option><option value="upcoming">Próximas</option><option value="expired">Vencidas</option></select></div>
               <span class="schedule-count" id="scheduleCount"></span>
             </div>
             <div class="schedule-table-wrap">

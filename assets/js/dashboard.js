@@ -1,4 +1,5 @@
 let dashboardSubscriptionsReady=false;
+const dashboardData={patients:[],attentions:[],histories:[],realtimeTimers:new Map()};
 const DASHBOARD_MODULES = new Set(['patients.html','appointments.html','medical-records.html','schedule.html','services.html','contraceptives.html','reports.html','settings.html']);
 
 function dashboardModuleTarget(value) {
@@ -112,10 +113,14 @@ function renderDashboardPatients(patients,attentions) {
   target.innerHTML=head+(recent.length?recent.map(patient=>{const last=attentions.filter(item=>Number(item.patientId)===Number(patient.id)&&item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];return `<div class="recent-patient-row"><div><span class="patient-photo">${dashboardInitials(`${patient.nombre} ${patient.apellido}`)}</span><p><strong>${dashboardEscape(`${patient.nombre} ${patient.apellido}`)}</strong><small>${dashboardEscape(patient.telefono||patient.ci||'Sin contacto')}</small></p></div><time>${dashboardFormatDate(last?.date||patient.registrado)}</time><span class="action-links"><a href="patients.html?patientId=${patient.id}">Ver</a><a href="appointments.html?action=new&patientId=${patient.id}">Atender</a></span></div>`}).join(''):'<p class="dashboard-empty">No hay pacientes registrados.</p>');
 }
 
-async function setupFunctionalDashboard() {
+function scheduleDashboardRefresh(collection){clearTimeout(dashboardData.realtimeTimers.get(collection));dashboardData.realtimeTimers.set(collection,setTimeout(()=>{dashboardData.realtimeTimers.delete(collection);setupFunctionalDashboard(collection)},100))}
+async function setupFunctionalDashboard(collection='all') {
   await window.MedSolutionData?.ready;
   try {
-    const [patients,attentions,histories]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords()]);
+    if(collection==='all')[dashboardData.patients,dashboardData.attentions,dashboardData.histories]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getAttentions(),window.MedSolutionData.getMedicalRecords()]);
+    else if(collection==='patients')dashboardData.patients=await window.MedSolutionData.getPatients();
+    else if(collection==='attentions')dashboardData.attentions=await window.MedSolutionData.getAttentions();
+    const {patients,attentions,histories}=dashboardData;
     const schedule=attentions.filter(item=>item.contraceptiveControl!==true).map(item=>({...item,serviceName:item.serviceType,status:item.scheduleStatus||({'Pendiente de consulta':'Pendiente','En consulta':'En Atención',Finalizada:'Atendida'}[item.status]||item.status)}));
     const today=dashboardToday(),month=today.slice(0,7);
     const medical=attentions.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
@@ -137,7 +142,7 @@ async function setupFunctionalDashboard() {
     const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
     renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
     const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};
-    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(setupFunctionalDashboard);window.MedSolutionData.subscribeAttentions(setupFunctionalDashboard)}
+    if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(()=>scheduleDashboardRefresh('patients'));window.MedSolutionData.subscribeAttentions(()=>scheduleDashboardRefresh('attentions'))}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }
 }
 function bootDashboard() {

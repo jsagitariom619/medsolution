@@ -11,7 +11,6 @@ const consultState = {
   patients: [],
   editingId: null,
   mode: 'create',
-  searchTerm: '',
   unsubscribeAttentions: null,
   unsubscribeServices: null,
   unsubscribePatients: null,
@@ -19,7 +18,7 @@ const consultState = {
   pendingPatient: null,
   saving: false,
   monthView: false,
-  monthFilters: { date: '', service: '', responsible: '', status: '' },
+  monthFilters: { service: '', responsible: '', month: '', year: '' },
 };
 
 function getAuthUser() {
@@ -159,18 +158,14 @@ function requiresMedical(attention) {
 }
 
 function visibleConsultations() {
-  const term = consultState.searchTerm.toLowerCase();
   return consultState.consultations
     .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
-    .filter((c) => !consultState.monthView || String(c.date || '').startsWith(new Date().toISOString().slice(0, 7)))
     .filter((c) => consultState.monthView || !isDoctor() || requiresMedical(c))
     .filter((c) => consultState.monthView || !isDoctor() || ['Pendiente', 'Pendiente de consulta', 'En Atención', 'En consulta'].includes(c.status))
-    .filter((c) => !consultState.monthView || !consultState.monthFilters.date || c.date === consultState.monthFilters.date)
-    .filter((c) => !consultState.monthView || !consultState.monthFilters.service || c.serviceType === consultState.monthFilters.service)
-    .filter((c) => !consultState.monthView || !consultState.monthFilters.responsible || (c.procedureResponsible || c.registeredBy) === consultState.monthFilters.responsible)
-    .filter((c) => !consultState.monthView || !consultState.monthFilters.status || (consultState.monthFilters.status === 'Atendida' ? ['Atendida', 'Finalizada'].includes(c.status) : !['Atendida', 'Finalizada'].includes(c.status)))
-    .filter((c) => !term || [c.patientName, c.serviceType, c.status, c.chiefComplaint]
-      .some((v) => String(v || '').toLowerCase().includes(term)))
+    .filter((c) => !consultState.monthFilters.service || c.serviceType === consultState.monthFilters.service)
+    .filter((c) => !consultState.monthFilters.responsible || (c.procedureResponsible || c.scheduledProfessional || c.registeredBy) === consultState.monthFilters.responsible)
+    .filter((c) => !consultState.monthFilters.month || String(c.date||'').slice(5,7) === consultState.monthFilters.month)
+    .filter((c) => !consultState.monthFilters.year || String(c.date||'').slice(0,4) === consultState.monthFilters.year)
     .sort((a, b) => {
       if (isDoctor()) return (`${a.date} ${a.time || ''}`).localeCompare(`${b.date} ${b.time || ''}`);
       return (`${b.date} ${b.time || ''}`).localeCompare(`${a.date} ${a.time || ''}`);
@@ -281,15 +276,15 @@ function printAttention(attention) {
 }
 
 function configureMonthlyAttentionView() {
-  consultState.monthView=getUrlParam('view')==='month';if(!consultState.monthView)return;
-  document.getElementById('monthlyAttentionFilters').style.display='flex';
-  document.getElementById('roleContextTitle').textContent='Atenciones del mes';
-  document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas este mes.';
+  consultState.monthView=getUrlParam('view')==='month';
+  if(consultState.monthView){document.getElementById('roleContextTitle').textContent='Atenciones del mes';document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas.'}
   const services=[...new Set(consultState.consultations.filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule).map(item=>item.serviceType).filter(Boolean))].sort();
-  const responsible=[...new Set(consultState.consultations.map(item=>item.procedureResponsible||item.registeredBy).filter(Boolean))].sort();
+  const relevant=consultState.consultations.filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule);const responsible=[...new Set(relevant.map(item=>item.procedureResponsible||item.scheduledProfessional||item.registeredBy).filter(Boolean))].sort();const months=[...new Set(relevant.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort();const years=[...new Set(relevant.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
   document.getElementById('monthlyAttentionService').innerHTML='<option value="">Todos los servicios</option>'+services.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
   document.getElementById('monthlyAttentionResponsible').innerHTML='<option value="">Todos los responsables</option>'+responsible.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
-  [['monthlyAttentionDate','date'],['monthlyAttentionService','service'],['monthlyAttentionResponsible','responsible'],['monthlyAttentionStatus','status']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',event=>{consultState.monthFilters[key]=event.target.value;renderConsultations()}));
+  document.getElementById('monthlyAttentionMonth').innerHTML='<option value="">Todos los meses</option>'+months.map(value=>`<option value="${value}">${new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1))}</option>`).join('');
+  document.getElementById('monthlyAttentionYear').innerHTML='<option value="">Todos los años</option>'+years.map(value=>`<option>${value}</option>`).join('');
+  [['monthlyAttentionService','service'],['monthlyAttentionResponsible','responsible'],['monthlyAttentionMonth','month'],['monthlyAttentionYear','year']].forEach(([id,key])=>{const control=document.getElementById(id);control.value=consultState.monthFilters[key];if(!control.dataset.filterBound){control.dataset.filterBound='true';control.addEventListener('change',event=>{consultState.monthFilters[key]=event.target.value;renderConsultations()})}});
 }
 
 function configureRoleView() {
@@ -738,10 +733,6 @@ async function setupAppointmentsModule() {
   document.getElementById('cancelConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.querySelector('#consultModal .nursing-modal__overlay')?.addEventListener('click', closeConsultModal);
   document.getElementById('consultForm')?.addEventListener('submit', handleConsultSave);
-  document.getElementById('consultSearch')?.addEventListener('input', (e) => {
-    consultState.searchTerm = e.target.value;
-    renderConsultations();
-  });
   document.getElementById('consultTableBody')?.addEventListener('click', (e) => {
     const button = e.target.closest('[data-action]');
     if (!button) return;
@@ -767,7 +758,7 @@ async function setupAppointmentsModule() {
   } else if (getUrlParam('action') === 'new') openPatientSearchModal();
 
   consultState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
-    await loadConsultations(); renderConsultations();
+    await loadConsultations(); configureMonthlyAttentionView(); renderConsultations();
   });
   consultState.unsubscribeServices = window.MedSolutionData.subscribeServices(async () => {
     await loadCatalog(); renderConsultations();

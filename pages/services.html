@@ -25,13 +25,10 @@
       <div class="page-header"><div><span class="eyebrow">Servicios</span><h1>Registro de servicios realizados</h1><p>Consulta las atenciones y procedimientos registrados en el consultorio.</p></div></div>
       <article class="card" style="padding:24px">
         <div class="service-log-filters">
-          <select id="serviceLogPeriod"><option value="">Todas las fechas</option><option value="today">Hoy</option><option value="week">Semana</option><option value="month">Mes</option><option value="range">Rango de fechas</option></select>
-          <input id="serviceLogFrom" type="date" title="Fecha inicial" disabled />
-          <input id="serviceLogTo" type="date" title="Fecha final" disabled />
           <select id="serviceLogService"><option value="">Todos los servicios</option></select>
           <select id="serviceLogResponsible"><option value="">Todos los responsables</option></select>
-          <select id="serviceLogStatus"><option value="">Todos los estados</option><option>Pendiente</option><option>En atención</option><option>Atendida</option><option>Cancelada</option></select>
-          <input id="serviceLogPatient" type="search" placeholder="Buscar paciente…" />
+          <select id="serviceLogMonth"><option value="">Todos los meses</option></select>
+          <select id="serviceLogYear"><option value="">Todos los años</option></select>
         </div>
         <div class="service-log-table"><table class="patients-table"><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Servicio realizado</th><th>Responsable</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="serviceLogBody"><tr><td colspan="7" class="patients-empty">Cargando servicios realizados…</td></tr></tbody></table></div>
         <span class="service-log-count" id="serviceLogCount"></span>

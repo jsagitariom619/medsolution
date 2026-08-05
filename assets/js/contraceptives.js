@@ -6,13 +6,7 @@ const contraceptiveState = {
   services: [],
   editingId: null,
   saving: false,
-  search: '',
-  date: '',
-  dateFrom: '',
-  dateTo: '',
-  type: '',
-  status: '',
-  responsible: '',
+  filters: { service:'', responsible:'', month:'', year:'' },
 };
 
 function currentUser() {
@@ -98,25 +92,11 @@ async function loadContraceptiveData() {
 }
 
 function filteredRecords() {
-  const search = contraceptiveState.search.toLowerCase().trim();
   return contraceptiveState.records
-    .filter((record) => {
-      const patient = contraceptiveState.patients.find((item) => Number(item.id) === Number(record.patientId));
-      const text = `${record.patientName} ${patient?.telefono || ''}`.toLowerCase();
-      return !search || text.includes(search);
-    })
-    .filter((record) => !contraceptiveState.date
-      || record.applicationDate === contraceptiveState.date
-      || record.nextApplicationDate === contraceptiveState.date)
-    .filter((record) => !contraceptiveState.dateFrom
-      || record.applicationDate >= contraceptiveState.dateFrom)
-    .filter((record) => !contraceptiveState.dateTo
-      || record.applicationDate <= contraceptiveState.dateTo)
-    .filter((record) => !contraceptiveState.type
-      || record.contraceptiveType === contraceptiveState.type)
-    .filter((record) => !contraceptiveState.status || controlStatus(record) === contraceptiveState.status)
-    .filter((record) => !contraceptiveState.responsible
-      || record.procedureResponsible === contraceptiveState.responsible)
+    .filter((record) => !contraceptiveState.filters.service || record.serviceType === contraceptiveState.filters.service)
+    .filter((record) => !contraceptiveState.filters.responsible || record.procedureResponsible === contraceptiveState.filters.responsible)
+    .filter((record) => !contraceptiveState.filters.month || String(record.applicationDate||record.date||'').slice(5,7) === contraceptiveState.filters.month)
+    .filter((record) => !contraceptiveState.filters.year || String(record.applicationDate||record.date||'').slice(0,4) === contraceptiveState.filters.year)
     .sort((a, b) => String(b.applicationDate).localeCompare(String(a.applicationDate)));
 }
 
@@ -176,14 +156,12 @@ function renderStaffOptions(selected = '') {
 }
 
 function renderResponsibleFilter() {
-  const select = document.getElementById('controlResponsibleFilter');
   const names = [...new Set([
     ...contraceptiveState.staff.map((person) => person.name),
     ...contraceptiveState.records.map((record) => record.procedureResponsible),
   ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
-  select.innerHTML = '<option value="">Todos</option>'
-    + names.map((name) => `<option value="${escapeControlHtml(name)}">${escapeControlHtml(name)}</option>`).join('');
-  select.value = names.includes(contraceptiveState.responsible) ? contraceptiveState.responsible : '';
+  const definitions=[['controlServiceFilter',[...new Set(contraceptiveState.records.map(record=>record.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['controlResponsibleFilter',names],['controlMonthFilter',[...new Set(contraceptiveState.records.map(record=>String(record.applicationDate||record.date||'').slice(5,7)).filter(Boolean))].sort()],['controlYearFilter',[...new Set(contraceptiveState.records.map(record=>String(record.applicationDate||record.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
+  definitions.forEach(([id,values])=>{const select=document.getElementById(id),current=select.value;select.innerHTML='<option value="">Todos</option>'+values.map(value=>`<option value="${escapeControlHtml(value)}">${id==='controlMonthFilter'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeControlHtml(value)}</option>`).join('');select.value=current});
 }
 
 function updateNextApplicationPreview() {
@@ -565,36 +543,7 @@ async function setupContraceptives() {
   document.getElementById('contraceptivePatientSearch').addEventListener('input', (event) => {
     renderPatientOptions(event.target.value, document.getElementById('contraceptivePatient').value);
   });
-  const applySearch = (value) => {
-    contraceptiveState.search = value;
-    document.getElementById('controlSearch').value = value;
-    renderContraceptiveTable();
-  };
-  document.getElementById('controlSearch').addEventListener('input', (event) => applySearch(event.target.value));
-  document.getElementById('controlDateFilter').addEventListener('change', (event) => {
-    contraceptiveState.date = event.target.value;
-    renderContraceptiveTable();
-  });
-  document.getElementById('controlDateFromFilter').addEventListener('change', (event) => {
-    contraceptiveState.dateFrom = event.target.value;
-    renderContraceptiveTable();
-  });
-  document.getElementById('controlDateToFilter').addEventListener('change', (event) => {
-    contraceptiveState.dateTo = event.target.value;
-    renderContraceptiveTable();
-  });
-  document.getElementById('controlTypeFilter').addEventListener('change', (event) => {
-    contraceptiveState.type = event.target.value;
-    renderContraceptiveTable();
-  });
-  document.getElementById('controlStatusFilter').addEventListener('change', (event) => {
-    contraceptiveState.status = event.target.value;
-    renderContraceptiveTable();
-  });
-  document.getElementById('controlResponsibleFilter').addEventListener('change', (event) => {
-    contraceptiveState.responsible = event.target.value;
-    renderContraceptiveTable();
-  });
+  [['controlServiceFilter','service'],['controlResponsibleFilter','responsible'],['controlMonthFilter','month'],['controlYearFilter','year']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',event=>{contraceptiveState.filters[key]=event.target.value;renderContraceptiveTable()}));
   document.getElementById('closeContraceptiveHistoryBtn').addEventListener('click', closePatientHistory);
   document.querySelector('#contraceptiveHistoryModal .nursing-modal__overlay').addEventListener('click', closePatientHistory);
   document.getElementById('controlTableBody').addEventListener('click', (event) => {

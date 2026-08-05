@@ -375,6 +375,78 @@
     throwIfError(error);
     return (data||[]).map(item=>({id:item.id,patientId:Number(item.pacientes?.legacy_id),createdAt:item.creado_en,updatedAt:item.actualizado_en}));
   }
+  function mapSpecializedHistory(row) {
+    return {
+      id: row.id, medicalRecordId: row.historia_clinica_id, templateType: row.tipo_plantilla,
+      templateName: row.nombre_plantilla_snapshot, templateVersion: Number(row.version_plantilla || 1),
+      status: row.estado, startDate: row.fecha_inicio, totalCost: Number(row.costo_total || 0),
+      estimatedSessions: row.sesiones_estimadas == null ? null : Number(row.sesiones_estimadas),
+      initialData: row.datos_iniciales || {}, createdBy: row.creado_por_nombre_snapshot || '',
+      updatedBy: row.actualizado_por_nombre_snapshot || '', finishedAt: row.finalizado_en || '',
+      createdAt: row.creado_en, updatedAt: row.actualizado_en,
+    };
+  }
+  async function getSpecializedHistories(medicalRecordId = null) {
+    const connection = await db(true);
+    let query = connection.from('historias_clinicas_especializadas').select('*').order('fecha_inicio', { ascending: false });
+    if (medicalRecordId) query = query.eq('historia_clinica_id', medicalRecordId);
+    const { data, error } = await query; throwIfError(error); return (data || []).map(mapSpecializedHistory);
+  }
+  async function saveSpecializedHistory(item) {
+    const connection = await db(true);
+    const payload = {
+      historia_clinica_id: item.medicalRecordId, tipo_plantilla: item.templateType,
+      nombre_plantilla_snapshot: item.templateName, version_plantilla: Number(item.templateVersion || 1),
+      estado: item.status || 'Activo', fecha_inicio: item.startDate,
+      costo_total: Number(item.totalCost || 0), sesiones_estimadas: item.estimatedSessions ? Number(item.estimatedSessions) : null,
+      datos_iniciales: item.initialData || {}, creado_por_nombre_snapshot: item.createdBy || '',
+      actualizado_por_nombre_snapshot: item.updatedBy || item.createdBy || '',
+      finalizado_en: item.status === 'Finalizado' ? (item.finishedAt || new Date().toISOString()) : null,
+    };
+    const mutation = item.id
+      ? connection.from('historias_clinicas_especializadas').update(payload).eq('id', item.id)
+      : connection.from('historias_clinicas_especializadas').insert(payload);
+    const { data, error } = await mutation.select().single(); throwIfError(error); return mapSpecializedHistory(data);
+  }
+  async function deleteSpecializedHistory(id) {
+    const connection = await db(true); const { error } = await connection.from('historias_clinicas_especializadas').delete().eq('id', id); throwIfError(error);
+  }
+  function mapSpecializedEvolution(row) {
+    return { id: row.id, specializedHistoryId: row.historia_especializada_id, attentionRemoteId: row.atencion_id, metrics: row.metricas || {}, data: row.datos_evolucion || {}, createdAt: row.creado_en, updatedAt: row.actualizado_en };
+  }
+  async function getSpecializedEvolutions(specializedHistoryId) {
+    const connection = await db(true); const { data, error } = await connection.from('evoluciones_historias_especializadas').select('*').eq('historia_especializada_id', specializedHistoryId).order('creado_en'); throwIfError(error); return (data || []).map(mapSpecializedEvolution);
+  }
+  async function getSpecializedEvolutionsByHistoryIds(specializedHistoryIds) {
+    const ids = [...new Set((specializedHistoryIds || []).filter(Boolean))];
+    if (!ids.length) return [];
+    const connection = await db(true);
+    const { data, error } = await connection.from('evoluciones_historias_especializadas')
+      .select('*').in('historia_especializada_id', ids).order('creado_en');
+    throwIfError(error); return (data || []).map(mapSpecializedEvolution);
+  }
+  async function saveSpecializedEvolution(item) {
+    const connection = await db(true); const payload = { historia_especializada_id:item.specializedHistoryId, atencion_id:item.attentionRemoteId, metricas:item.metrics||{}, datos_evolucion:item.data||{} };
+    const { data, error } = await connection.from('evoluciones_historias_especializadas').upsert(payload, { onConflict:'atencion_id' }).select().single(); throwIfError(error); return mapSpecializedEvolution(data);
+  }
+  function mapSpecializedPayment(row) {
+    return { id:row.id, specializedHistoryId:row.historia_especializada_id, attentionRemoteId:row.atencion_id||'', paymentDate:row.fecha_pago, amount:Number(row.monto||0), method:row.metodo_pago, observations:row.observaciones||'', registeredBy:row.registrado_por_nombre_snapshot||'', createdAt:row.creado_en, updatedAt:row.actualizado_en };
+  }
+  async function getSpecializedPayments(specializedHistoryId = null) {
+    const connection = await db(true); let query=connection.from('pagos_historias_especializadas').select('*').order('fecha_pago',{ascending:false});if(specializedHistoryId)query=query.eq('historia_especializada_id',specializedHistoryId);const {data,error}=await query;throwIfError(error);return (data||[]).map(mapSpecializedPayment);
+  }
+  async function getSpecializedPaymentsByHistoryIds(specializedHistoryIds) {
+    const ids = [...new Set((specializedHistoryIds || []).filter(Boolean))];
+    if (!ids.length) return [];
+    const connection = await db(true);
+    const { data, error } = await connection.from('pagos_historias_especializadas')
+      .select('*').in('historia_especializada_id', ids).order('fecha_pago', { ascending: false });
+    throwIfError(error); return (data || []).map(mapSpecializedPayment);
+  }
+  async function saveSpecializedPayment(item) {
+    const connection=await db(true);const payload={historia_especializada_id:item.specializedHistoryId,atencion_id:uuidOrNull(item.attentionRemoteId),fecha_pago:item.paymentDate,monto:Number(item.amount),metodo_pago:item.method,observaciones:item.observations||'',registrado_por_nombre_snapshot:item.registeredBy||''};const mutation=item.id?connection.from('pagos_historias_especializadas').update(payload).eq('id',item.id):connection.from('pagos_historias_especializadas').insert(payload);const {data,error}=await mutation.select().single();throwIfError(error);return mapSpecializedPayment(data);
+  }
+  async function deleteSpecializedPayment(id) { const connection=await db(true);const {error}=await connection.from('pagos_historias_especializadas').delete().eq('id',id);throwIfError(error); }
   function subscribe(table, callback) {
     let channel = null;
     let cancelled = false;
@@ -422,11 +494,17 @@
     uploadClinicalAttachment, signedFileUrl,
     getPatients, findPatientByCi, savePatient, deletePatient,
     getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
-    ensureMedicalRecord, getMedicalRecords, getSettings, saveSettings,
+    ensureMedicalRecord, getMedicalRecords, getSpecializedHistories, saveSpecializedHistory, deleteSpecializedHistory,
+    getSpecializedEvolutions, getSpecializedEvolutionsByHistoryIds, saveSpecializedEvolution,
+    getSpecializedPayments, getSpecializedPaymentsByHistoryIds, saveSpecializedPayment, deleteSpecializedPayment,
+    getSettings, saveSettings,
     subscribeServices: (callback) => subscribe('servicios', callback),
     subscribeStaff: (callback) => subscribe('personal_consultorio', callback),
     subscribePatients: (callback) => subscribe('pacientes', callback),
     subscribeAttentions: (callback) => subscribe('atenciones', callback),
     subscribeSystemUsers: (callback) => subscribe('perfiles_sistema', callback),
+    subscribeSpecializedHistories: (callback) => subscribe('historias_clinicas_especializadas', callback),
+    subscribeSpecializedEvolutions: (callback) => subscribe('evoluciones_historias_especializadas', callback),
+    subscribeSpecializedPayments: (callback) => subscribe('pagos_historias_especializadas', callback),
   });
 })(window);

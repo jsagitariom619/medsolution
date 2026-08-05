@@ -12,13 +12,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="../assets/css/specialized-records.css" />
     <style>
       .records-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
       .records-sidebar-panel { position: sticky; top: calc(var(--topbar-height) + 16px); }
       .records-search-wrap { margin-bottom: 14px; }
-      .records-search-wrap input { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; font-family: inherit; }
+      .records-search-wrap input,.records-search-wrap select { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--gray-50); font-size: .93rem; outline: none; font-family: inherit; }
       .records-filter-stack{display:grid;gap:8px;margin-bottom:14px}.records-filter-stack input,.records-filter-stack select{width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font:inherit;color:var(--gray-700)}
-      .records-search-wrap input:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
+      .records-search-wrap input:focus,.records-search-wrap select:focus { border-color: var(--aqua); background: var(--white); box-shadow: 0 0 0 4px rgba(47,183,166,.14); }
       .records-patient-list { display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 240px); overflow-y: auto; }
       .records-patient-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: none; background: transparent; cursor: pointer; width: 100%; transition: background 140ms ease; }
       .records-patient-item:hover { background: var(--gray-100); }
@@ -76,9 +77,9 @@
               <article class="card" style="padding: 20px;">
                 <h3 style="margin: 0 0 14px; color: var(--petroleum-dark); font-size: .95rem; font-weight: 800;">Pacientes</h3>
                 <div class="records-search-wrap">
-                  <input id="recordsSearch" type="search" placeholder="Buscar paciente…" />
+                  <select id="recordsServiceFilter"><option value="">Todos los servicios</option></select>
                 </div>
-                <div class="records-filter-stack"><select id="recordsDoctorFilter"><option value="">Todos los médicos</option></select><input id="recordsDateFilter" type="date" title="Filtrar por fecha" /><input id="recordsDiagnosisFilter" type="search" placeholder="Buscar diagnóstico…" /></div>
+                <div class="records-filter-stack"><select id="recordsResponsibleFilter"><option value="">Todos los responsables</option></select><select id="recordsMonthFilter"><option value="">Todos los meses</option></select><select id="recordsYearFilter"><option value="">Todos los años</option></select></div>
                 <div class="records-patient-list" id="recordsPatientList">
                   <p style="color:var(--gray-500)">Cargando…</p>
                 </div>
@@ -97,6 +98,7 @@
     <script src="../assets/js/supabase-client.js"></script>
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/medical-records.js?v=20260731-digital-record"></script>
+    <script src="../assets/js/specialized-records.js?v=20260805-specialized-records"></script>
+    <script src="../assets/js/medical-records.js?v=20260805-specialized-records"></script>
   </body>
 </html>

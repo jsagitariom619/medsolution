@@ -87,16 +87,13 @@
           </article>
 
           <article class="card" style="padding: 24px;">
-            <div id="monthlyAttentionFilters" style="display:none;margin-bottom:14px;gap:10px;flex-wrap:wrap">
-              <input id="monthlyAttentionDate" type="date" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px" />
+            <div id="monthlyAttentionFilters" style="display:flex;margin-bottom:14px;gap:10px;flex-wrap:wrap">
               <select id="monthlyAttentionService" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px"><option value="">Todos los servicios</option></select>
               <select id="monthlyAttentionResponsible" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px"><option value="">Todos los responsables</option></select>
-              <select id="monthlyAttentionStatus" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px"><option value="">Todos los estados</option><option value="Atendida">Atendida</option><option value="Pendiente">Pendiente</option></select>
+              <select id="monthlyAttentionMonth" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px"><option value="">Todos los meses</option></select>
+              <select id="monthlyAttentionYear" style="padding:9px 12px;border:1px solid var(--gray-200);border-radius:10px"><option value="">Todos los años</option></select>
             </div>
             <div class="consult-toolbar">
-              <div class="consult-search">
-                <input id="consultSearch" type="search" placeholder="Buscar por paciente, diagnóstico…" />
-              </div>
               <span class="consult-count" id="consultCount"></span>
             </div>
             <div class="consult-table-wrap">

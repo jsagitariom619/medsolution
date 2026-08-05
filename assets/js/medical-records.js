@@ -3,7 +3,7 @@ const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
 const RECORDS_KEY = 'medsolution.medicalRecords';
 
-const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, searchTerm: '', doctorFilter: '', dateFilter: '', diagnosisFilter: '', attachmentConsultationId: null, uploading: false };
+const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, filters: { service:'', responsible:'', month:'', year:'' }, attachmentConsultationId: null, uploading: false, realtimeTimers: new Map() };
 
 function readArray(key) {
   try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : []; }
@@ -23,6 +23,14 @@ async function loadData() {
     ? await window.MedSolutionData.getSystemUsers().catch(() => [])
     : [];
 }
+function scheduleRecordsRefresh(collection, callback) {
+  clearTimeout(recordsState.realtimeTimers.get(collection));
+  recordsState.realtimeTimers.set(collection, setTimeout(async () => {
+    recordsState.realtimeTimers.delete(collection);
+    try { await callback(); }
+    catch (error) { console.error(`[Historias clínicas] No se pudo actualizar ${collection}:`, error); }
+  }, 100));
+}
 function escapeHtml(value) {
   const div = document.createElement('div'); div.textContent = value == null ? '' : String(value); return div.innerHTML;
 }
@@ -33,9 +41,10 @@ function consultationsFor(patientId) {
   return recordsState.consultations
     .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
     .filter((c) => Number(c.patientId) === Number(patientId))
-    .filter((c) => !recordsState.doctorFilter || medicalResponsible(c) === recordsState.doctorFilter)
-    .filter((c) => !recordsState.dateFilter || c.date === recordsState.dateFilter)
-    .filter((c) => !recordsState.diagnosisFilter || String(c.diagnosis || '').toLowerCase().includes(recordsState.diagnosisFilter.toLowerCase()))
+    .filter((c) => !recordsState.filters.service || c.serviceType === recordsState.filters.service)
+    .filter((c) => !recordsState.filters.responsible || attentionResponsible(c) === recordsState.filters.responsible)
+    .filter((c) => !recordsState.filters.month || String(c.date||'').slice(5,7) === recordsState.filters.month)
+    .filter((c) => !recordsState.filters.year || String(c.date||'').slice(0,4) === recordsState.filters.year)
     .sort((a,b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
 }
 function contraceptivesFor(patientId) {
@@ -59,11 +68,11 @@ function medicalResponsible(consultation) {
   const byName = recordsState.users.find((user) => user.name === consultation.registeredBy && clinicalRoles.includes(user.role));
   return byName?.name || recordsState.users.find((user) => user.role === 'Médico')?.name || 'Médico';
 }
-function populateDoctorFilter() {
-  const select=document.getElementById('recordsDoctorFilter');if(!select)return;const current=select.value;
-  const names=[...new Set(recordsState.consultations.filter(item=>item.contraceptiveControl!==true).map(medicalResponsible).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  select.innerHTML='<option value="">Todos los médicos</option>'+names.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-  select.value=names.includes(current)?current:'';recordsState.doctorFilter=select.value;
+function attentionResponsible(consultation){return consultation.procedureResponsible||consultation.scheduledProfessional||medicalResponsible(consultation)}
+function populateRecordFilters() {
+  const items=recordsState.consultations.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true);
+  const definitions=[['recordsServiceFilter','Todos los servicios',[...new Set(items.map(item=>item.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['recordsResponsibleFilter','Todos los responsables',[...new Set(items.map(attentionResponsible).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['recordsMonthFilter','Todos los meses',[...new Set(items.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort()],['recordsYearFilter','Todos los años',[...new Set(items.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
+  definitions.forEach(([id,label,values])=>{const select=document.getElementById(id);if(!select)return;const current=select.value;select.innerHTML=`<option value="">${label}</option>`+values.map(value=>`<option value="${value}">${id==='recordsMonthFilter'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeHtml(value)}</option>`).join('');select.value=current});
 }
 async function ensureRecord(patientId) {
   let record = recordsState.records.find((r) => Number(r.patientId) === Number(patientId));
@@ -79,14 +88,12 @@ async function ensureRecord(patientId) {
 
 function renderPatientList() {
   const list = document.getElementById('recordsPatientList');
-  const q = recordsState.searchTerm.toLowerCase();
   const historyPatientIds=new Set(recordsState.records.map(record=>Number(record.patientId)));
-  const hasClinicalFilters=Boolean(recordsState.doctorFilter||recordsState.dateFilter||recordsState.diagnosisFilter);
+  const hasClinicalFilters=Object.values(recordsState.filters).some(Boolean);
   const patients = recordsState.patients
     .filter((patient)=>hasClinicalFilters?consultationsFor(patient.id).length>0:(historyPatientIds.has(Number(patient.id))
       || consultationsFor(patient.id).some(item=>item.requiresMedicalConsultation!==false)
-      || contraceptivesFor(patient.id).length > 0))
-    .filter((p) => !q || `${p.nombre} ${p.apellido} ${p.ci}`.toLowerCase().includes(q));
+      || contraceptivesFor(patient.id).length > 0));
   if (!patients.length) { list.innerHTML = '<p style="color:var(--gray-500);padding:16px 0">No se encontraron pacientes.</p>'; return; }
   list.innerHTML = patients.map((p) => {
     const name = `${p.nombre} ${p.apellido}`;
@@ -166,12 +173,14 @@ async function renderPatientRecord(patientId) {
       <button class="btn btn--secondary" type="button" data-export-record="${patient.id}">Exportar PDF</button>
       <a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}">+ Nueva atención</a>
     </div></div>
-    <div class="record-tabs" role="tablist"><button class="record-tab record-tab--active" type="button" data-record-tab="clinical">Historia clínica (${consultations.length})</button><button class="record-tab" type="button" data-record-tab="contraceptives">Anticonceptivos (${contraceptives.length})</button></div>
+    <div class="record-tabs" role="tablist"><button class="record-tab record-tab--active" type="button" data-record-tab="clinical">Historia clínica (${consultations.length})</button><button class="record-tab" type="button" data-record-tab="specialized">Historias especializadas <span id="specializedHistoryCount"></span></button><button class="record-tab" type="button" data-record-tab="contraceptives">Anticonceptivos (${contraceptives.length})</button></div>
     <div class="record-tab-panel record-entries" data-record-panel="clinical"><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Evolución clínica (${consultations.length})</h3>
     ${consultations.length ? consultations.map(entryHtml).join('') : '<p style="color:var(--gray-500)">Este paciente todavía no tiene consultas médicas registradas.</p>'}</div>
+    <div class="record-tab-panel record-entries" data-record-panel="specialized" hidden><div id="specializedRecordsMount"><p style="color:var(--gray-500)">Cargando historias especializadas…</p></div></div>
     <div class="record-tab-panel record-entries" data-record-panel="contraceptives" hidden><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Seguimiento anticonceptivo (${contraceptives.length})</h3>
     ${contraceptives.length ? contraceptives.map(contraceptiveEntryHtml).join('') : '<p style="color:var(--gray-500)">Este paciente todavía no tiene aplicaciones registradas.</p>'}</div>`;
   await hydrateAttachmentUrls(panel);
+  await window.MedSolutionSpecialized?.mount({ patient, attentions: recordsState.consultations });
 }
 
 async function hydrateAttachmentUrls(scope) {
@@ -270,12 +279,9 @@ async function setupMedicalRecords() {
   await window.MedSolutionData?.ready;
   try { await loadData(); } catch (error) { alert(`No se pudo cargar la información clínica: ${error.message}`); return; }
   renderPatientList();
-  populateDoctorFilter();
+  populateRecordFilters();
   document.getElementById('recordsDetailPanel').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-500)">Selecciona un paciente para ver su historia clínica.</div>';
-  document.getElementById('recordsSearch')?.addEventListener('input', (e) => { recordsState.searchTerm = e.target.value; renderPatientList(); });
-  document.getElementById('recordsDoctorFilter')?.addEventListener('change',(e)=>{recordsState.doctorFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
-  document.getElementById('recordsDateFilter')?.addEventListener('change',(e)=>{recordsState.dateFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
-  document.getElementById('recordsDiagnosisFilter')?.addEventListener('input',(e)=>{recordsState.diagnosisFilter=e.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)});
+  [['recordsServiceFilter','service'],['recordsResponsibleFilter','responsible'],['recordsMonthFilter','month'],['recordsYearFilter','year']].forEach(([id,key])=>document.getElementById(id)?.addEventListener('change',event=>{recordsState.filters[key]=event.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)}));
   document.getElementById('recordsPatientList')?.addEventListener('click', (e) => {
     const button = e.target.closest('[data-patient-id]'); if (button) selectPatient(button.dataset.patientId).catch((error)=>alert(error.message));
   });
@@ -309,16 +315,16 @@ async function setupMedicalRecords() {
   });
   const patientId = Number(new URLSearchParams(location.search).get('patientId'));
   if (patientId) selectPatient(patientId);
-  window.MedSolutionData?.subscribeAttentions(async () => {
-    await loadData();
-    populateDoctorFilter();
+  window.MedSolutionData?.subscribeAttentions(() => scheduleRecordsRefresh('atenciones', async () => {
+    recordsState.consultations = await window.MedSolutionData.getAttentions();
+    populateRecordFilters();
     if (recordsState.selectedPatientId) await renderPatientRecord(recordsState.selectedPatientId);
     renderPatientList();
-  });
-  window.MedSolutionData?.subscribePatients(async () => {
-    await loadData();
+  }));
+  window.MedSolutionData?.subscribePatients(() => scheduleRecordsRefresh('pacientes', async () => {
+    recordsState.patients = await window.MedSolutionData.getPatients();
     renderPatientList();
-  });
+  }));
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupMedicalRecords, { once: true });
 else setupMedicalRecords();
