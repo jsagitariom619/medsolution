@@ -426,8 +426,18 @@
     throwIfError(error); return (data || []).map(mapSpecializedEvolution);
   }
   async function saveSpecializedEvolution(item) {
-    const connection = await db(true); const payload = { historia_especializada_id:item.specializedHistoryId, atencion_id:item.attentionRemoteId, metricas:item.metrics||{}, datos_evolucion:item.data||{} };
-    const { data, error } = await connection.from('evoluciones_historias_especializadas').upsert(payload, { onConflict:'atencion_id' }).select().single(); throwIfError(error); return mapSpecializedEvolution(data);
+    const connection = await db(true);
+    const payload = {
+      historia_especializada_id: item.specializedHistoryId,
+      atencion_id: uuidOrNull(item.attentionRemoteId),
+      metricas: item.metrics || {},
+      datos_evolucion: item.data || {},
+    };
+    const mutation = item.id
+      ? connection.from('evoluciones_historias_especializadas').update(payload).eq('id', item.id)
+      : connection.from('evoluciones_historias_especializadas').insert(payload);
+    const { data, error } = await mutation.select().single();
+    throwIfError(error); return mapSpecializedEvolution(data);
   }
   function mapSpecializedPayment(row) {
     return { id:row.id, specializedHistoryId:row.historia_especializada_id, attentionRemoteId:row.atencion_id||'', paymentDate:row.fecha_pago, amount:Number(row.monto||0), method:row.metodo_pago, observations:row.observaciones||'', registeredBy:row.registrado_por_nombre_snapshot||'', createdAt:row.creado_en, updatedAt:row.actualizado_en };
