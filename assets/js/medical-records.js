@@ -3,7 +3,7 @@ const CONSULT_KEY = 'medsolution.consultations';
 const PATIENTS_KEY = 'medsolution.patients';
 const RECORDS_KEY = 'medsolution.medicalRecords';
 
-const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, filters: { service:'', responsible:'', month:'', year:'' }, attachmentConsultationId: null, uploading: false, realtimeTimers: new Map() };
+const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, patientSearch: '', patientOrder: 'latest', attachmentConsultationId: null, uploading: false, savingRecord: false, realtimeTimers: new Map() };
 
 function readArray(key) {
   try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : []; }
@@ -40,11 +40,8 @@ function formatDateTime(value) { if (!value) return '—'; return new Intl.DateT
 function consultationsFor(patientId) {
   return recordsState.consultations
     .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
+    .filter((c) => c.requiresMedicalConsultation !== false)
     .filter((c) => Number(c.patientId) === Number(patientId))
-    .filter((c) => !recordsState.filters.service || c.serviceType === recordsState.filters.service)
-    .filter((c) => !recordsState.filters.responsible || attentionResponsible(c) === recordsState.filters.responsible)
-    .filter((c) => !recordsState.filters.month || String(c.date||'').slice(5,7) === recordsState.filters.month)
-    .filter((c) => !recordsState.filters.year || String(c.date||'').slice(0,4) === recordsState.filters.year)
     .sort((a,b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
 }
 function contraceptivesFor(patientId) {
@@ -69,31 +66,28 @@ function medicalResponsible(consultation) {
   return byName?.name || recordsState.users.find((user) => user.role === 'Médico')?.name || 'Médico';
 }
 function attentionResponsible(consultation){return consultation.procedureResponsible||consultation.scheduledProfessional||medicalResponsible(consultation)}
-function populateRecordFilters() {
-  const items=recordsState.consultations.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true);
-  const definitions=[['recordsServiceFilter','Todos los servicios',[...new Set(items.map(item=>item.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['recordsResponsibleFilter','Todos los responsables',[...new Set(items.map(attentionResponsible).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['recordsMonthFilter','Todos los meses',[...new Set(items.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort()],['recordsYearFilter','Todos los años',[...new Set(items.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
-  definitions.forEach(([id,label,values])=>{const select=document.getElementById(id);if(!select)return;const current=select.value;select.innerHTML=`<option value="">${label}</option>`+values.map(value=>`<option value="${value}">${id==='recordsMonthFilter'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeHtml(value)}</option>`).join('');select.value=current});
-}
 async function ensureRecord(patientId) {
   let record = recordsState.records.find((r) => Number(r.patientId) === Number(patientId));
+  if(window.MedSolutionData?.isConfigured()){
+    if(!record){await window.MedSolutionData.ensureMedicalRecord(patientId);recordsState.records=await window.MedSolutionData.getMedicalRecords();record=recordsState.records.find(item=>Number(item.patientId)===Number(patientId));if(!record)throw new Error('Supabase no devolvió la Historia Clínica General del paciente.')}
+    return record;
+  }
   if (!record) {
     const ids = recordsState.records.map((r) => Number(r.id)).filter(Number.isFinite);
     record = { id: ids.length ? Math.max(...ids) + 1 : 1, patientId: Number(patientId), createdAt: new Date().toISOString() };
     recordsState.records.push(record);
     localStorage.setItem(RECORDS_KEY, JSON.stringify(recordsState.records));
   }
-  if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.ensureMedicalRecord(patientId);
   return record;
 }
 
 function renderPatientList() {
   const list = document.getElementById('recordsPatientList');
   const historyPatientIds=new Set(recordsState.records.map(record=>Number(record.patientId)));
-  const hasClinicalFilters=Object.values(recordsState.filters).some(Boolean);
-  const patients = recordsState.patients
-    .filter((patient)=>hasClinicalFilters?consultationsFor(patient.id).length>0:(historyPatientIds.has(Number(patient.id))
-      || consultationsFor(patient.id).some(item=>item.requiresMedicalConsultation!==false)
-      || contraceptivesFor(patient.id).length > 0));
+  const query=recordsState.patientSearch.trim().toLocaleLowerCase('es'),latestStamp=patient=>{const latest=consultationsFor(patient.id)[0];return latest?`${latest.date||''}${latest.time||''}`:''};
+  const patients = recordsState.patients.filter((patient)=>historyPatientIds.has(Number(patient.id))||consultationsFor(patient.id).some(item=>item.requiresMedicalConsultation!==false)||contraceptivesFor(patient.id).length>0)
+    .filter(patient=>!query||`${patient.nombre||''} ${patient.apellido||''} ${patient.ci||''} ${patient.telefono||''}`.toLocaleLowerCase('es').includes(query))
+    .sort((a,b)=>{const nameA=`${a.nombre||''} ${a.apellido||''}`,nameB=`${b.nombre||''} ${b.apellido||''}`;if(recordsState.patientOrder==='name-asc')return nameA.localeCompare(nameB,'es');if(recordsState.patientOrder==='name-desc')return nameB.localeCompare(nameA,'es');if(recordsState.patientOrder==='created')return String(b.registrado||'').localeCompare(String(a.registrado||''));return latestStamp(b).localeCompare(latestStamp(a))||nameA.localeCompare(nameB,'es')});
   if (!patients.length) { list.innerHTML = '<p style="color:var(--gray-500);padding:16px 0">No se encontraron pacientes.</p>'; return; }
   list.innerHTML = patients.map((p) => {
     const name = `${p.nombre} ${p.apellido}`;
@@ -155,6 +149,23 @@ function contraceptiveEntryHtml(item) {
     <div class="record-entry__grid">${field('Responsable', item.procedureResponsible || '—')}${field('Próxima aplicación', formatDate(item.nextApplicationDate), false)}${price}${field('Observaciones', item.contraceptiveObservations || '—', true)}</div></div>`;
 }
 
+function permanentField(label, value) {
+  return `<div class="record-permanent-field"><span>${label}</span><p>${escapeHtml(value || 'No registrado')}</p></div>`;
+}
+function permanentDataHtml(record) {
+  return `<section class="record-permanent"><div class="record-permanent__head"><div><span class="eyebrow">Expediente principal</span><h3>Información clínica permanente</h3><p>Datos que se conservan entre consultas y pueden actualizarse cuando sea necesario.</p></div><button class="btn btn--secondary" type="button" data-edit-general-record>Editar información</button></div><div class="record-permanent__grid">${permanentField('Grupo sanguíneo',record?.bloodGroup)}${permanentField('Antecedentes personales',record?.personalHistory)}${permanentField('Antecedentes familiares',record?.familyHistory)}${permanentField('Alergias',record?.allergicHistory)}${permanentField('Enfermedades previas',record?.chronicDiseases)}${permanentField('Cirugías',record?.surgicalHistory)}${permanentField('Hábitos',record?.habits)}${permanentField('Medicación habitual',record?.currentMedications)}${permanentField('Hospitalizaciones',record?.hospitalizations)}${permanentField('Antecedentes gineco-obstétricos',record?.gynecologicalHistory)}${permanentField('Inmunizaciones',record?.immunizations)}${permanentField('Historia de la enfermedad / notas',record?.notes)}</div></section>`;
+}
+function openGeneralRecordEditor() {
+  const record=recordsState.records.find(item=>Number(item.patientId)===Number(recordsState.selectedPatientId));
+  if(!record)return alert('No se encontró la Historia Clínica General del paciente.');
+  const form=document.getElementById('generalRecordForm');
+  form.reset();
+  [['bloodGroup','bloodGroup'],['personalHistory','personalHistory'],['familyHistory','familyHistory'],['allergicHistory','allergicHistory'],['chronicDiseases','chronicDiseases'],['surgicalHistory','surgicalHistory'],['habits','habits'],['currentMedications','currentMedications'],['hospitalizations','hospitalizations'],['gynecologicalHistory','gynecologicalHistory'],['immunizations','immunizations'],['notes','notes']].forEach(([name,key])=>{form.elements[name].value=record[key]||''});
+  document.getElementById('generalRecordModal').classList.add('modal--open');
+}
+function closeGeneralRecordEditor(){document.getElementById('generalRecordModal')?.classList.remove('modal--open')}
+async function saveGeneralRecord(event){event.preventDefault();if(recordsState.savingRecord)return;const form=event.currentTarget,record=recordsState.records.find(item=>Number(item.patientId)===Number(recordsState.selectedPatientId));if(!record)return;recordsState.savingRecord=true;const button=form.querySelector('[type="submit"]');button.disabled=true;button.textContent='Guardando…';try{const values=Object.fromEntries(new FormData(form)),saved=await window.MedSolutionData.saveMedicalRecord({...record,...values});recordsState.records=recordsState.records.map(item=>item.id===saved.id?saved:item);closeGeneralRecordEditor();await renderPatientRecord(recordsState.selectedPatientId)}catch(error){console.error('[Historias clínicas] No se pudieron guardar los datos permanentes:',error);alert(`No se pudo guardar la información clínica: ${error.message}`)}finally{recordsState.savingRecord=false;button.disabled=false;button.textContent='Guardar información'}}
+
 async function renderPatientRecord(patientId) {
   const panel = document.getElementById('recordsDetailPanel');
   const patient = recordsState.patients.find((p) => Number(p.id) === Number(patientId));
@@ -163,6 +174,7 @@ async function renderPatientRecord(patientId) {
   const name = `${patient.nombre} ${patient.apellido}`;
   const consultations = consultationsFor(patient.id);
   const contraceptives = contraceptivesFor(patient.id);
+  const generalRecord=recordsState.records.find(item=>Number(item.patientId)===Number(patient.id));
   panel.innerHTML = `<div class="record-patient-header"><span class="patient-photo" style="width:52px;height:52px;font-size:1.1rem">${getInitials(name)}</span>
     <div><h2 style="margin:0;color:var(--petroleum-dark)">${escapeHtml(name)}</h2>
     <p style="margin:4px 0 0;color:var(--gray-500);font-size:.88rem">CI: ${escapeHtml(patient.ci)} · ${escapeHtml(patient.genero || '—')} · Nac: ${formatDate(patient.fechaNacimiento)} · Tel: ${escapeHtml(patient.telefono || '—')}</p></div>
@@ -171,10 +183,11 @@ async function renderPatientRecord(patientId) {
       <button class="btn btn--secondary" type="button" data-view-full-record="${patient.id}">Ver Historia Clínica Completa</button>
       <button class="btn btn--secondary" type="button" data-print-record="${patient.id}">Imprimir historia</button>
       <button class="btn btn--secondary" type="button" data-export-record="${patient.id}">Exportar PDF</button>
-      <a class="btn btn--primary" href="appointments.html?action=new&patientId=${patient.id}">+ Nueva atención</a>
+      <a class="btn btn--primary" href="appointments.html?mode=medical-consultation&patientId=${patient.id}">+ Nueva Consulta Médica</a>
     </div></div>
-    <div class="record-tabs" role="tablist"><button class="record-tab record-tab--active" type="button" data-record-tab="clinical">Historia clínica (${consultations.length})</button><button class="record-tab" type="button" data-record-tab="specialized">Historias especializadas <span id="specializedHistoryCount"></span></button><button class="record-tab" type="button" data-record-tab="contraceptives">Anticonceptivos (${contraceptives.length})</button></div>
-    <div class="record-tab-panel record-entries" data-record-panel="clinical"><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Evolución clínica (${consultations.length})</h3>
+    <div class="record-tabs" role="tablist"><button class="record-tab record-tab--active" type="button" data-record-tab="permanent">Datos permanentes</button><button class="record-tab" type="button" data-record-tab="clinical">Consultas Médicas (${consultations.length})</button><button class="record-tab" type="button" data-record-tab="specialized">Historias especializadas <span id="specializedHistoryCount"></span></button><button class="record-tab" type="button" data-record-tab="contraceptives">Anticonceptivos (${contraceptives.length})</button></div>
+    <div class="record-tab-panel" data-record-panel="permanent">${permanentDataHtml(generalRecord)}</div>
+    <div class="record-tab-panel record-entries" data-record-panel="clinical" hidden><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Consultas Médicas (${consultations.length})</h3>
     ${consultations.length ? consultations.map(entryHtml).join('') : '<p style="color:var(--gray-500)">Este paciente todavía no tiene consultas médicas registradas.</p>'}</div>
     <div class="record-tab-panel record-entries" data-record-panel="specialized" hidden><div id="specializedRecordsMount"><p style="color:var(--gray-500)">Cargando historias especializadas…</p></div></div>
     <div class="record-tab-panel record-entries" data-record-panel="contraceptives" hidden><h3 style="color:var(--petroleum-dark);margin:0;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Seguimiento anticonceptivo (${contraceptives.length})</h3>
@@ -260,12 +273,13 @@ function printDocument(title, patient, body) {
 }
 function printRecord(patientId) {
   const patient = recordsState.patients.find((p) => Number(p.id) === Number(patientId));
-  const body = consultationsFor(patientId).map((c) => `<div class="block"><h2>${formatDate(c.date)} · ${escapeHtml(c.chiefComplaint || '')}</h2>
+  const record=recordsState.records.find(item=>Number(item.patientId)===Number(patientId)),permanent=record?`<div class="block"><h2>Información clínica permanente</h2><p><strong>Grupo sanguíneo:</strong> ${escapeHtml(record.bloodGroup||'—')}<br><strong>Antecedentes personales:</strong> ${escapeHtml(record.personalHistory||'—')}<br><strong>Antecedentes familiares:</strong> ${escapeHtml(record.familyHistory||'—')}<br><strong>Alergias:</strong> ${escapeHtml(record.allergicHistory||'—')}<br><strong>Enfermedades previas:</strong> ${escapeHtml(record.chronicDiseases||'—')}<br><strong>Cirugías:</strong> ${escapeHtml(record.surgicalHistory||'—')}<br><strong>Hábitos:</strong> ${escapeHtml(record.habits||'—')}<br><strong>Medicación habitual:</strong> ${escapeHtml(record.currentMedications||'—')}<br><strong>Notas:</strong> ${escapeHtml(record.notes||'—')}</p></div>`:'';
+  const consultations = consultationsFor(patientId).map((c) => `<div class="block"><h2>${formatDate(c.date)} · ${escapeHtml(c.chiefComplaint || '')}</h2>
     <p><strong>Enfermedad actual:</strong> ${escapeHtml(c.evolution || '—')}<br><strong>Antecedentes:</strong> ${escapeHtml(c.clinicalAntecedents || '—')}<br>
     <strong>Examen físico:</strong> ${escapeHtml(c.physicalExam || '—')}<br><strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || '—')}<br>
     <strong>Tratamiento:</strong> ${escapeHtml(c.treatment || '—')}<br><strong>Medicamentos:</strong> ${escapeHtml(c.medications || c.prescription || '—')}<br><strong>Procedimientos:</strong> ${escapeHtml(c.procedures || '—')}<br>
     <strong>Indicaciones:</strong> ${escapeHtml(c.indications || '—')}<br><strong>Observaciones:</strong> ${escapeHtml(c.observations || '—')}<br><strong>Médico responsable:</strong> ${escapeHtml(medicalResponsible(c))}<br><strong>Próximo control:</strong> ${formatDate(c.nextControl)}</p></div>`).join('');
-  printDocument('Historia clínica', patient, body || '<p>Sin consultas registradas.</p>');
+  printDocument('Historia clínica', patient, `${permanent}<h2>Consultas Médicas</h2>${consultations||'<p>Sin consultas registradas.</p>'}`);
 }
 function printPrescription(consultId) {
   const c = recordsState.consultations.find((item) => Number(item.id) === Number(consultId));
@@ -279,9 +293,13 @@ async function setupMedicalRecords() {
   await window.MedSolutionData?.ready;
   try { await loadData(); } catch (error) { alert(`No se pudo cargar la información clínica: ${error.message}`); return; }
   renderPatientList();
-  populateRecordFilters();
   document.getElementById('recordsDetailPanel').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-500)">Selecciona un paciente para ver su historia clínica.</div>';
-  [['recordsServiceFilter','service'],['recordsResponsibleFilter','responsible'],['recordsMonthFilter','month'],['recordsYearFilter','year']].forEach(([id,key])=>document.getElementById(id)?.addEventListener('change',event=>{recordsState.filters[key]=event.target.value;renderPatientList();if(recordsState.selectedPatientId)renderPatientRecord(recordsState.selectedPatientId)}));
+  document.getElementById('recordsPatientSearch')?.addEventListener('input',event=>{recordsState.patientSearch=event.target.value;renderPatientList()});
+  document.getElementById('recordsFilterButton')?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('recordsOrderMenu')?.classList.toggle('records-order-menu--open')});
+  document.getElementById('recordsOrderMenu')?.addEventListener('click',event=>{const choice=event.target.closest('[data-record-order]');if(!choice)return;recordsState.patientOrder=choice.dataset.recordOrder;document.querySelectorAll('[data-record-order]').forEach(item=>item.classList.toggle('records-order-option--active',item===choice));document.getElementById('recordsOrderMenu').classList.remove('records-order-menu--open');renderPatientList()});
+  document.addEventListener('click',event=>{if(!event.target.closest('.records-filter-control'))document.getElementById('recordsOrderMenu')?.classList.remove('records-order-menu--open')});
+  document.querySelectorAll('[data-close-general-record]').forEach(item=>item.addEventListener('click',closeGeneralRecordEditor));
+  document.getElementById('generalRecordForm')?.addEventListener('submit',saveGeneralRecord);
   document.getElementById('recordsPatientList')?.addEventListener('click', (e) => {
     const button = e.target.closest('[data-patient-id]'); if (button) selectPatient(button.dataset.patientId).catch((error)=>alert(error.message));
   });
@@ -294,6 +312,7 @@ async function setupMedicalRecords() {
     const toggle = e.target.closest('[data-toggle-entry]');
     if (toggle) document.querySelector(`.record-entry[data-entry-id="${toggle.dataset.toggleEntry}"]`)?.classList.toggle('record-entry--collapsed');
     const edit = e.target.closest('[data-edit-patient]'); if (edit) editPatient(edit.dataset.editPatient).catch((error)=>alert(error.message));
+    if (e.target.closest('[data-edit-general-record]')) openGeneralRecordEditor();
     const record = e.target.closest('[data-print-record]'); if (record) printRecord(record.dataset.printRecord);
     const exportRecord = e.target.closest('[data-export-record]'); if (exportRecord) printRecord(exportRecord.dataset.exportRecord);
     const prescription = e.target.closest('[data-print-prescription]'); if (prescription) printPrescription(prescription.dataset.printPrescription);
@@ -317,7 +336,6 @@ async function setupMedicalRecords() {
   if (patientId) selectPatient(patientId);
   window.MedSolutionData?.subscribeAttentions(() => scheduleRecordsRefresh('atenciones', async () => {
     recordsState.consultations = await window.MedSolutionData.getAttentions();
-    populateRecordFilters();
     if (recordsState.selectedPatientId) await renderPatientRecord(recordsState.selectedPatientId);
     renderPatientList();
   }));

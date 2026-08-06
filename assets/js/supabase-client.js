@@ -371,10 +371,11 @@
   async function getMedicalRecords() {
     const connection=await db();
     if(!connection)return localArray('medsolution.medicalRecords');
-    const {data,error}=await connection.from('historias_clinicas').select('id,paciente_id,creado_en,actualizado_en,pacientes(legacy_id)');
+    const {data,error}=await connection.from('historias_clinicas').select('id,paciente_id,grupo_sanguineo,antecedentes_personales,antecedentes_quirurgicos,antecedentes_familiares,antecedentes_alergicos,medicamentos_actuales,habitos,hospitalizaciones,enfermedades_cronicas,antecedentes_gineco_obstetricos,inmunizaciones,notas,creado_en,actualizado_en,pacientes(legacy_id)');
     throwIfError(error);
-    return (data||[]).map(item=>({id:item.id,patientId:Number(item.pacientes?.legacy_id),createdAt:item.creado_en,updatedAt:item.actualizado_en}));
+    return (data||[]).map(item=>({id:item.id,patientId:Number(item.pacientes?.legacy_id),bloodGroup:item.grupo_sanguineo||'',personalHistory:item.antecedentes_personales||'',surgicalHistory:item.antecedentes_quirurgicos||'',familyHistory:item.antecedentes_familiares||'',allergicHistory:item.antecedentes_alergicos||'',currentMedications:item.medicamentos_actuales||'',habits:item.habitos||'',hospitalizations:item.hospitalizaciones||'',chronicDiseases:item.enfermedades_cronicas||'',gynecologicalHistory:item.antecedentes_gineco_obstetricos||'',immunizations:item.inmunizaciones||'',notes:item.notas||'',createdAt:item.creado_en,updatedAt:item.actualizado_en}));
   }
+  async function saveMedicalRecord(item){const connection=await db();if(!connection){const records=localArray('medsolution.medicalRecords'),saved={...item,updatedAt:new Date().toISOString()},index=records.findIndex(record=>String(record.id)===String(item.id));if(index>=0)records[index]=saved;else records.push(saved);localStorage.setItem('medsolution.medicalRecords',JSON.stringify(records));return saved}const payload={grupo_sanguineo:item.bloodGroup||'',antecedentes_personales:item.personalHistory||'',antecedentes_quirurgicos:item.surgicalHistory||'',antecedentes_familiares:item.familyHistory||'',antecedentes_alergicos:item.allergicHistory||'',medicamentos_actuales:item.currentMedications||'',habitos:item.habits||'',hospitalizaciones:item.hospitalizations||'',enfermedades_cronicas:item.chronicDiseases||'',antecedentes_gineco_obstetricos:item.gynecologicalHistory||'',inmunizaciones:item.immunizations||'',notas:item.notes||'',actualizado_en:new Date().toISOString()};const {data,error}=await connection.from('historias_clinicas').update(payload).eq('id',item.id).select('id,actualizado_en').single();throwIfError(error);return {...item,updatedAt:data.actualizado_en}}
   function mapSpecializedHistory(row) {
     return {
       id: row.id, medicalRecordId: row.historia_clinica_id, templateType: row.tipo_plantilla,
@@ -504,7 +505,7 @@
     uploadClinicalAttachment, signedFileUrl,
     getPatients, findPatientByCi, savePatient, deletePatient,
     getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
-    ensureMedicalRecord, getMedicalRecords, getSpecializedHistories, saveSpecializedHistory, deleteSpecializedHistory,
+    ensureMedicalRecord, getMedicalRecords, saveMedicalRecord, getSpecializedHistories, saveSpecializedHistory, deleteSpecializedHistory,
     getSpecializedEvolutions, getSpecializedEvolutionsByHistoryIds, saveSpecializedEvolution,
     getSpecializedPayments, getSpecializedPaymentsByHistoryIds, saveSpecializedPayment, deleteSpecializedPayment,
     getSettings, saveSettings,

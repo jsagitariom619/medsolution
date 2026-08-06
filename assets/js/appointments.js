@@ -430,9 +430,11 @@ function staffRole(position) {
 
 function configureFormMode(mode) {
   const clinical = document.getElementById('clinicalFields');
-  const clinicalMode = ['clinical', 'edit-clinical', 'view-clinical'].includes(mode);
+  const clinicalMode = ['clinical', 'new-clinical', 'edit-clinical', 'view-clinical'].includes(mode);
   clinical.classList.toggle('hidden-section', !clinicalMode);
   document.getElementById('serviceType').disabled = clinicalMode || mode === 'create';
+  document.getElementById('serviceType').closest('.form-field').style.display=mode==='new-clinical'?'none':'';
+  document.querySelector('[name="clinicalAntecedents"]')?.closest('.form-field')?.classList.toggle('hidden-section',mode==='new-clinical');
   document.getElementById('pickPatientBtn').style.display = clinicalMode ? 'none' : '';
   document.getElementById('consultSaveBtn').textContent = clinicalMode ? 'Finalizar consulta' : 'Guardar Atención';
   const step = document.getElementById('consultStepLabel');
@@ -458,13 +460,14 @@ function openConsultModal(mode, consult = null) {
 
   const titles = {
     create: 'Nueva Atención', edit: 'Editar Atención', view: 'Detalle de Atención',
-    clinical: 'Consulta clínica', 'edit-clinical': 'Corregir consulta clínica', 'view-clinical': 'Detalle de Consulta',
+    clinical: 'Consulta clínica', 'new-clinical':'Nueva Consulta Médica', 'edit-clinical': 'Corregir consulta clínica', 'view-clinical': 'Detalle de Consulta',
   };
   document.getElementById('consultModalTitle').textContent = titles[mode] || 'Atención';
   if (mode.startsWith('view')) setConsultFormReadOnly(form, true);
   toggleServiceFields();
   document.getElementById('consultModal').classList.add('nursing-modal--active');
 }
+function openNewMedicalConsultation(patient){const service=consultState.services.find(item=>item.active!==false&&item.requires_medical_consultation);if(!service){alert('No existe un servicio activo configurado para consulta médica.');return}const patientName=`${patient.nombre||''} ${patient.apellido||''}`.trim(),doctorName=(()=>{try{const current=JSON.parse(sessionStorage.getItem('medsolution.authUser')||localStorage.getItem('medsolution.authUser')||'null');if(['Administrador','Médico'].includes(current?.role)&&current?.name)return current.name}catch{}return consultState.staff.find(person=>staffRole(person.position)==='Doctor')?.name||''})(),now=boliviaNowParts();consultState.pendingPatient=patient;consultState.selectedServiceId=service.id;openConsultModal('new-clinical',{patientId:patient.id,patientName,date:now.date,time:now.time,serviceId:service.id,serviceType:service.name,servicePrice:Number(service.price||0),requiresMedicalConsultation:true,generatesMedicalRecord:true,procedureResponsible:doctorName,status:'En consulta',scheduleStatus:'En Atención'});consultState.editingId=null;const responsible=document.getElementById('procedureResponsible');if([...responsible.options].some(option=>option.value===doctorName))responsible.value=doctorName}
 function closeConsultModal() {
   document.getElementById('consultModal')?.classList.remove('nursing-modal--active');
   document.getElementById('consultForm')?.reset();
@@ -565,19 +568,19 @@ async function handleConsultSave(event) {
     return setFormStatus('consultFormStatus', 'Selecciona al responsable del servicio.');
   }
 
-  const clinical = ['clinical', 'edit-clinical'].includes(consultState.mode);
-  if (clinical && [
+  const clinical = ['clinical', 'new-clinical', 'edit-clinical'].includes(consultState.mode);
+  const requiredClinical=[
     data.chiefComplaint,
     data.evolution,
-    data.clinicalAntecedents,
     data.physicalExam,
     data.diagnosis,
     data.treatment,
     data.indications,
-  ].some((value) => !String(value || '').trim())) {
+  ];if(consultState.mode!=='new-clinical')requiredClinical.push(data.clinicalAntecedents);
+  if (clinical && requiredClinical.some((value) => !String(value || '').trim())) {
     return setFormStatus(
       'consultFormStatus',
-      'Completa motivo, enfermedad actual, antecedentes, examen físico, diagnóstico, tratamiento e indicaciones.',
+      consultState.mode==='new-clinical'?'Completa motivo, enfermedad actual, examen físico, diagnóstico, tratamiento e indicaciones.':'Completa motivo, enfermedad actual, antecedentes, examen físico, diagnóstico, tratamiento e indicaciones.',
     );
   }
   let saved = null;
@@ -597,11 +600,11 @@ async function handleConsultSave(event) {
     const doctorStartsConsultation = medical && isDoctor();
     saved = {
       id: nextId(consultState.consultations), ...data,
-      status: doctorStartsConsultation ? 'En consulta' : medical ? 'Pendiente' : 'Finalizada',
-      scheduleStatus: doctorStartsConsultation ? 'En Atención' : medical ? 'Pendiente' : 'Atendida',
+      status: clinical ? 'Finalizada' : doctorStartsConsultation ? 'En consulta' : medical ? 'Pendiente' : 'Finalizada',
+      scheduleStatus: clinical ? 'Atendida' : doctorStartsConsultation ? 'En Atención' : medical ? 'Pendiente' : 'Atendida',
       createdAt: new Date().toISOString(),
-      finalizedAt: medical ? null : new Date().toISOString(),
-      acceptedAt: doctorStartsConsultation ? new Date().toISOString() : null,
+      finalizedAt: clinical||!medical ? new Date().toISOString() : null,
+      acceptedAt: clinical||doctorStartsConsultation ? new Date().toISOString() : null,
     };
   }
   if (!saved) return setFormStatus('consultFormStatus', 'No se encontró la atención que deseas actualizar.');
@@ -645,7 +648,7 @@ async function handleConsultSave(event) {
     }
 
     await saveConsultations();
-    const successMessage = saved.requiresMedicalConsultation
+    const successMessage = clinical?'Consulta Médica guardada correctamente dentro de la Historia Clínica.':saved.requiresMedicalConsultation
       ? (isDoctor()
         ? 'Atención registrada. La Historia Clínica está lista para continuar la consulta.'
         : 'Atención registrada y enviada correctamente al panel del doctor.')
@@ -752,7 +755,9 @@ async function setupAppointmentsModule() {
   const consultationId = Number(getUrlParam('consultationId'));
   const item = consultState.consultations.find((c) => Number(c.id) === consultationId);
   if (item && isDoctor()) openConsultModal(requiresMedical(item) ? (['Atendida', 'Finalizada'].includes(item.status) ? 'edit-clinical' : 'clinical') : 'edit', item);
-  else if (patientId) {
+  else if (patientId&&getUrlParam('mode')==='medical-consultation') {
+    const patient=getPatients().find(item=>Number(item.id)===patientId);if(patient)openNewMedicalConsultation(patient);
+  } else if (patientId) {
     const patient = getPatients().find((p) => Number(p.id) === patientId);
     if (patient) { consultState.pendingPatient = patient; openServicePicker(); }
   } else if (getUrlParam('action') === 'new') openPatientSearchModal();
