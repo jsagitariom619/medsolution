@@ -2,6 +2,36 @@ let dashboardSubscriptionsReady=false;
 const dashboardData={patients:[],attentions:[],histories:[],realtimeTimers:new Map()};
 const DASHBOARD_MODULES = new Set(['patients.html','appointments.html','medical-records.html','schedule.html','services.html','contraceptives.html','reports.html','settings.html']);
 
+function closeDashboardMenus(except = '') {
+  [['notifications','dashboardNotificationsButton','dashboardNotificationsMenu'],['user','dashboardUserButton','dashboardUserMenu']].forEach(([name,buttonId,menuId])=>{
+    if(name===except)return;
+    const button=document.getElementById(buttonId),menu=document.getElementById(menuId);
+    if(button)button.setAttribute('aria-expanded','false');
+    if(menu)menu.hidden=true;
+  });
+}
+
+function toggleDashboardMenu(name) {
+  const definitions={notifications:['dashboardNotificationsButton','dashboardNotificationsMenu'],user:['dashboardUserButton','dashboardUserMenu']};
+  const [buttonId,menuId]=definitions[name]||[];
+  const button=document.getElementById(buttonId),menu=document.getElementById(menuId);
+  if(!button||!menu)return;
+  const opening=menu.hidden;
+  closeDashboardMenus(name);
+  menu.hidden=!opening;
+  button.setAttribute('aria-expanded',String(opening));
+}
+
+function renderDashboardNotifications(items) {
+  const list=document.getElementById('dashboardNotificationList'),summary=document.getElementById('dashboardNotificationsSummary');
+  const total=items.reduce((sum,item)=>sum+item.count,0);
+  const badge=document.querySelector('.notification-button span');
+  if(badge){badge.textContent=total;badge.hidden=total===0}
+  if(summary)summary.textContent=`${total} pendiente${total===1?'':'s'}`;
+  if(!list)return;
+  list.innerHTML=items.length?items.map(item=>`<a class="dashboard-notification-item" href="${item.href}"><span>${item.icon}</span><div><strong>${dashboardEscape(item.title)}</strong><small>${dashboardEscape(item.description)}</small></div><em>${item.count}</em></a>`).join(''):'<p class="dashboard-dropdown-empty">No hay notificaciones pendientes.</p>';
+}
+
 function dashboardModuleTarget(value) {
   if (!value) return null;
   const url = new URL(value, window.location.href);
@@ -46,6 +76,10 @@ function openDashboardModule(target, pushState = true) {
 
 function setupDashboardShell() {
   const frame = document.getElementById('dashboardModuleFrame');
+  document.getElementById('dashboardNotificationsButton')?.addEventListener('click',event=>{event.stopPropagation();toggleDashboardMenu('notifications')});
+  document.getElementById('dashboardUserButton')?.addEventListener('click',event=>{event.stopPropagation();toggleDashboardMenu('user')});
+  document.addEventListener('click',event=>{if(!event.target.closest('.dashboard-menu-anchor'))closeDashboardMenus()});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeDashboardMenus();document.activeElement?.blur()}});
   document.addEventListener('click', (event) => {
     const link = event.target.closest('a[href]');
     if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
@@ -54,9 +88,11 @@ function setupDashboardShell() {
     const page = new URL(link.href, location.href).pathname.split('/').pop();
     if (page === 'dashboard.html') {
       event.preventDefault();
+      closeDashboardMenus();
       showDashboardHome();
     } else if (dashboardModuleTarget(link.href)) {
       event.preventDefault();
+      closeDashboardMenus();
       openDashboardModule(link.href);
     }
   });
@@ -108,7 +144,7 @@ function renderDashboardAppointments(schedule) {
 }
 
 function renderDashboardPatients(patients,attentions) {
-  const recent=[...patients].sort((a,b)=>String(b.registrado||'').localeCompare(String(a.registrado||''))).slice(0,5);const target=document.getElementById('dashboardRecentPatients');
+  const recent=[...patients].sort((a,b)=>String(b.registrado||'').localeCompare(String(a.registrado||''))).slice(0,5);const target=document.getElementById('dashboardRecentPatients');attentions=attentions.filter(item=>item.scheduledOnly!==true);
   const head='<div class="recent-patients-head"><span>Paciente</span><span>Última atención</span><span>Acciones</span></div>';
   target.innerHTML=head+(recent.length?recent.map(patient=>{const last=attentions.filter(item=>Number(item.patientId)===Number(patient.id)&&item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];return `<div class="recent-patient-row"><div><span class="patient-photo">${dashboardInitials(`${patient.nombre} ${patient.apellido}`)}</span><p><strong>${dashboardEscape(`${patient.nombre} ${patient.apellido}`)}</strong><small>${dashboardEscape(patient.telefono||patient.ci||'Sin contacto')}</small></p></div><time>${dashboardFormatDate(last?.date||patient.registrado)}</time><span class="action-links"><a href="patients.html?patientId=${patient.id}">Ver</a><a href="appointments.html?action=new&patientId=${patient.id}">Atender</a></span></div>`}).join(''):'<p class="dashboard-empty">No hay pacientes registrados.</p>');
 }
@@ -123,7 +159,7 @@ async function setupFunctionalDashboard(collection='all') {
     const {patients,attentions,histories}=dashboardData;
     const schedule=attentions.filter(item=>item.contraceptiveControl!==true).map(item=>({...item,serviceName:item.serviceType,status:item.scheduleStatus||({'Pendiente de consulta':'Pendiente','En consulta':'En Atención',Finalizada:'Atendida'}[item.status]||item.status)}));
     const today=dashboardToday(),month=today.slice(0,7);
-    const medical=attentions.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
+    const medical=attentions.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true&&item.scheduledOnly!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
     const pending=medical.filter(item=>['Pendiente','Pendiente de consulta','En consulta'].includes(item.status));
     const todaySchedule=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status));
     const contraceptiveDue=attentions.filter(item=>item.contraceptiveControl===true&&item.nextApplicationDate===today).length;
@@ -139,8 +175,13 @@ async function setupFunctionalDashboard(collection='all') {
     const upcoming=renderDashboardAppointments(schedule);document.getElementById('dashboardUpcomingToday').textContent=upcoming;
     const scheduledContraceptiveToday=schedule.filter(item=>item.contraceptiveSchedule===true&&item.date===today&&!['Cancelada','Atendida'].includes(item.status)).length;
     const reminders=pending.length+contraceptiveDue+controlsDue+upcoming-Math.min(contraceptiveDue,scheduledContraceptiveToday);document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
-    const badge=document.querySelector('.notification-button span');if(badge)badge.textContent=reminders;
-    renderDashboardChart(attentions);renderDashboardPatients(patients,attentions);
+    const notificationItems=[];
+    if(pending.length)notificationItems.push({icon:'🩺',title:'Pacientes pendientes',description:'Atenciones médicas por revisar',count:pending.length,href:'appointments.html'});
+    if(upcoming)notificationItems.push({icon:'◷',title:'Próximas citas de hoy',description:'Citas programadas aún pendientes',count:upcoming,href:'schedule.html'});
+    if(contraceptiveDue)notificationItems.push({icon:'◉',title:'Anticonceptivos para hoy',description:'Aplicaciones con control programado',count:contraceptiveDue,href:'contraceptives.html'});
+    if(controlsDue)notificationItems.push({icon:'↻',title:'Controles médicos para hoy',description:'Pacientes que deben volver a control',count:controlsDue,href:'medical-records.html'});
+    renderDashboardNotifications(notificationItems);
+    renderDashboardChart(medical);renderDashboardPatients(patients,medical);
     const search=document.querySelector('.dashboard-search input');if(search)search.onkeydown=event=>{if(event.key==='Enter'&&search.value.trim())openDashboardModule(`patients.html?search=${encodeURIComponent(search.value.trim())}`)};
     if(!dashboardSubscriptionsReady){dashboardSubscriptionsReady=true;window.MedSolutionData.subscribePatients(()=>scheduleDashboardRefresh('patients'));window.MedSolutionData.subscribeAttentions(()=>scheduleDashboardRefresh('attentions'))}
   } catch(error) { document.getElementById('dashboardTodayAppointments').innerHTML=`<p class="dashboard-empty">No se pudo cargar el Dashboard: ${dashboardEscape(error.message)}</p>`; }

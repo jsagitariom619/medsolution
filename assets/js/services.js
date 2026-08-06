@@ -13,7 +13,7 @@ function displayAttentionStatus(status){return ({'En consulta':'En atención',Fi
 function attentionResponsible(item){return item.procedureResponsible||item.scheduledProfessional||item.registeredBy||'—'}
 async function loadAll(){
   try{
-    [catalogState.services,catalogState.staff,catalogState.attentions]=await Promise.all([data().getServices(true),data().getAllStaff(),data().getAttentions()]);
+    [catalogState.services,catalogState.staff,catalogState.attentions]=await Promise.all([data().getServices(true),data().getAllStaff(),data().getAttentions().then(items=>items.filter(item=>item.scheduledOnly!==true))]);
     populateLogFilters();renderServiceLog();renderServices();renderStaff();
     const sync=document.getElementById('serviceSync');sync.textContent=data().isConfigured()?'Sincronizado en tiempo real':'Sin conexión a Supabase';
     sync.classList.toggle('sync-indicator--online',data().isConfigured());
@@ -22,7 +22,7 @@ async function loadAll(){
 function scheduleCatalogRefresh(collection,loader){clearTimeout(catalogState.realtimeTimers.get(collection));catalogState.realtimeTimers.set(collection,setTimeout(async()=>{catalogState.realtimeTimers.delete(collection);try{await loader()}catch(error){console.error(`[Servicios] No se pudo actualizar ${collection}:`,error)}},100))}
 async function refreshServices(){catalogState.services=await data().getServices(true);renderServices()}
 async function refreshStaff(){catalogState.staff=await data().getAllStaff();renderStaff()}
-async function refreshAttentions(){catalogState.attentions=await data().getAttentions();populateLogFilters();renderServiceLog()}
+async function refreshAttentions(){catalogState.attentions=(await data().getAttentions()).filter(item=>item.scheduledOnly!==true);populateLogFilters();renderServiceLog()}
 function populateLogFilters(){
   const service=document.getElementById('serviceLogService'),responsible=document.getElementById('serviceLogResponsible'),month=document.getElementById('serviceLogMonth'),year=document.getElementById('serviceLogYear');if(!service||!responsible||!month||!year)return;
   const values={service:service.value,responsible:responsible.value,month:month.value,year:year.value};

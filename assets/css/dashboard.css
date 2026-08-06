@@ -246,6 +246,7 @@
   font-size: 0.72rem;
   font-weight: 900;
 }
+.notification-button span[hidden] { display: none; }
 
 .dashboard-user {
   box-shadow: none;
@@ -257,6 +258,38 @@
   color: var(--gray-500);
   font-weight: 600;
 }
+
+.dashboard-menu-anchor { position: relative; }
+.dashboard-user { border: 0; color: inherit; font: inherit; cursor: pointer; }
+.dashboard-user__identity { text-align: left; }
+.dashboard-user__arrow { color: var(--gray-500); transition: transform .18s ease; }
+.dashboard-user[aria-expanded="true"] .dashboard-user__arrow { transform: rotate(180deg); }
+.dashboard-dropdown { position: absolute; z-index: 120; top: calc(100% + 12px); right: 0; width: min(380px, calc(100vw - 32px)); border: 1px solid var(--gray-200); border-radius: 16px; background: var(--white); box-shadow: 0 20px 50px rgba(15, 76, 92, .18); overflow: hidden; animation: dashboardDropdownIn .16s ease-out; }
+.dashboard-dropdown[hidden] { display: none; }
+.dashboard-dropdown > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50); }
+.dashboard-dropdown > header small { display: block; color: var(--gray-500); font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.dashboard-dropdown > header strong { display: block; margin-top: 3px; color: var(--petroleum-dark); }
+.dashboard-dropdown > header > span { padding: 5px 9px; border-radius: 999px; background: rgba(47, 183, 166, .12); color: var(--petroleum); font-size: .7rem; font-weight: 800; }
+.dashboard-notification-list { max-height: min(420px, 65vh); overflow-y: auto; }
+.dashboard-notification-item { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 11px; padding: 13px 16px; border-bottom: 1px solid var(--gray-100); color: inherit; text-decoration: none; transition: background .14s ease; }
+.dashboard-notification-item:hover { background: rgba(47, 183, 166, .07); }
+.dashboard-notification-item > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; background: rgba(47, 183, 166, .13); }
+.dashboard-notification-item strong,.dashboard-notification-item small { display: block; }
+.dashboard-notification-item strong { color: var(--gray-700); font-size: .83rem; }
+.dashboard-notification-item small { margin-top: 3px; color: var(--gray-500); font-size: .72rem; }
+.dashboard-notification-item em { min-width: 25px; padding: 4px 7px; border-radius: 999px; background: var(--petroleum); color: var(--white); font-size: .68rem; font-style: normal; font-weight: 900; text-align: center; }
+.dashboard-dropdown-empty { margin: 0; padding: 30px 18px; color: var(--gray-500); font-size: .82rem; text-align: center; }
+.dashboard-user-menu { width: min(300px, calc(100vw - 32px)); }
+.dashboard-user-menu > header { display: block; }
+.dashboard-user-menu > header > span { display: block; margin-top: 3px; padding: 0; background: none; color: var(--gray-500); }
+.dashboard-user-menu a,.dashboard-user-menu button { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--gray-100); background: var(--white); color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.dashboard-user-menu a:hover,.dashboard-user-menu button:hover { background: rgba(47, 183, 166, .07); }
+.dashboard-user-menu a > span,.dashboard-user-menu button > span { text-align: center; }
+.dashboard-user-menu strong,.dashboard-user-menu small { display: block; }
+.dashboard-user-menu strong { color: var(--gray-700); font-size: .8rem; }
+.dashboard-user-menu small { margin-top: 2px; color: var(--gray-500); font-size: .68rem; }
+.dashboard-user-menu button:last-child strong { color: #b72c42; }
+@keyframes dashboardDropdownIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
 .dashboard-content {
   padding: 24px 32px 20px;
@@ -527,6 +560,8 @@
   .recent-patients-head,
   .recent-patient-row { grid-template-columns: 1fr; align-items: start; }
   .recent-patients-head { display: none; }
+  .topbar__actions { width: 100%; justify-content: flex-end; }
+  .dashboard-user__identity { display: none; }
 }
 
 /* Dashboard final refinements: strictly scoped to pages/dashboard.html. */

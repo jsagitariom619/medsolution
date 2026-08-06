@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
-    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260731-master-layout" />
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260806-header-menus" />
   </head>
   <body class="app-body dashboard-page">
     <div class="app-shell">
@@ -62,8 +62,23 @@
             <kbd>Ctrl + K</kbd>
           </label>
           <div class="topbar__actions">
-            <button class="notification-button" type="button" aria-label="Notificaciones">♢<span>3</span></button>
-            <div class="user-chip dashboard-user" data-user-chip><span class="avatar" data-user-avatar>MD</span><div><strong data-user-name>Médico</strong><small data-user-role>Médico</small></div><span>⌄</span></div>
+            <div class="dashboard-menu-anchor">
+              <button class="notification-button" id="dashboardNotificationsButton" type="button" aria-label="Notificaciones" aria-haspopup="true" aria-expanded="false" aria-controls="dashboardNotificationsMenu">♢<span>0</span></button>
+              <section class="dashboard-dropdown dashboard-notifications-menu" id="dashboardNotificationsMenu" aria-label="Centro de notificaciones" hidden>
+                <header><div><small>Centro de notificaciones</small><strong>Notificaciones</strong></div><span id="dashboardNotificationsSummary">0 pendientes</span></header>
+                <div class="dashboard-notification-list" id="dashboardNotificationList"><p class="dashboard-dropdown-empty">No hay notificaciones pendientes.</p></div>
+              </section>
+            </div>
+            <div class="dashboard-menu-anchor">
+              <button class="user-chip dashboard-user" id="dashboardUserButton" type="button" data-user-chip aria-haspopup="true" aria-expanded="false" aria-controls="dashboardUserMenu"><span class="avatar" data-user-avatar>MD</span><span class="dashboard-user__identity"><strong data-user-name>Médico</strong><small data-user-role>Médico</small></span><span class="dashboard-user__arrow">⌄</span></button>
+              <nav class="dashboard-dropdown dashboard-user-menu" id="dashboardUserMenu" aria-label="Menú del usuario" hidden>
+                <header data-user-chip><small>Cuenta activa</small><strong data-user-name>Médico</strong><span data-user-role>Médico</span></header>
+                <a href="settings.html?section=profile"><span>👤</span><div><strong>Mi perfil</strong><small>Datos personales y fotografía</small></div></a>
+                <a href="settings.html"><span>⚙</span><div><strong>Configuración</strong><small>Preferencias del sistema</small></div></a>
+                <a href="settings.html?section=password"><span>🔑</span><div><strong>Cambiar contraseña</strong><small>Administrar credenciales</small></div></a>
+                <button type="button" data-logout-btn><span>↪</span><div><strong>Cerrar sesión</strong><small>Salir de MedSolution</small></div></button>
+              </nav>
+            </div>
           </div>
         </header>
         <div id="dashboardHomeView">
@@ -138,6 +153,6 @@
     <script src="../assets/js/supabase-client.js"></script>
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/dashboard.js?v=20260731-master-layout"></script>
+    <script src="../assets/js/dashboard.js?v=20260806-header-menus"></script>
   </body>
 </html>

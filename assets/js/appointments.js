@@ -14,11 +14,17 @@ const consultState = {
   unsubscribeAttentions: null,
   unsubscribeServices: null,
   unsubscribePatients: null,
+  unsubscribeSpecializedHistories: null,
+  unsubscribeSpecializedEvolutions: null,
   selectedServiceId: null,
   pendingPatient: null,
   saving: false,
-  monthView: false,
+  monthView: true,
+  periodInitialized: false,
   monthFilters: { service: '', responsible: '', month: '', year: '' },
+  medicalRecords: [],
+  specializedHistories: [],
+  specializedEvolutions: [],
 };
 
 function getAuthUser() {
@@ -59,6 +65,17 @@ async function loadConsultations() {
     ...item,
   }));
   localStorage.setItem(CONSULT_KEY, JSON.stringify(consultState.consultations));
+}
+
+async function loadSpecializedClinicalActivity() {
+  const [medicalRecords, specializedHistories] = await Promise.all([
+    window.MedSolutionData.getMedicalRecords(),
+    window.MedSolutionData.getSpecializedHistories(),
+  ]);
+  consultState.medicalRecords = medicalRecords;
+  consultState.specializedHistories = specializedHistories;
+  consultState.specializedEvolutions = await window.MedSolutionData
+    .getSpecializedEvolutionsByHistoryIds(specializedHistories.map((history) => history.id));
 }
 
 async function saveConsultations(changed = null) {
@@ -157,11 +174,68 @@ function requiresMedical(attention) {
     attention.requiresMedicalConsultation ?? Boolean(attention.diagnosis || attention.treatment || attention.evolution);
 }
 
+function specializedActivityRows() {
+  const recordById = new Map(consultState.medicalRecords.map((record) => [String(record.id), record]));
+  const historyById = new Map(consultState.specializedHistories.map((history) => [String(history.id), history]));
+  const patientById = new Map(consultState.patients.map((patient) => [Number(patient.id), patient]));
+  const generalActivity = new Set(consultState.consultations
+    .filter((item) => item.contraceptiveControl !== true && item.contraceptiveSchedule !== true && item.scheduledOnly !== true)
+    .map((item) => `${Number(item.patientId)}|${String(item.date || '').slice(0, 7)}`));
+  const latestByPatientAndMonth = new Map();
+
+  consultState.specializedHistories.forEach((history) => {
+    const record = recordById.get(String(history.medicalRecordId));
+    const date = String(history.startDate || history.createdAt || '').slice(0, 10);
+    if (!record?.patientId || !date) return;
+    const key = `${Number(record.patientId)}|${date.slice(0, 7)}`;
+    latestByPatientAndMonth.set(key, {
+      history, patientId: Number(record.patientId), date, time: String(history.createdAt || '').slice(11, 16),
+      responsible: history.initialData?.responsablePrincipal || history.createdBy || '',
+    });
+  });
+
+  consultState.specializedEvolutions.forEach((evolution) => {
+    const history = historyById.get(String(evolution.specializedHistoryId));
+    const record = history ? recordById.get(String(history.medicalRecordId)) : null;
+    const dateTime = evolution.data?.fechaHoraSeguimiento || evolution.createdAt || '';
+    const date = evolution.data?.fechaSeguimiento || String(dateTime).slice(0, 10);
+    const time = evolution.data?.horaSeguimiento || String(dateTime).slice(11, 16);
+    if (!record?.patientId || !date) return;
+    const key = `${Number(record.patientId)}|${date.slice(0, 7)}`;
+    const current = latestByPatientAndMonth.get(key);
+    if (!current || `${date}${time}` >= `${current.date}${current.time || ''}`) {
+      latestByPatientAndMonth.set(key, {
+        history, evolution, patientId: Number(record.patientId), date, time,
+        responsible: evolution.data?.responsableSeguimiento || history.initialData?.responsablePrincipal || '',
+      });
+    }
+  });
+
+  return [...latestByPatientAndMonth.entries()]
+    .filter(([key]) => !generalActivity.has(key))
+    .map(([key, activity]) => {
+      const patient = patientById.get(activity.patientId);
+      return {
+        id: `specialized-${key}`,
+        patientId: activity.patientId,
+        patientName: patient ? `${patient.nombre || ''} ${patient.apellido || ''}`.trim() : 'Paciente',
+        serviceType: activity.history.templateName || 'Historia Clínica Especializada',
+        procedureResponsible: activity.responsible,
+        chiefComplaint: 'Actividad en Historia Clínica Especializada',
+        date: activity.date,
+        time: activity.time,
+        status: 'Finalizada',
+        scheduleStatus: 'Atendida',
+        requiresMedicalConsultation: true,
+        specializedActivity: true,
+      };
+    });
+}
+
 function visibleConsultations() {
-  return consultState.consultations
+  return [...consultState.consultations, ...specializedActivityRows()]
     .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
-    .filter((c) => consultState.monthView || !isDoctor() || requiresMedical(c))
-    .filter((c) => consultState.monthView || !isDoctor() || ['Pendiente', 'Pendiente de consulta', 'En Atención', 'En consulta'].includes(c.status))
+    .filter((c) => c.scheduledOnly !== true)
     .filter((c) => !consultState.monthFilters.service || c.serviceType === consultState.monthFilters.service)
     .filter((c) => !consultState.monthFilters.responsible || (c.procedureResponsible || c.scheduledProfessional || c.registeredBy) === consultState.monthFilters.responsible)
     .filter((c) => !consultState.monthFilters.month || String(c.date||'').slice(5,7) === consultState.monthFilters.month)
@@ -173,6 +247,9 @@ function visibleConsultations() {
 }
 
 function rowActions(c) {
+  if (c.specializedActivity) {
+    return `<a class="btn-action" href="medical-records.html?patientId=${c.patientId}" title="Abrir Historia Clínica">▣</a>`;
+  }
   if (!isDoctor() && requiresMedical(c)) {
     return '<small style="color:var(--gray-500);font-weight:700">Enviado al doctor</small>';
   }
@@ -260,8 +337,8 @@ function renderConsultations() {
       <td><strong>${escapeHtml(c.time || '—')}</strong><br><small style="color:var(--gray-500)">${formatDisplayDate(c.date)}</small></td>
       <td><div class="patient-cell"><span class="patient-photo">${getInitials(c.patientName)}</span><span>${escapeHtml(c.patientName)}</span></div></td>
       <td><strong>${escapeHtml(c.serviceType)}</strong><br><small style="color:var(--gray-500)">${escapeHtml(c.chiefComplaint || '')}</small></td>
-      <td><span class="status-badge ${statusClass(c.status)}">${escapeHtml(consultState.monthView ? (['Atendida', 'Finalizada'].includes(c.status) ? 'Atendida' : 'Pendiente') : c.status)}</span></td>
-      <td><span class="action-links">${rowActions(c)}<button class="btn-action" data-action="print" data-id="${c.id}" title="Imprimir atención">🖨</button></span></td>`;
+      <td><span class="status-badge ${statusClass(c.status)}">${escapeHtml(c.status)}</span></td>
+      <td><span class="action-links">${rowActions(c)}${c.specializedActivity ? '' : `<button class="btn-action" data-action="print" data-id="${c.id}" title="Imprimir atención">🖨</button>`}</span></td>`;
     tbody.insertBefore(tr, empty);
   });
   const count = document.getElementById('consultCount');
@@ -276,10 +353,13 @@ function printAttention(attention) {
 }
 
 function configureMonthlyAttentionView() {
-  consultState.monthView=getUrlParam('view')==='month';
-  if(consultState.monthView){document.getElementById('roleContextTitle').textContent='Atenciones del mes';document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas.'}
-  const services=[...new Set(consultState.consultations.filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule).map(item=>item.serviceType).filter(Boolean))].sort();
-  const relevant=consultState.consultations.filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule);const responsible=[...new Set(relevant.map(item=>item.procedureResponsible||item.scheduledProfessional||item.registeredBy).filter(Boolean))].sort();const months=[...new Set(relevant.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort();const years=[...new Set(relevant.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  consultState.monthView=true;
+  const current=boliviaNowParts();
+  if(!consultState.periodInitialized){consultState.monthFilters.month=current.date.slice(5,7);consultState.monthFilters.year=current.date.slice(0,4);consultState.periodInitialized=true}
+  document.getElementById('roleContextTitle').textContent='Atenciones del mes';document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas.';
+  const relevant=[...consultState.consultations,...specializedActivityRows()].filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule);
+  const services=[...new Set(relevant.map(item=>item.serviceType).filter(Boolean))].sort();
+  const responsible=[...new Set(relevant.map(item=>item.procedureResponsible||item.scheduledProfessional||item.registeredBy).filter(Boolean))].sort();const months=[...new Set([...relevant.map(item=>String(item.date||'').slice(5,7)).filter(Boolean),current.date.slice(5,7)])].sort();const years=[...new Set([...relevant.map(item=>String(item.date||'').slice(0,4)).filter(Boolean),current.date.slice(0,4)])].sort((a,b)=>b.localeCompare(a));
   document.getElementById('monthlyAttentionService').innerHTML='<option value="">Todos los servicios</option>'+services.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
   document.getElementById('monthlyAttentionResponsible').innerHTML='<option value="">Todos los responsables</option>'+responsible.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
   document.getElementById('monthlyAttentionMonth').innerHTML='<option value="">Todos los meses</option>'+months.map(value=>`<option value="${value}">${new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1))}</option>`).join('');
@@ -524,12 +604,23 @@ function consultationData(form) {
   const value = (name) => form.elements[name]?.value?.trim?.() || form.elements[name]?.value || '';
   const serviceId = value('serviceType');
   const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));
+  const currentAttention = consultState.editingId !== null
+    ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))
+    : null;
+  const storedService = !service && currentAttention && (
+    String(currentAttention.serviceId || currentAttention.serviceType) === String(serviceId)
+  ) ? currentAttention : null;
   return {
     patientId: selectedPatientId(), patientName: selectedPatientName(),
-    date: value('date'), time: value('time'), serviceId: service?.id || null,
-    serviceType: service?.name || '', servicePrice: Number(service?.price || 0),
-    requiresMedicalConsultation: Boolean(service?.requires_medical_consultation),
-    generatesMedicalRecord: Boolean(service?.generates_medical_record),
+    date: value('date'), time: value('time'), serviceId: service?.id || storedService?.serviceId || null,
+    serviceType: service?.name || storedService?.serviceType || '',
+    servicePrice: Number(service?.price ?? storedService?.servicePrice ?? 0),
+    requiresMedicalConsultation: service
+      ? Boolean(service.requires_medical_consultation)
+      : Boolean(storedService?.requiresMedicalConsultation),
+    generatesMedicalRecord: service
+      ? Boolean(service.generates_medical_record)
+      : Boolean(storedService?.generatesMedicalRecord),
     procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),
     clinicalAntecedents: value('clinicalAntecedents'),
     bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
@@ -701,7 +792,7 @@ async function deleteConsultation(id) {
 async function setupAppointmentsModule() {
   await window.MedSolutionData?.ready;
   try {
-    await Promise.all([loadCatalog(), loadConsultations()]);
+    await Promise.all([loadCatalog(), loadConsultations(), loadSpecializedClinicalActivity()]);
   } catch (error) {
     alert(`No se pudo cargar la configuración: ${error.message}`);
     return;
@@ -771,6 +862,13 @@ async function setupAppointmentsModule() {
   consultState.unsubscribePatients = window.MedSolutionData.subscribePatients(async () => {
     consultState.patients = await window.MedSolutionData.getPatients();
     localStorage.setItem(PATIENTS_KEY, JSON.stringify(consultState.patients));
+    configureMonthlyAttentionView(); renderConsultations();
+  });
+  consultState.unsubscribeSpecializedHistories = window.MedSolutionData.subscribeSpecializedHistories(async () => {
+    await loadSpecializedClinicalActivity(); configureMonthlyAttentionView(); renderConsultations();
+  });
+  consultState.unsubscribeSpecializedEvolutions = window.MedSolutionData.subscribeSpecializedEvolutions(async () => {
+    await loadSpecializedClinicalActivity(); configureMonthlyAttentionView(); renderConsultations();
   });
 }
 

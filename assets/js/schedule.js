@@ -1,6 +1,17 @@
 // Schedule Module — Agenda Médica (fuente única: public.atenciones)
 
 const PATIENTS_KEY = 'medsolution.patients';
+const APPOINTMENT_TYPES = [
+  { id:'agenda:consulta', name:'Consulta médica', requiresMedicalConsultation:true, generatesMedicalRecord:true },
+  { id:'agenda:control', name:'Control', requiresMedicalConsultation:true, generatesMedicalRecord:true },
+  { id:'agenda:curacion', name:'Curación', requiresMedicalConsultation:false, generatesMedicalRecord:false },
+  { id:'agenda:nebulizacion', name:'Nebulización', requiresMedicalConsultation:false, generatesMedicalRecord:false },
+  { id:'agenda:sueroterapia', name:'Sueroterapia', requiresMedicalConsultation:false, generatesMedicalRecord:false },
+  { id:'agenda:tirzepatida', name:'Historia Clínica de Tirzepatida', requiresMedicalConsultation:true, generatesMedicalRecord:true },
+  { id:'agenda:estetica', name:'Historia Clínica Estética', requiresMedicalConsultation:true, generatesMedicalRecord:true },
+  { id:'agenda:podologica', name:'Historia Clínica Podológica', requiresMedicalConsultation:true, generatesMedicalRecord:true },
+  { id:'agenda:otro', name:'Otro', requiresMedicalConsultation:false, generatesMedicalRecord:false },
+];
 
 const scheduleState = {
   appointments: [],
@@ -11,6 +22,8 @@ const scheduleState = {
   patients: [],
   services: [],
   staff: [],
+  medicalRecords: [],
+  patientAutocomplete: null,
 };
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
@@ -58,6 +71,7 @@ async function loadAppointments() {
 function normalizeScheduleStatus(status) {
   return ({
     'Pendiente de consulta': 'Pendiente',
+    Pendiente: 'En espera',
     'En consulta': 'En Atención',
     Finalizada: 'Atendida',
   })[status] || status || 'Pendiente';
@@ -74,6 +88,9 @@ function databaseAttentionStatus(status) {
     'En Atención': 'En consulta',
     Atendida: 'Finalizada',
     Reprogramada: 'Pendiente',
+    Confirmada: 'Pendiente',
+    'En espera': 'Pendiente',
+    'No asistió': 'Cancelada',
   })[status] || status || 'Pendiente';
 }
 
@@ -84,12 +101,16 @@ function getPatients() {
 // ── Render ────────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE = {
-  Pendiente: 'badge--pending',
+  Pendiente: 'badge--waiting',
+  Confirmada: 'badge--confirmed',
+  'En espera': 'badge--waiting',
   'En Atención': 'badge--in-progress',
   Reprogramada: 'badge--rescheduled',
   Atendida: 'badge--attended',
   Cancelada: 'badge--cancelled',
+  'No asistió': 'badge--no-show',
 };
+const STATUS_ICON={Confirmada:'🟢','En espera':'🟡','En Atención':'🔵',Atendida:'⚪',Cancelada:'🔴',Reprogramada:'🟠','No asistió':'⚫',Pendiente:'🟡'};
 
 function renderSchedule() {
   const tbody = document.getElementById('scheduleTableBody');
@@ -119,11 +140,11 @@ function renderSchedule() {
         </div>
       </td>
       <td><strong>${a.serviceName || a.reason || 'Sin servicio'}</strong><br><small>${a.professional || 'Sin profesional'}</small></td>
-      <td><span class="badge ${badgeClass}">${a.status}</span></td>
+      <td><span class="badge ${badgeClass}">${STATUS_ICON[a.status]||''} ${a.status}</span></td>
       <td>
         <span class="action-links">
-          ${!['Atendida','Cancelada'].includes(a.status) ? `<button class="btn btn--primary" style="padding:7px 10px;font-size:.75rem" data-action="attend" data-id="${a.id}" title="Iniciar atención">Iniciar atención</button>` : ''}
-          ${authCan('schedule.edit') && !['Atendida','Cancelada'].includes(a.status) ? `<button class="btn-action" data-action="edit" data-id="${a.id}" title="Reprogramar">✎</button>` : ''}
+          ${!['Atendida','Cancelada','No asistió'].includes(a.status) ? `<button class="btn btn--primary" style="padding:7px 10px;font-size:.75rem" data-action="attend" data-id="${a.id}" title="Iniciar atención">Iniciar atención</button>` : ''}
+          ${authCan('schedule.edit') && !['Atendida','Cancelada','No asistió'].includes(a.status) ? `<button class="btn-action" data-action="edit" data-id="${a.id}" title="Reprogramar">✎</button>` : ''}
           ${authCan('schedule.delete') ? `<button class="btn-action btn-action--delete" data-action="delete" data-id="${a.id}" title="Cancelar">✕</button>` : ''}
         </span>
       </td>
@@ -145,6 +166,7 @@ function populateScheduleFilters(){
 }
 
 function isoLocal(date) { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));return `${parts.year}-${parts.month}-${parts.day}`; }
+function calendarStatusClass(status){return normalizeScheduleStatus(status).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')}
 function startOfWeek(date) { const value=new Date(date);const offset=(value.getDay()+6)%7;value.setDate(value.getDate()-offset);value.setHours(12,0,0,0);return value; }
 function calendarDates() {
   const current=new Date(scheduleState.calendarDate);
@@ -157,7 +179,7 @@ function renderCalendar() {
   const dates=calendarDates(),view=scheduleState.calendarView,today=isoLocal(new Date()),visible=filteredAppointments();
   target.className=`calendar-grid calendar-grid--${view}`;target.style.setProperty('--calendar-columns',view==='day'?1:7);
   const headers=view==='day'?['Día']:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=visible.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${item.status}" title="${item.patientName}">${item.time} · ${item.patientName}</span>`).join('')}</div>`}).join('');
+  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=visible.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${calendarStatusClass(item.status)}" title="${item.patientName}">${item.time} · ${item.patientName}</span>`).join('')}</div>`}).join('');
   const label=document.getElementById('calendarPeriodLabel');
   label.textContent=view==='day'?scheduleState.calendarDate.toLocaleDateString('es',{dateStyle:'full'}):view==='week'?`Semana del ${formatDisplayDate(isoLocal(dates[0]))}`:scheduleState.calendarDate.toLocaleDateString('es',{month:'long',year:'numeric'});
   document.querySelectorAll('[data-calendar-view]').forEach(button=>button.classList.toggle('active',button.dataset.calendarView===view));
@@ -179,28 +201,15 @@ function formatDisplayDate(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
-// ── Populate patient select ───────────────────────────────────────────────────
-
-function populatePatientSelect(selectedId = null) {
-  const select = document.getElementById('apptPatientSelect');
-  if (!select) return;
-  const patients = getPatients();
-  select.innerHTML = '<option value="">Seleccionar paciente…</option>';
-  patients.forEach((p) => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = `${p.nombre} ${p.apellido}`;
-    if (selectedId && p.id === selectedId) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
-
 function populateScheduleCatalog(appt = null) {
   const service=document.getElementById('scheduleServiceSelect');
-  service.innerHTML='<option value="">Seleccionar servicio…</option>'+scheduleState.services.map(item=>`<option value="${item.id}">${item.name}</option>`).join('');
+  const normalized=new Set(scheduleState.services.map(item=>String(item.name||'').toLocaleLowerCase('es')));
+  const types=[...scheduleState.services,...APPOINTMENT_TYPES.filter(item=>!normalized.has(item.name.toLocaleLowerCase('es')))];
+  service.innerHTML='<option value="">Seleccionar tipo de atención…</option>'+types.map(item=>`<option value="${item.id}">${item.name}</option>`).join('');
   const professional=document.getElementById('scheduleProfessionalSelect');
   professional.innerHTML='<option value="">Seleccionar profesional…</option>'+scheduleState.staff.map(item=>`<option value="${item.name}">${item.name}</option>`).join('');
-  if(appt?.serviceId)service.value=appt.serviceId;if(appt?.professional)professional.value=appt.professional;
+  const selectedService=appt?.serviceId||appt?.appointmentTypeId;
+  if(selectedService)service.value=selectedService;if(appt?.professional)professional.value=appt.professional;
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
@@ -213,7 +222,8 @@ function openScheduleModal(mode, appt = null) {
 
   form.reset();
   scheduleState.editingId = null;
-  populatePatientSelect(appt?.patientId);
+  scheduleState.patientAutocomplete?.clear();
+  if(appt?.patientId)scheduleState.patientAutocomplete?.select(appt.patientId);
   populateScheduleCatalog(appt);
 
   if (mode === 'create') {
@@ -235,6 +245,7 @@ function closeScheduleModal() {
   const form = document.getElementById('scheduleForm');
   if (modal) modal.classList.remove('nursing-modal--active');
   if (form) form.reset();
+  scheduleState.patientAutocomplete?.clear();
   scheduleState.editingId = null;
 }
 
@@ -242,10 +253,8 @@ function fillScheduleForm(form, appt) {
   if (form.elements.date) form.elements.date.value = appt.date || '';
   if (form.elements.time) form.elements.time.value = appt.time || '';
   if (form.elements.observations) form.elements.observations.value = appt.observations || appt.reason || '';
-  if (form.elements.status) form.elements.status.value = appt.status || 'Pendiente';
-  // Patient select is already populated; set value
-  const select = document.getElementById('apptPatientSelect');
-  if (select) select.value = appt.patientId;
+  if (form.elements.status) form.elements.status.value = appt.status === 'Pendiente' ? 'En espera' : (appt.status || 'En espera');
+  scheduleState.patientAutocomplete?.select(appt.patientId);
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -255,9 +264,9 @@ async function handleScheduleSave(event) {
   const form = document.getElementById('scheduleForm');
   if (!form) return;
 
-  const select = document.getElementById('apptPatientSelect');
-  const patientId = parseInt(select?.value, 10);
-  const patientName = select?.options[select.selectedIndex]?.text || '';
+  const patient = scheduleState.patientAutocomplete?.value();
+  const patientId = Number(patient?.id);
+  const patientName = patient ? `${patient.nombre || ''} ${patient.apellido || ''}`.trim() : '';
 
   if (!patientId) {
     alert('Por favor selecciona un paciente.');
@@ -270,7 +279,7 @@ async function handleScheduleSave(event) {
     date: form.elements.date.value,
     time: form.elements.time.value,
     serviceId: form.elements.serviceId.value,
-    serviceName: scheduleState.services.find((item)=>String(item.id)===String(form.elements.serviceId.value))?.name || '',
+    serviceName: [...scheduleState.services,...APPOINTMENT_TYPES].find((item)=>String(item.id)===String(form.elements.serviceId.value))?.name || '',
     professional: form.elements.professional.value,
     observations: form.elements.observations.value.trim(),
     status: form.elements.status.value,
@@ -294,22 +303,26 @@ async function handleScheduleSave(event) {
         procedureResponsible: data.professional,
         scheduledProfessional: data.professional,
         appointmentObservations: data.observations,
+        appointmentTypeId: data.serviceId,
         scheduleStatus: data.status,
         status: databaseAttentionStatus(data.status),
         createdAt: scheduleDateTimeIso(data.date, data.time),
       });
     } else {
       const service = scheduleState.services.find((item) => String(item.id) === String(data.serviceId));
+      const appointmentType = service || APPOINTMENT_TYPES.find((item) => String(item.id) === String(data.serviceId));
       await window.MedSolutionData.saveAttention({
         ...data,
         serviceType: data.serviceName,
         servicePrice: Number(service?.price || 0),
-        requiresMedicalConsultation: Boolean(service?.requires_medical_consultation),
-        generatesMedicalRecord: Boolean(service?.generates_medical_record),
+        requiresMedicalConsultation: Boolean(service ? service.requires_medical_consultation : appointmentType?.requiresMedicalConsultation),
+        generatesMedicalRecord: Boolean(service ? service.generates_medical_record : appointmentType?.generatesMedicalRecord),
         procedureResponsible: data.professional,
         scheduledProfessional: data.professional,
         appointmentObservations: data.observations,
+        appointmentTypeId: data.serviceId,
         scheduleStatus: data.status,
+        scheduledOnly: true,
         status: databaseAttentionStatus(data.status),
         chiefComplaint: '',
         createdAt: scheduleDateTimeIso(data.date, data.time),
@@ -336,13 +349,16 @@ async function handleAttend(id) {
   const appt = scheduleState.appointments.find((a) => a.id === id);
   if (!appt) return;
   try {
-    if (appt.requiresMedicalConsultation !== false) {
+    const medical=appt.requiresMedicalConsultation !== false;
+    if (medical) {
       await window.MedSolutionData.ensureMedicalRecord(appt.patientId);
     }
+    const doctor=['Administrador','Médico'].includes(getAuthUser()?.role);
     await window.MedSolutionData.saveAttention({
       ...appt,
-      status: 'En consulta',
-      scheduleStatus: 'En Atención',
+      scheduledOnly: false,
+      status: medical ? (doctor ? 'En consulta' : 'Pendiente') : 'Finalizada',
+      scheduleStatus: medical ? 'En Atención' : 'Atendida',
       acceptedAt: new Date().toISOString(),
     });
   }
@@ -355,10 +371,11 @@ async function handleAttend(id) {
 async function setupScheduleModule() {
   await window.MedSolutionData?.ready;
   try {
-    [scheduleState.patients,scheduleState.services,scheduleState.staff]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getServices(false),window.MedSolutionData.getStaff()]);
+    [scheduleState.patients,scheduleState.services,scheduleState.staff,scheduleState.medicalRecords]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getServices(false),window.MedSolutionData.getStaff(),window.MedSolutionData.getMedicalRecords()]);
     localStorage.setItem(PATIENTS_KEY,JSON.stringify(scheduleState.patients));
     await loadAppointments();
   } catch(error) { alert(`No se pudo cargar la agenda: ${error.message}`);return; }
+  scheduleState.patientAutocomplete=window.MedSolutionPatientAutocomplete.create({root:'#schedulePatientAutocomplete',patients:scheduleState.patients,medicalRecords:scheduleState.medicalRecords});
   populateScheduleFilters();renderSchedule();
 
   document.getElementById('newApptBtn')?.addEventListener('click', () => openScheduleModal('create'));
@@ -390,6 +407,10 @@ async function setupScheduleModule() {
   scheduleState.unsubscribeAttentions = window.MedSolutionData.subscribeAttentions(async () => {
     try { await loadAppointments();populateScheduleFilters();renderSchedule(); }
     catch(error) { console.error('[Agenda] No se pudo actualizar:', error); }
+  });
+  scheduleState.unsubscribePatients = window.MedSolutionData.subscribePatients(async () => {
+    try { [scheduleState.patients,scheduleState.medicalRecords]=await Promise.all([window.MedSolutionData.getPatients(),window.MedSolutionData.getMedicalRecords()]);scheduleState.patientAutocomplete.update(scheduleState.patients,scheduleState.medicalRecords); }
+    catch(error) { console.error('[Agenda] No se pudieron actualizar los pacientes:', error); }
   });
 }
 

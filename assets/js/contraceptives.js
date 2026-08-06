@@ -4,6 +4,8 @@ const contraceptiveState = {
   patients: [],
   staff: [],
   services: [],
+  medicalRecords: [],
+  patientAutocomplete: null,
   editingId: null,
   saving: false,
   filters: { service:'', responsible:'', month:'', year:'' },
@@ -78,16 +80,18 @@ function configuredPrice() {
 }
 
 async function loadContraceptiveData() {
-  const [patients, staff, services, attentions] = await Promise.all([
+  const [patients, staff, services, attentions, medicalRecords] = await Promise.all([
     window.MedSolutionData.getPatients(),
     window.MedSolutionData.getStaff(),
     window.MedSolutionData.getServices(true),
     window.MedSolutionData.getAttentions(),
+    window.MedSolutionData.getMedicalRecords(),
   ]);
   contraceptiveState.patients = patients;
   contraceptiveState.staff = staff;
   contraceptiveState.services = services;
   contraceptiveState.attentions = attentions;
+  contraceptiveState.medicalRecords = medicalRecords;
   contraceptiveState.records = attentions.filter((item) => item.contraceptiveControl === true);
 }
 
@@ -130,20 +134,6 @@ function renderContraceptiveTable() {
     }).join('');
   }
   document.getElementById('controlCount').textContent = `${records.length} registro${records.length === 1 ? '' : 's'}`;
-}
-
-function renderPatientOptions(term = '', selectedId = '') {
-  const select = document.getElementById('contraceptivePatient');
-  const currentSelection = selectedId || select.value;
-  const query = term.toLowerCase().trim();
-  const patients = contraceptiveState.patients.filter((patient) =>
-    !query || `${patientName(patient)} ${patient.ci || ''} ${patient.telefono || ''}`.toLowerCase().includes(query));
-  select.innerHTML = '<option value="">Seleccionar…</option>' + patients
-    .map((patient) => `<option value="${patient.id}">${escapeControlHtml(patientName(patient))} · ${escapeControlHtml(patient.telefono || 'Sin teléfono')}</option>`)
-    .join('');
-  if (currentSelection && patients.some((patient) => String(patient.id) === String(currentSelection))) {
-    select.value = String(currentSelection);
-  }
 }
 
 function renderStaffOptions(selected = '') {
@@ -247,8 +237,8 @@ async function saveQuickPatient() {
     const index = contraceptiveState.patients.findIndex((item) => Number(item.id) === Number(patient.id));
     if (index >= 0) contraceptiveState.patients[index] = patient;
     else contraceptiveState.patients.push(patient);
-    document.getElementById('contraceptivePatientSearch').value = '';
-    renderPatientOptions('', patient.id);
+    contraceptiveState.patientAutocomplete.update(contraceptiveState.patients,contraceptiveState.medicalRecords);
+    contraceptiveState.patientAutocomplete.select(patient.id);
     hideQuickPatientForm();
     showContraceptiveStatus();
     showContraceptiveToast(reused
@@ -289,9 +279,9 @@ function openContraceptiveModal(record = null) {
   form.reset();
   contraceptiveState.editingId = record?.id || null;
   document.getElementById('contraceptiveModalTitle').textContent = record ? 'Editar aplicación' : 'Nueva aplicación';
-  document.getElementById('contraceptivePatientSearch').value = '';
   hideQuickPatientForm();
-  renderPatientOptions('', record?.patientId);
+  contraceptiveState.patientAutocomplete.clear();
+  if(record?.patientId)contraceptiveState.patientAutocomplete.select(record.patientId);
   renderStaffOptions(record?.procedureResponsible);
   form.elements.applicationDate.value = record?.applicationDate || new Date().toISOString().slice(0, 10);
   form.elements.contraceptiveType.value = record?.contraceptiveType || '';
@@ -390,7 +380,7 @@ async function saveContraceptive(event) {
   const responsible = form.elements.responsible.value;
   if (!patient) {
     showContraceptiveStatus('Debe seleccionar un paciente.');
-    form.elements.patientId.focus();
+    document.querySelector('#contraceptivePatientAutocomplete [data-patient-autocomplete-input]')?.focus();
     return;
   }
   if (!applicationDate) {
@@ -515,6 +505,7 @@ async function setupContraceptives() {
   }
   renderContraceptiveTable();
   renderResponsibleFilter();
+  contraceptiveState.patientAutocomplete=window.MedSolutionPatientAutocomplete.create({root:'#contraceptivePatientAutocomplete',patients:contraceptiveState.patients,medicalRecords:contraceptiveState.medicalRecords,onSelect:()=>showContraceptiveStatus()});
   document.getElementById('newContraceptiveBtn').addEventListener('click', () => openContraceptiveModal());
   document.getElementById('closeContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
   document.getElementById('cancelContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
@@ -538,11 +529,7 @@ async function setupContraceptives() {
     updateNextApplicationPreview();
     document.querySelector('#contraceptiveForm [name="price"]').value = configuredPrice();
   });
-  document.querySelector('#contraceptiveForm [name="patientId"]').addEventListener('change', () => showContraceptiveStatus());
   document.querySelector('#contraceptiveForm [name="responsible"]').addEventListener('change', () => showContraceptiveStatus());
-  document.getElementById('contraceptivePatientSearch').addEventListener('input', (event) => {
-    renderPatientOptions(event.target.value, document.getElementById('contraceptivePatient').value);
-  });
   [['controlServiceFilter','service'],['controlResponsibleFilter','responsible'],['controlMonthFilter','month'],['controlYearFilter','year']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',event=>{contraceptiveState.filters[key]=event.target.value;renderContraceptiveTable()}));
   document.getElementById('closeContraceptiveHistoryBtn').addEventListener('click', closePatientHistory);
   document.querySelector('#contraceptiveHistoryModal .nursing-modal__overlay').addEventListener('click', closePatientHistory);
@@ -562,6 +549,7 @@ async function setupContraceptives() {
   });
   window.MedSolutionData.subscribePatients(async () => {
     await loadContraceptiveData();
+    contraceptiveState.patientAutocomplete.update(contraceptiveState.patients,contraceptiveState.medicalRecords);
     renderResponsibleFilter();
     renderContraceptiveTable();
   });
