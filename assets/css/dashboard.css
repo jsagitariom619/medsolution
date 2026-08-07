@@ -17,28 +17,14 @@
 }
 
 .dashboard-brand {
-  align-items: flex-start;
-  padding: 2px 4px 26px;
-}
-
-.dashboard-brand .brand__mark {
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: none;
-}
-
-.dashboard-brand .brand__logo {
-  width: 54px;
-  height: 54px;
-  flex-basis: 54px;
-  border-radius: 17px;
-  box-shadow: none;
+  display: block;
+  padding: 6px 4px 20px;
 }
 
 .dashboard-brand .brand__text {
   display: grid;
   gap: 3px;
-  font-size: 1.48rem;
+  font-size: 1.58rem;
   line-height: 1;
 }
 

@@ -21,6 +21,7 @@ const consultState = {
   saving: false,
   monthView: true,
   periodInitialized: false,
+  todayOnly: true,
   monthFilters: { service: '', responsible: '', month: '', year: '' },
   medicalRecords: [],
   specializedHistories: [],
@@ -233,14 +234,25 @@ function specializedActivityRows() {
 }
 
 function visibleConsultations() {
+  const today = boliviaNowParts().date;
   return [...consultState.consultations, ...specializedActivityRows()]
     .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
     .filter((c) => c.scheduledOnly !== true)
+    .filter((c) => !consultState.todayOnly || c.date === today)
     .filter((c) => !consultState.monthFilters.service || c.serviceType === consultState.monthFilters.service)
     .filter((c) => !consultState.monthFilters.responsible || (c.procedureResponsible || c.scheduledProfessional || c.registeredBy) === consultState.monthFilters.responsible)
     .filter((c) => !consultState.monthFilters.month || String(c.date||'').slice(5,7) === consultState.monthFilters.month)
     .filter((c) => !consultState.monthFilters.year || String(c.date||'').slice(0,4) === consultState.monthFilters.year)
     .sort((a, b) => (`${b.date || ''} ${b.time || ''}`).localeCompare(`${a.date || ''} ${a.time || ''}`));
+}
+
+function updateAttentionViewContext() {
+  const title = document.getElementById('roleContextTitle');
+  const text = document.getElementById('roleContextText');
+  if (title) title.textContent = consultState.todayOnly ? 'Atenciones de hoy' : 'Atenciones del período';
+  if (text) text.textContent = consultState.todayOnly
+    ? 'Mostrando las atenciones registradas para el día actual.'
+    : 'Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas.';
 }
 
 function rowActions(c) {
@@ -352,8 +364,14 @@ function printAttention(attention) {
 function configureMonthlyAttentionView() {
   consultState.monthView=true;
   const current=boliviaNowParts();
-  if(!consultState.periodInitialized){consultState.monthFilters.month=current.date.slice(5,7);consultState.monthFilters.year=current.date.slice(0,4);consultState.periodInitialized=true}
-  document.getElementById('roleContextTitle').textContent='Atenciones del mes';document.getElementById('roleContextText').textContent='Consulta, filtra, imprime y abre la historia clínica de las atenciones registradas.';
+  if(!consultState.periodInitialized){
+    const monthRequested=getUrlParam('view')==='month';
+    consultState.todayOnly=!monthRequested;
+    consultState.monthFilters.month=monthRequested?current.date.slice(5,7):'';
+    consultState.monthFilters.year=monthRequested?current.date.slice(0,4):'';
+    consultState.periodInitialized=true;
+  }
+  updateAttentionViewContext();
   const relevant=[...consultState.consultations,...specializedActivityRows()].filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule);
   const services=[...new Set(relevant.map(item=>item.serviceType).filter(Boolean))].sort();
   const responsible=[...new Set(relevant.map(item=>item.procedureResponsible||item.scheduledProfessional||item.registeredBy).filter(Boolean))].sort();const months=[...new Set([...relevant.map(item=>String(item.date||'').slice(5,7)).filter(Boolean),current.date.slice(5,7)])].sort();const years=[...new Set([...relevant.map(item=>String(item.date||'').slice(0,4)).filter(Boolean),current.date.slice(0,4)])].sort((a,b)=>b.localeCompare(a));
@@ -361,19 +379,17 @@ function configureMonthlyAttentionView() {
   document.getElementById('monthlyAttentionResponsible').innerHTML='<option value="">Todos los responsables</option>'+responsible.map(value=>`<option>${escapeHtml(value)}</option>`).join('');
   document.getElementById('monthlyAttentionMonth').innerHTML='<option value="">Todos los meses</option>'+months.map(value=>`<option value="${value}">${new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1))}</option>`).join('');
   document.getElementById('monthlyAttentionYear').innerHTML='<option value="">Todos los años</option>'+years.map(value=>`<option>${value}</option>`).join('');
-  [['monthlyAttentionService','service'],['monthlyAttentionResponsible','responsible'],['monthlyAttentionMonth','month'],['monthlyAttentionYear','year']].forEach(([id,key])=>{const control=document.getElementById(id);control.value=consultState.monthFilters[key];if(!control.dataset.filterBound){control.dataset.filterBound='true';control.addEventListener('change',event=>{consultState.monthFilters[key]=event.target.value;renderConsultations()})}});
+  [['monthlyAttentionService','service'],['monthlyAttentionResponsible','responsible'],['monthlyAttentionMonth','month'],['monthlyAttentionYear','year']].forEach(([id,key])=>{const control=document.getElementById(id);control.value=consultState.monthFilters[key];if(!control.dataset.filterBound){control.dataset.filterBound='true';control.addEventListener('change',event=>{consultState.monthFilters[key]=event.target.value;if(key==='month'||key==='year'){consultState.todayOnly=!consultState.monthFilters.month&&!consultState.monthFilters.year;updateAttentionViewContext()}renderConsultations()})}});
 }
 
 function configureRoleView() {
   const doctor = isDoctor();
   const title = document.getElementById('roleContextTitle');
   const text = document.getElementById('roleContextText');
-  const subtitle = document.getElementById('appointmentsSubtitle');
   const newButton = document.getElementById('newConsultBtn');
   if (doctor) {
     if (title) title.textContent = 'Panel del doctor';
     if (text) text.textContent = 'Pacientes médicos pendientes ordenados por hora de llegada. Acepta una consulta para abrir su historia clínica.';
-    if (subtitle) subtitle.textContent = 'Gestiona la cola médica, la consulta activa y el historial clínico del paciente.';
     if (newButton) newButton.style.display = '';
   } else {
     if (title) title.textContent = 'Panel de auxiliar · Recepción';
