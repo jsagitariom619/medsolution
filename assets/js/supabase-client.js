@@ -7,6 +7,7 @@
   let config = null;
   let bootError = null;
   const CONFIG_TIMEOUT_MS = 10000;
+  const STORAGE_BUCKET = 'medsolution-archivos';
 
   const ready = (async () => {
     const controller = new AbortController();
@@ -184,7 +185,8 @@
     const users = (data || []).map(mapSystemUser);
     for (const user of users) {
       if (!user.photoPath) continue;
-      const { data: signed } = await connection.storage.from('medsolution-archivos').createSignedUrl(user.photoPath, 3600);
+      const { data: signed, error: signedError } = await connection.storage.from(STORAGE_BUCKET).createSignedUrl(user.photoPath, 3600);
+      if (signedError) console.error(`[Storage] No se pudo cargar la fotografía de ${user.name}:`, signedError);
       user.photoUrl = signed?.signedUrl || '';
     }
     return users;
@@ -204,26 +206,26 @@
     const connection = await db(true);
     const extension = String(file.name || '').split('.').pop().toLowerCase() || 'jpg';
     const path = `perfiles/${String(role).normalize('NFD').replace(/[^a-zA-Z]/g, '').toLowerCase()}/${crypto.randomUUID()}.${extension}`;
-    const { error } = await connection.storage.from('medsolution-archivos').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+    const { error } = await connection.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
     throwIfError(error); return path;
   }
   async function deleteStoredFile(path) {
     if (!path) return;
     const connection = await db(true);
-    const { error } = await connection.storage.from('medsolution-archivos').remove([path]); throwIfError(error);
+    const { error } = await connection.storage.from(STORAGE_BUCKET).remove([path]); throwIfError(error);
   }
   async function uploadClinicalAttachment(attentionRemoteId, file) {
     if (!attentionRemoteId) throw new Error('La evolución debe estar guardada antes de adjuntar archivos.');
     const connection = await db(true);
     const safeName = String(file.name || 'archivo').normalize('NFD').replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `evoluciones/${attentionRemoteId}/${crypto.randomUUID()}-${safeName}`;
-    const { error } = await connection.storage.from('medsolution-archivos').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+    const { error } = await connection.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
     throwIfError(error);
     return { id: crypto.randomUUID(), path, name: file.name, type: file.type, size: file.size, uploadedAt: new Date().toISOString() };
   }
   async function signedFileUrl(path, expiresIn = 900) {
     const connection = await db(true);
-    const { data, error } = await connection.storage.from('medsolution-archivos').createSignedUrl(path, expiresIn);
+    const { data, error } = await connection.storage.from(STORAGE_BUCKET).createSignedUrl(path, expiresIn);
     throwIfError(error); return data?.signedUrl || '';
   }
   async function getPatients() {

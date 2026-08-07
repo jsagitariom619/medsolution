@@ -240,10 +240,7 @@ function visibleConsultations() {
     .filter((c) => !consultState.monthFilters.responsible || (c.procedureResponsible || c.scheduledProfessional || c.registeredBy) === consultState.monthFilters.responsible)
     .filter((c) => !consultState.monthFilters.month || String(c.date||'').slice(5,7) === consultState.monthFilters.month)
     .filter((c) => !consultState.monthFilters.year || String(c.date||'').slice(0,4) === consultState.monthFilters.year)
-    .sort((a, b) => {
-      if (isDoctor()) return (`${a.date} ${a.time || ''}`).localeCompare(`${b.date} ${b.time || ''}`);
-      return (`${b.date} ${b.time || ''}`).localeCompare(`${a.date} ${a.time || ''}`);
-    });
+    .sort((a, b) => (`${b.date || ''} ${b.time || ''}`).localeCompare(`${a.date || ''} ${a.time || ''}`));
 }
 
 function rowActions(c) {

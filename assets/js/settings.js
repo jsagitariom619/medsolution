@@ -90,8 +90,11 @@ function setUserPhotoPreview(user, objectUrl = '') {
   const preview = document.getElementById('systemUserPhotoPreview');
   if (!preview) return;
   const source = objectUrl || (!systemUsersState.removePhoto ? user?.photoUrl : '');
-  preview.style.backgroundImage = source ? `url("${String(source).replace(/"/g, '%22')}")` : '';
-  preview.textContent = source ? '' : getInitials(user?.name || 'Med Solution');
+  window.MedSolutionAvatar?.apply(preview, {
+    name: user?.name || 'Med Solution',
+    initials: user?.initials || getInitials(user?.name || 'Med Solution'),
+    photoUrl: source,
+  });
 }
 
 function openUserModal(user) {
@@ -322,7 +325,7 @@ async function renderUsersTable(reload = true) {
     tr.innerHTML = `
       <td>
         <div class="patient-cell">
-          <span class="user-photo" ${u.photoUrl ? `style="background-image:url('${escapeSettingsHtml(u.photoUrl)}')"` : ''}>${u.photoUrl ? '' : (u.initials || getInitials(u.name))}</span>
+          <span class="user-photo" data-system-user-avatar></span>
           <strong>${escapeSettingsHtml(u.username)}</strong>
         </div>
       </td>
@@ -333,6 +336,7 @@ async function renderUsersTable(reload = true) {
       <td><button class="btn btn--secondary" type="button" data-edit-system-user="${u.id}">Editar</button></td>
     `;
     tbody.insertBefore(tr, emptyRow);
+    window.MedSolutionAvatar?.apply(tr.querySelector('[data-system-user-avatar]'), u);
   });
 }
 

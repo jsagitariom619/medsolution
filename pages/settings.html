@@ -19,8 +19,7 @@
       .patients-table tr:last-child td { border-bottom: none; }
       .patients-empty { text-align: center; padding: 40px; color: var(--gray-500); }
       .service-value-input,.service-value-select{width:100%;min-width:120px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50);color:var(--gray-700);font:inherit}.service-value-input:focus,.service-value-select:focus{outline:none;border-color:var(--aqua);box-shadow:0 0 0 4px rgba(47,183,166,.12);background:white}.service-value-name{min-width:220px}.service-value-actions{display:flex;align-items:center;gap:10px}.service-value-status{font-size:.82rem;font-weight:700;color:var(--gray-500)}
-      .profile-preview{width:92px;height:92px;border-radius:24px;background:linear-gradient(135deg,var(--petroleum),var(--aqua));color:white;display:grid;place-items:center;font-size:1.35rem;font-weight:800;background-position:center;background-size:cover;box-shadow:var(--shadow-sm)}
-      .user-photo-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}.user-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.user-photo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--petroleum),var(--aqua));color:white;display:grid;place-items:center;font-size:.78rem;font-weight:800;background-position:center;background-size:cover}@media(max-width:650px){.user-config-grid{grid-template-columns:1fr}}
+      .user-photo-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}.user-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}@media(max-width:650px){.user-config-grid{grid-template-columns:1fr}}
       .modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}.modal--open{display:flex}.modal__backdrop{position:absolute;inset:0;background:rgba(8,37,46,.58);backdrop-filter:blur(4px)}.modal__panel{position:relative;width:min(100%,680px);max-height:calc(100vh - 40px);overflow:auto;background:white;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:28px}.modal__close{position:absolute;right:18px;top:16px;border:0;background:var(--gray-100);color:var(--gray-600);width:34px;height:34px;border-radius:10px;font-size:1.3rem;cursor:pointer}
     </style>
   </head>
@@ -148,8 +147,9 @@
     </div>
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js?v=20260731-profile-schema"></script>
+    <script src="../assets/js/avatar.js?v=20260807-avatar"></script>
     <script src="../assets/js/pwa.js"></script>
-    <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/settings.js?v=20260731-profile-schema"></script>
+    <script type="module" src="../assets/js/main.js?v=20260807-avatar"></script>
+    <script src="../assets/js/settings.js?v=20260807-avatar"></script>
   </body>
 </html>

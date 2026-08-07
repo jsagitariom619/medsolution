@@ -50,7 +50,7 @@
 
 .doctor-profile {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 44px 1fr;
   gap: 14px;
   align-items: center;
   margin-bottom: 24px;
@@ -67,24 +67,23 @@
 }
 
 .doctor-profile__avatar {
-  width: 72px;
-  height: 72px;
-  border: 4px solid var(--white);
-  color: var(--petroleum);
-  background: linear-gradient(135deg, #ffffff, #d8f4ff);
+  width: 44px;
+  height: 44px;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--petroleum), var(--aqua) 58%, var(--medical-blue));
 }
 
-.doctor-profile strong,
-.doctor-profile span,
-.doctor-profile small {
+.doctor-profile > div > strong,
+.doctor-profile > div > span,
+.doctor-profile > div > small {
   display: block;
 }
 
-.doctor-profile strong {
+.doctor-profile > div > strong {
   color: var(--white);
 }
 
-.doctor-profile span {
+.doctor-profile > div > span {
   margin-top: 4px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.78rem;
@@ -92,7 +91,7 @@
   text-transform: uppercase;
 }
 
-.doctor-profile small {
+.doctor-profile > div > small {
   margin-top: 6px;
   color: #72efc7;
   font-weight: 700;

@@ -99,25 +99,15 @@ const updateUserChip = () => {
   const user = getUser();
   if (!user) return;
 
+  window.MedSolutionAvatar?.applyAll(user);
+
   document.querySelectorAll('[data-user-chip]').forEach((chip) => {
-    const avatarEl = chip.querySelector('[data-user-avatar]');
-    if (avatarEl) {
-      avatarEl.textContent = user.photoUrl ? '' : user.initials;
-      avatarEl.style.backgroundImage = user.photoUrl ? `url("${user.photoUrl}")` : '';
-      avatarEl.style.backgroundSize = 'cover'; avatarEl.style.backgroundPosition = 'center';
-    }
     const nameEl = chip.querySelector('[data-user-name]');
     if (nameEl) nameEl.textContent = user.name;
     const roleEl = chip.querySelector('[data-user-role]');
     if (roleEl) roleEl.textContent = user.role;
   });
 
-  const doctorAvatar = document.querySelector('[data-doctor-avatar]');
-  if (doctorAvatar) {
-    doctorAvatar.textContent = user.photoUrl ? '' : user.initials;
-    doctorAvatar.style.backgroundImage = user.photoUrl ? `url("${user.photoUrl}")` : '';
-    doctorAvatar.style.backgroundSize = 'cover'; doctorAvatar.style.backgroundPosition = 'center';
-  }
   const doctorName = document.querySelector('[data-doctor-name]');
   if (doctorName) doctorName.textContent = user.name;
   const doctorRole = document.querySelector('[data-doctor-role]');
