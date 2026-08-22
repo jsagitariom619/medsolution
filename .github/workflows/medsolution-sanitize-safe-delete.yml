@@ -1,0 +1,143 @@
+name: MedSolution sanitization and safe delete hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/medsolution-sanitize-safe-delete.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create isolated branch
+        run: |
+          git config user.name "MedSolution Maintenance"
+          git config user.email "actions@users.noreply.github.com"
+          git switch -c fix/sanitize-safe-delete-20260822
+
+      - name: Apply targeted defensive changes only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, count=1):
+              p=Path(path); text=p.read_text(encoding='utf-8')
+              found=text.count(old)
+              if found < count:
+                  raise SystemExit(f'{path}: expected at least {count} occurrence(s), found {found}: {old[:90]!r}')
+              text=text.replace(old,new,count)
+              p.write_text(text,encoding='utf-8')
+
+          # 1) Patients: escape all user-controlled values before innerHTML.
+          replace_exact('assets/js/patients.js',
+          "function getInitials(nombre, apellido) {\n  return (((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase());\n}\n",
+          "function getInitials(nombre, apellido) {\n  return (((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase());\n}\n\nfunction escapePatientHtml(value) {\n  const element = document.createElement('div');\n  element.textContent = value == null ? '' : String(value);\n  return element.innerHTML;\n}\n")
+          replacements={
+            "${getInitials(p.nombre, p.apellido)}":"${escapePatientHtml(getInitials(p.nombre, p.apellido))}",
+            "${p.nombre} ${p.apellido}":"${escapePatientHtml(`${p.nombre || ''} ${p.apellido || ''}`.trim())}",
+            "${p.ci || 'Sin CI'}":"${escapePatientHtml(p.ci || 'Sin CI')}",
+            "${p.genero || '—'}":"${escapePatientHtml(p.genero || '—')}",
+            "${p.telefono || '—'}":"${escapePatientHtml(p.telefono || '—')}",
+            "${p.email || '—'}":"${escapePatientHtml(p.email || '—')}",
+          }
+          p=Path('assets/js/patients.js'); text=p.read_text(encoding='utf-8')
+          for old,new in replacements.items():
+              if old not in text: raise SystemExit(f'patients.js missing expected interpolation {old}')
+              text=text.replace(old,new)
+          p.write_text(text,encoding='utf-8')
+
+          # 2) Add a preflight that blocks physical patient deletion if clinical dependencies exist.
+          replace_exact('assets/js/supabase-client.js',
+          "  async function deletePatient(id) {\n    const connection = await db(true);\n    const { error } = await connection.from('pacientes').delete().eq('legacy_id', Number(id)); throwIfError(error);\n  }",
+          "  async function getPatientDeleteImpact(id) {\n    const connection = await db(true);\n    const { data: patient, error: patientError } = await connection.from('pacientes').select('id').eq('legacy_id', Number(id)).maybeSingle();\n    throwIfError(patientError);\n    if (!patient) return { exists: false, attentions: 0, medicalRecords: 0 };\n    const [{ count: attentions, error: attentionError }, { count: medicalRecords, error: recordError }] = await Promise.all([\n      connection.from('atenciones').select('id', { count: 'exact', head: true }).eq('paciente_id', patient.id),\n      connection.from('historias_clinicas').select('id', { count: 'exact', head: true }).eq('paciente_id', patient.id),\n    ]);\n    throwIfError(attentionError);\n    throwIfError(recordError);\n    return { exists: true, attentions: Number(attentions || 0), medicalRecords: Number(medicalRecords || 0) };\n  }\n  async function deletePatient(id) {\n    const connection = await db(true);\n    const { error } = await connection.from('pacientes').delete().eq('legacy_id', Number(id)); throwIfError(error);\n  }")
+          # expose method next to existing patient API
+          p=Path('assets/js/supabase-client.js'); text=p.read_text(encoding='utf-8')
+          export_old='getPatients, findPatientByCi, savePatient, deletePatient'
+          if export_old not in text: raise SystemExit('Could not find patient API export list')
+          text=text.replace(export_old,'getPatients, findPatientByCi, savePatient, getPatientDeleteImpact, deletePatient',1)
+          p.write_text(text,encoding='utf-8')
+
+          replace_exact('assets/js/patients.js',
+          "async function handleDelete(id) {\n  if (!confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')) return;\n  try {\n    if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);",
+          "async function handleDelete(id) {\n  const patient = patientsState.patients.find((item) => Number(item.id) === Number(id));\n  try {\n    if (window.MedSolutionData?.isConfigured() && window.MedSolutionData.getPatientDeleteImpact) {\n      const impact = await window.MedSolutionData.getPatientDeleteImpact(id);\n      if (impact.attentions > 0 || impact.medicalRecords > 0) {\n        alert(`No se puede eliminar a ${patient ? `${patient.nombre} ${patient.apellido}`.trim() : 'este paciente'} porque ya posee información clínica vinculada.\\n\\nAtenciones: ${impact.attentions}\\nHistoria clínica: ${impact.medicalRecords ? 'Sí' : 'No'}\\n\\nEl registro se conserva para evitar pérdida accidental de historias, evoluciones o datos asociados.`);\n        return;\n      }\n    }\n    const label = patient ? `${patient.nombre} ${patient.apellido}`.trim() : 'este paciente';\n    if (!confirm(`¿Eliminar a ${label}?\\n\\nSolo se permite cuando no existen atenciones ni historia clínica vinculada. Esta acción no se puede deshacer.`)) return;\n    if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);")
+
+          # 3) Agenda: escape patient/service/professional values used in dynamic HTML and option attributes.
+          replace_exact('assets/js/schedule.js',
+          "const STATUS_ICON={Confirmada:'🟢','En espera':'🟡','En Atención':'🔵',Atendida:'⚪',Cancelada:'🔴',Reprogramada:'🟠','No asistió':'⚫',Pendiente:'🟡'};\n",
+          "const STATUS_ICON={Confirmada:'🟢','En espera':'🟡','En Atención':'🔵',Atendida:'⚪',Cancelada:'🔴',Reprogramada:'🟠','No asistió':'⚫',Pendiente:'🟡'};\nfunction escapeScheduleHtml(value){const element=document.createElement('div');element.textContent=value==null?'':String(value);return element.innerHTML;}\n")
+          p=Path('assets/js/schedule.js'); text=p.read_text(encoding='utf-8')
+          replacements={
+            "${a.time}":"${escapeScheduleHtml(a.time || '—')}",
+            "${getInitials(a.patientName)}":"${escapeScheduleHtml(getInitials(a.patientName))}",
+            "${a.patientName}":"${escapeScheduleHtml(a.patientName)}",
+            "${a.serviceName || a.reason || 'Sin servicio'}":"${escapeScheduleHtml(a.serviceName || a.reason || 'Sin servicio')}",
+            "${a.professional || 'Sin profesional'}":"${escapeScheduleHtml(a.professional || 'Sin profesional')}",
+            "${a.status}</span>":"${escapeScheduleHtml(a.status)}</span>",
+            "title=\"${item.patientName}\"":"title=\"${escapeScheduleHtml(item.patientName)}\"",
+            "${item.time} · ${item.patientName}":"${escapeScheduleHtml(item.time || '—')} · ${escapeScheduleHtml(item.patientName)}",
+          }
+          for old,new in replacements.items():
+              if old not in text: raise SystemExit(f'schedule.js missing expected interpolation {old}')
+              text=text.replace(old,new)
+          old="select.innerHTML=`<option value=\"\">${label}</option>`+values.map(value=>`<option value=\"${value}\">${id==='filterMonth'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):value}</option>`).join('');"
+          new="select.innerHTML=`<option value=\"\">${escapeScheduleHtml(label)}</option>`+values.map(value=>`<option value=\"${escapeScheduleHtml(value)}\">${id==='filterMonth'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeScheduleHtml(value)}</option>`).join('');"
+          if old not in text: raise SystemExit('schedule.js filter options expression not found')
+          text=text.replace(old,new,1)
+          old="service.innerHTML='<option value=\"\">Seleccionar tipo de atención…</option>'+types.map(item=>`<option value=\"${item.id}\">${item.name}</option>`).join('');"
+          new="service.innerHTML='<option value=\"\">Seleccionar tipo de atención…</option>'+types.map(item=>`<option value=\"${escapeScheduleHtml(item.id)}\">${escapeScheduleHtml(item.name)}</option>`).join('');"
+          if old not in text: raise SystemExit('schedule service options expression not found')
+          text=text.replace(old,new,1)
+          old="professional.innerHTML='<option value=\"\">Seleccionar profesional…</option>'+scheduleState.staff.map(item=>`<option value=\"${item.name}\">${item.name}</option>`).join('');"
+          new="professional.innerHTML='<option value=\"\">Seleccionar profesional…</option>'+scheduleState.staff.map(item=>`<option value=\"${escapeScheduleHtml(item.name)}\">${escapeScheduleHtml(item.name)}</option>`).join('');"
+          if old not in text: raise SystemExit('schedule professional options expression not found')
+          text=text.replace(old,new,1)
+          p.write_text(text,encoding='utf-8')
+
+          # 4) Specialized payments: keep current delete capability, but require deliberate typed confirmation.
+          p=Path('assets/js/specialized-records.js'); text=p.read_text(encoding='utf-8')
+          marker='  async function handleClick(event)'
+          if marker not in text: raise SystemExit('specialized handleClick marker missing')
+          helper="  function confirmPaymentDeletion(paymentId){let payment=null;state.payments.forEach(items=>{if(!payment)payment=items.find(item=>item.id===paymentId)||null});if(!payment)return false;const answer=prompt(`Se eliminará permanentemente un pago de ${money(payment.amount)} registrado el ${date(payment.paymentDate)}.\\n\\nEsta operación no se puede deshacer. Para confirmar escriba ELIMINAR:`,'');return answer==='ELIMINAR'}\n"
+          text=text.replace(marker,helper+marker,1)
+          old="const remove=event.target.closest('[data-delete-specialized-payment]');if(remove&&canManage()&&confirm('¿Eliminar este pago?')){"
+          new="const remove=event.target.closest('[data-delete-specialized-payment]');if(remove&&canManage()&&confirmPaymentDeletion(remove.dataset.deleteSpecializedPayment)){"
+          if old not in text: raise SystemExit('specialized payment delete confirmation pattern missing')
+          text=text.replace(old,new,1)
+          p.write_text(text,encoding='utf-8')
+
+          print('Targeted hardening applied.')
+          PY
+
+      - name: JavaScript syntax checks
+        run: |
+          node --check assets/js/patients.js
+          node --check assets/js/schedule.js
+          node --check assets/js/supabase-client.js
+          node --check assets/js/specialized-records.js
+
+      - name: Static safety assertions
+        run: |
+          grep -q 'getPatientDeleteImpact' assets/js/supabase-client.js
+          grep -q 'escapePatientHtml' assets/js/patients.js
+          grep -q 'escapeScheduleHtml' assets/js/schedule.js
+          grep -q 'confirmPaymentDeletion' assets/js/specialized-records.js
+          ! grep -q '<strong>${p.nombre} ${p.apellido}</strong>' assets/js/patients.js
+          ! grep -q '<span>${a.patientName}</span>' assets/js/schedule.js
+          git diff --check
+
+      - name: Show exact scope
+        run: git diff --stat && git diff -- assets/js/patients.js assets/js/schedule.js assets/js/supabase-client.js assets/js/specialized-records.js
+
+      - name: Commit isolated tested hardening
+        run: |
+          git add assets/js/patients.js assets/js/schedule.js assets/js/supabase-client.js assets/js/specialized-records.js
+          git commit -m "Harden dynamic HTML and prevent accidental clinical deletion"
+          git push origin fix/sanitize-safe-delete-20260822
