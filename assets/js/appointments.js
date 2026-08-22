@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 // MedSolution — Flujo único de atención (Recepción → Médico → Historia clínica)
 // Mantiene las claves existentes para conservar todos los datos ya registrados.
 
@@ -487,7 +498,7 @@ async function handleQuickPatientSave(event) {
     id: nextId(patients), nombre, apellido, ci,
     telefono: form.elements.telefono.value.trim(), genero: form.elements.genero.value,
     fechaNacimiento: form.elements.fechaNacimiento.value, email: '', direccion: '',
-    registrado: new Date().toISOString().slice(0, 10), isNew: true,
+    registrado: window.MedSolutionDate.today(), isNew: true,
   };
   setButtonLoading(button, true, 'Preparando…');
   consultState.pendingPatient = patient;
