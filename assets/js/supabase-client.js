@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 // Pasarela única de MedSolution hacia Registro Clínico.
 // Las credenciales públicas se obtienen desde /api/config en Vercel.
 (function initSupabaseGateway(global) {
@@ -253,7 +264,7 @@
       nombre: patient.nombre, apellido: patient.apellido || '', ci: patient.ci || null,
       fecha_nacimiento: patient.fechaNacimiento || null, genero: patient.genero || null,
       telefono: patient.telefono || null, email: patient.email || null,
-      direccion: patient.direccion || null, registrado_en: patient.registrado || new Date().toISOString().slice(0, 10),
+      direccion: patient.direccion || null, registrado_en: patient.registrado || window.MedSolutionDate.today(),
     };
     const mutation = patient.remoteId
       ? connection.from('pacientes').update(payload).eq('id', patient.remoteId)

@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 // Patients Module - CRUD with LocalStorage
 
 const STORAGE_KEY = 'medsolution.patients';
@@ -104,7 +115,7 @@ function getInitials(nombre, apellido) {
 }
 
 function getCurrentDateISO() {
-  return new Date().toISOString().slice(0, 10);
+  return window.MedSolutionDate.today();
 }
 
 function formatDate(isoDate) {

@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 // Schedule Module — Agenda Médica (localStorage)
 
 const SCHEDULE_KEY = 'medsolution.appointments';
@@ -66,7 +77,7 @@ function getPatients() {
 }
 
 function getScheduleSeed() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = window.MedSolutionDate.today();
   return [
     { id: 1, patientId: 1, patientName: 'María Fernanda López', date: today, time: '09:00', reason: 'Control general', status: 'Confirmada', createdAt: today },
     { id: 2, patientId: 2, patientName: 'Carlos Alberto Rojas', date: today, time: '10:00', reason: 'Dolor lumbar', status: 'Programada', createdAt: today },
@@ -97,7 +108,7 @@ function renderSchedule() {
   const fs = scheduleState.filterStatus;
   const fp = scheduleState.filterPatient.toLowerCase();
   const ft = scheduleState.filterTiming;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = window.MedSolutionDate.today();
 
   const visible = scheduleState.appointments.filter((a) => {
     if (fd && a.date !== fd) return false;
@@ -222,7 +233,7 @@ function openScheduleModal(mode, appt = null) {
     title.textContent = 'Nueva Cita';
     // Default to today
     const dateInput = form.elements.date;
-    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (dateInput) dateInput.value = window.MedSolutionDate.today();
   } else if (mode === 'edit' && appt) {
     title.textContent = 'Editar Cita';
     scheduleState.editingId = appt.id;
@@ -293,7 +304,7 @@ function handleScheduleSave(event) {
   } else {
     scheduleState.appointments.push({
       id: nextScheduleId(),
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: window.MedSolutionDate.today(),
       ...data,
     });
   }

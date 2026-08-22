@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 const reportState={items:[]};
 function esc(v){const e=document.createElement('div');e.textContent=v==null?'':String(v);return e.innerHTML}
 function unique(field){return [...new Set(reportState.items.map(i=>i[field]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)))}
@@ -18,5 +29,5 @@ function render(){
   const body=document.getElementById('reportTableBody');body.innerHTML=items.length?items.map(i=>`<tr><td><strong>${esc(i.date||'—')}</strong><br><small>${esc(i.time||'')}</small></td><td>${esc(i.patientName)}</td><td>${esc(i.serviceType)}</td><td><strong>${Number(i.servicePrice||0).toFixed(2)} Bs</strong></td><td>${esc(i.procedureResponsible||'—')}</td><td>${esc(i.registeredBy||'—')}</td><td>${esc(i.status)}</td></tr>`).join(''):'<tr><td colspan="7" class="patients-empty">No hay atenciones para los filtros seleccionados.</td></tr>';
 }
 async function load(){reportState.items=await window.MedSolutionData.getAttentions();fillSelect('serviceFilter',unique('serviceType'));fillSelect('responsibleFilter',unique('procedureResponsible'));fillSelect('userFilter',unique('registeredBy'));render()}
-async function setup(){await window.MedSolutionData.ready;document.getElementById('referenceDate').value=new Date().toISOString().slice(0,10);load().catch(e=>alert(e.message));['periodFilter','referenceDate','serviceFilter','responsibleFilter','userFilter'].forEach(id=>document.getElementById(id).addEventListener('change',render));document.getElementById('printReportBtn').onclick=()=>window.print();window.MedSolutionData.subscribeAttentions(()=>load())}
+async function setup(){await window.MedSolutionData.ready;document.getElementById('referenceDate').value=window.MedSolutionDate.today();load().catch(e=>alert(e.message));['periodFilter','referenceDate','serviceFilter','responsibleFilter','userFilter'].forEach(id=>document.getElementById(id).addEventListener('change',render));document.getElementById('printReportBtn').onclick=()=>window.print();window.MedSolutionData.subscribeAttentions(()=>load())}
 document.addEventListener('DOMContentLoaded',setup);

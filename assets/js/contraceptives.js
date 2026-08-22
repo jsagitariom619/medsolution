@@ -1,3 +1,14 @@
+// MedSolution: fecha civil de Bolivia para campos YYYY-MM-DD.
+// Los timestamps absolutos continúan almacenándose en UTC/timestamptz.
+window.MedSolutionDate = window.MedSolutionDate || {};
+window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolutionBoliviaToday(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/La_Paz',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 const contraceptiveState = {
   records: [],
   attentions: [],
@@ -47,7 +58,7 @@ function nextApplicationDate(applicationDate, type) {
 }
 
 function controlStatus(record) {
-  const today = dateOnly(new Date().toISOString().slice(0, 10));
+  const today = dateOnly(window.MedSolutionDate.today());
   const next = dateOnly(record.nextApplicationDate);
   const days = Math.ceil((next - today) / 86400000);
   if (days < 0) return 'Vencido';
@@ -231,7 +242,7 @@ async function saveQuickPatient() {
         genero: '',
         email: '',
         direccion: '',
-        registrado: new Date().toISOString().slice(0, 10),
+        registrado: window.MedSolutionDate.today(),
       });
     }
     const index = contraceptiveState.patients.findIndex((item) => Number(item.id) === Number(patient.id));
@@ -283,7 +294,7 @@ function openContraceptiveModal(record = null) {
   contraceptiveState.patientAutocomplete.clear();
   if(record?.patientId)contraceptiveState.patientAutocomplete.select(record.patientId);
   renderStaffOptions(record?.procedureResponsible);
-  form.elements.applicationDate.value = record?.applicationDate || new Date().toISOString().slice(0, 10);
+  form.elements.applicationDate.value = record?.applicationDate || window.MedSolutionDate.today();
   form.elements.contraceptiveType.value = record?.contraceptiveType || '';
   form.elements.observations.value = record?.contraceptiveObservations || '';
   form.elements.price.value = Number(record?.servicePrice ?? configuredPrice()) || 0;
