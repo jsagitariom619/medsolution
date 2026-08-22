@@ -1,0 +1,97 @@
+name: MedSolution injectable medication fields
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/medsolution-injectable-medication.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  adjust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create isolated branch
+        run: |
+          git config user.name "MedSolution Maintenance"
+          git config user.email "actions@users.noreply.github.com"
+          git switch -c fix/injectable-medication-20260822
+
+      - name: Apply targeted injectable documentation fields
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              found = text.count(old)
+              if found < count:
+                  raise SystemExit(f'{path}: expected at least {count} occurrence(s), found {found}: {old[:120]!r}')
+              text = text.replace(old, new, count)
+              p.write_text(text, encoding='utf-8')
+
+          html='pages/appointments.html'
+          js='assets/js/appointments.js'
+
+          # 1) Add an injectable-only documentation block beside service/responsible.
+          old='''            <label class="form-field hidden-section" id="procedureResponsibleField">\n              <span>Responsable del servicio *</span>\n              <select name="procedureResponsible" id="procedureResponsible" required>\n                <option value="">Primero selecciona un servicio…</option>\n              </select>\n            </label>\n            <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">'''
+          new='''            <label class="form-field hidden-section" id="procedureResponsibleField">\n              <span>Responsable del servicio *</span>\n              <select name="procedureResponsible" id="procedureResponsible" required>\n                <option value="">Primero selecciona un servicio…</option>\n              </select>\n            </label>\n            <div id="injectableFields" class="consult-form-grid full-width hidden-section" style="display:grid">\n              <span class="section-label">Detalle del inyectable</span>\n              <label class="form-field">\n                <span>Vía de administración</span>\n                <select name="injectableRoute" id="injectableRoute">\n                  <option value="">Seleccionar…</option>\n                  <option value="IM">Intramuscular (IM)</option>\n                  <option value="IV">Intravenosa (IV)</option>\n                </select>\n              </label>\n              <label class="form-field">\n                <span>Medicamento aplicado</span>\n                <input type="text" name="injectableMedication" id="injectableMedication" maxlength="160" placeholder="Ej.: Metamizol 1 g" autocomplete="off" />\n              </label>\n            </div>\n            <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">'''
+          replace_exact(html, old, new)
+
+          # 2) Show the block only for the configured Inyectable service; preserve all other services.
+          old="""function toggleServiceFields() {\n  const serviceId = document.getElementById('serviceType')?.value;\n  const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));\n  const field = document.getElementById('procedureResponsibleField');\n  const select = document.getElementById('procedureResponsible');\n  field.classList.toggle('hidden-section', !service);\n  select.required = Boolean(service);"""
+          new="""function toggleServiceFields() {\n  const serviceId = document.getElementById('serviceType')?.value;\n  const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));\n  const field = document.getElementById('procedureResponsibleField');\n  const select = document.getElementById('procedureResponsible');\n  const injectableFields = document.getElementById('injectableFields');\n  const injectableRoute = document.getElementById('injectableRoute');\n  const injectableMedication = document.getElementById('injectableMedication');\n  const isInjectable = Boolean(service && /inyect/i.test(String(service.name || '')));\n  injectableFields?.classList.toggle('hidden-section', !isInjectable);\n  if (!isInjectable) {\n    if (injectableRoute) injectableRoute.value = '';\n    if (injectableMedication) injectableMedication.value = '';\n  }\n  field.classList.toggle('hidden-section', !service);\n  select.required = Boolean(service);"""
+          replace_exact(js, old, new)
+
+          # 3) Contextual placeholder: IM/IV examples while keeping free-text entry.
+          marker="""function staffRole(position) {\n  const normalized = String(position || '').toLowerCase();"""
+          helper="""function updateInjectableMedicationHint() {\n  const route = document.getElementById('injectableRoute')?.value || '';\n  const input = document.getElementById('injectableMedication');\n  if (!input) return;\n  input.placeholder = route === 'IM'\n    ? 'Ej.: Metamizol 1 g IM'\n    : route === 'IV'\n      ? 'Ej.: medicamento IV, nombre y dosis aplicada'\n      : 'Ej.: Metamizol 1 g';\n}\n\nfunction staffRole(position) {\n  const normalized = String(position || '').toLowerCase();"""
+          replace_exact(js, marker, helper)
+
+          # 4) Editing/viewing preloads both values.
+          old="""  const fields = ['date','time','procedureResponsible','bp','hr','temp','weight','height','spo2',\n    'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','medications','procedures','prescription','indications','nextControl','observations'];"""
+          new="""  const fields = ['date','time','procedureResponsible','injectableRoute','injectableMedication','bp','hr','temp','weight','height','spo2',\n    'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','medications','procedures','prescription','indications','nextControl','observations'];"""
+          replace_exact(js, old, new)
+
+          # 5) Persist in existing datos_clinicos JSON through saveAttention, no DB schema change.
+          old="""    procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),\n    clinicalAntecedents: value('clinicalAntecedents'),"""
+          new="""    procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),\n    injectableRoute: value('injectableRoute'), injectableMedication: value('injectableMedication'),\n    clinicalAntecedents: value('clinicalAntecedents'),"""
+          replace_exact(js, old, new)
+
+          # 6) Keep placeholder synchronized when route changes and after service selection.
+          old="""  if (staff.some((person) => person.name === current)) select.value = current;\n}\nfunction updateInjectableMedicationHint()"""
+          new="""  if (staff.some((person) => person.name === current)) select.value = current;\n  updateInjectableMedicationHint();\n}\nfunction updateInjectableMedicationHint()"""
+          replace_exact(js, old, new)
+
+          # Bind route change exactly once during module setup near existing service selector binding.
+          setup_anchor="""  document.getElementById('serviceType')?.addEventListener('change', toggleServiceFields);"""
+          setup_replacement="""  document.getElementById('serviceType')?.addEventListener('change', toggleServiceFields);\n  document.getElementById('injectableRoute')?.addEventListener('change', updateInjectableMedicationHint);"""
+          replace_exact(js, setup_anchor, setup_replacement)
+
+          print('Injectable medication fields applied without schema changes.')
+          PY
+
+      - name: Validate exact scope
+        run: |
+          node --check assets/js/appointments.js
+          grep -q 'id="injectableFields"' pages/appointments.html
+          grep -q 'name="injectableMedication"' pages/appointments.html
+          grep -q 'Intramuscular (IM)' pages/appointments.html
+          grep -q 'Intravenosa (IV)' pages/appointments.html
+          grep -q 'injectableMedication: value' assets/js/appointments.js
+          grep -q 'updateInjectableMedicationHint' assets/js/appointments.js
+          git diff --check
+          git diff --stat
+
+      - name: Commit isolated tested change
+        run: |
+          git add pages/appointments.html assets/js/appointments.js
+          git commit -m "Add medication field to injectable services"
+          git push origin fix/injectable-medication-20260822
