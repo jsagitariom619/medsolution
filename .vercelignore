@@ -1,0 +1,3 @@
+# Evita desplegar la copia histórica/duplicada del proyecto.
+# La aplicación activa vive en la raíz del repositorio.
+medsolution-main/**
