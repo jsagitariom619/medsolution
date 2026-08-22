@@ -272,6 +272,19 @@ window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolut
     const { data, error } = await mutation.select().single();
     throwIfError(error); return mapPatient(data);
   }
+  async function getPatientDeleteImpact(id) {
+    const connection = await db(true);
+    const { data: patient, error: patientError } = await connection.from('pacientes').select('id').eq('legacy_id', Number(id)).maybeSingle();
+    throwIfError(patientError);
+    if (!patient) return { exists: false, attentions: 0, medicalRecords: 0 };
+    const [{ count: attentions, error: attentionError }, { count: medicalRecords, error: recordError }] = await Promise.all([
+      connection.from('atenciones').select('id', { count: 'exact', head: true }).eq('paciente_id', patient.id),
+      connection.from('historias_clinicas').select('id', { count: 'exact', head: true }).eq('paciente_id', patient.id),
+    ]);
+    throwIfError(attentionError);
+    throwIfError(recordError);
+    return { exists: true, attentions: Number(attentions || 0), medicalRecords: Number(medicalRecords || 0) };
+  }
   async function deletePatient(id) {
     const connection = await db(true);
     const { error } = await connection.from('pacientes').delete().eq('legacy_id', Number(id)); throwIfError(error);
@@ -516,7 +529,7 @@ window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolut
     getStaff: () => getStaff(false), getAllStaff: () => getStaff(true), saveStaff, toggleStaff,
     getSystemUsers, saveSystemUser, uploadProfilePhoto, deleteStoredFile,
     uploadClinicalAttachment, signedFileUrl,
-    getPatients, findPatientByCi, savePatient, deletePatient,
+    getPatients, findPatientByCi, savePatient, getPatientDeleteImpact, deletePatient,
     getAttentions, saveAttention, savePatientAndAttention, deleteAttention,
     ensureMedicalRecord, getMedicalRecords, saveMedicalRecord, getSpecializedHistories, saveSpecializedHistory, deleteSpecializedHistory,
     getSpecializedEvolutions, getSpecializedEvolutionsByHistoryIds, saveSpecializedEvolution,

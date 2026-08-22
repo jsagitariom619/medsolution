@@ -111,6 +111,7 @@ const STATUS_BADGE = {
   'No asistió': 'badge--no-show',
 };
 const STATUS_ICON={Confirmada:'🟢','En espera':'🟡','En Atención':'🔵',Atendida:'⚪',Cancelada:'🔴',Reprogramada:'🟠','No asistió':'⚫',Pendiente:'🟡'};
+function escapeScheduleHtml(value){const element=document.createElement('div');element.textContent=value==null?'':String(value);return element.innerHTML;}
 
 function renderSchedule() {
   const tbody = document.getElementById('scheduleTableBody');
@@ -132,15 +133,15 @@ function renderSchedule() {
     const badgeClass = STATUS_BADGE[a.status] || '';
     tr.innerHTML = `
       <td><strong>${formatDisplayDate(a.date)}</strong></td>
-      <td><strong>${a.time}</strong></td>
+      <td><strong>${escapeScheduleHtml(a.time || '—')}</strong></td>
       <td>
         <div class="patient-cell">
-          <span class="patient-photo">${getInitials(a.patientName)}</span>
-          <span>${a.patientName}</span>
+          <span class="patient-photo">${escapeScheduleHtml(getInitials(a.patientName))}</span>
+          <span>${escapeScheduleHtml(a.patientName)}</span>
         </div>
       </td>
-      <td><strong>${a.serviceName || a.reason || 'Sin servicio'}</strong><br><small>${a.professional || 'Sin profesional'}</small></td>
-      <td><span class="badge ${badgeClass}">${STATUS_ICON[a.status]||''} ${a.status}</span></td>
+      <td><strong>${escapeScheduleHtml(a.serviceName || a.reason || 'Sin servicio')}</strong><br><small>${escapeScheduleHtml(a.professional || 'Sin profesional')}</small></td>
+      <td><span class="badge ${badgeClass}">${STATUS_ICON[a.status]||''} ${escapeScheduleHtml(a.status)}</span></td>
       <td>
         <span class="action-links">
           ${!['Atendida','Cancelada','No asistió'].includes(a.status) ? `<button class="btn btn--primary" style="padding:7px 10px;font-size:.75rem" data-action="attend" data-id="${a.id}" title="Iniciar atención">Iniciar atención</button>` : ''}
@@ -162,7 +163,7 @@ function filteredAppointments(){
 }
 function populateScheduleFilters(){
   const definitions=[['filterService','Todos los servicios',[...new Set(scheduleState.appointments.map(item=>item.serviceName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['filterResponsible','Todos los responsables',[...new Set(scheduleState.appointments.map(item=>item.professional).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['filterMonth','Todos los meses',[...new Set(scheduleState.appointments.map(item=>String(item.date||'').slice(5,7)).filter(Boolean))].sort()],['filterYear','Todos los años',[...new Set(scheduleState.appointments.map(item=>String(item.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
-  definitions.forEach(([id,label,values])=>{const select=document.getElementById(id);if(!select)return;const current=select.value;select.innerHTML=`<option value="">${label}</option>`+values.map(value=>`<option value="${value}">${id==='filterMonth'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):value}</option>`).join('');select.value=current});
+  definitions.forEach(([id,label,values])=>{const select=document.getElementById(id);if(!select)return;const current=select.value;select.innerHTML=`<option value="">${escapeScheduleHtml(label)}</option>`+values.map(value=>`<option value="${escapeScheduleHtml(value)}">${id==='filterMonth'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeScheduleHtml(value)}</option>`).join('');select.value=current});
 }
 
 function isoLocal(date) { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));return `${parts.year}-${parts.month}-${parts.day}`; }
@@ -179,7 +180,7 @@ function renderCalendar() {
   const dates=calendarDates(),view=scheduleState.calendarView,today=isoLocal(new Date()),visible=filteredAppointments();
   target.className=`calendar-grid calendar-grid--${view}`;target.style.setProperty('--calendar-columns',view==='day'?1:7);
   const headers=view==='day'?['Día']:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=visible.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${calendarStatusClass(item.status)}" title="${item.patientName}">${item.time} · ${item.patientName}</span>`).join('')}</div>`}).join('');
+  target.innerHTML=headers.map(label=>`<div class="calendar-day-head">${label}</div>`).join('')+dates.map(date=>{const iso=isoLocal(date);const outside=view==='month'&&date.getMonth()!==scheduleState.calendarDate.getMonth();const items=visible.filter(item=>item.date===iso).sort((a,b)=>String(a.time).localeCompare(String(b.time)));return `<div class="calendar-day ${outside?'calendar-day--outside':''} ${iso===today?'calendar-day--today':''}" data-calendar-date="${iso}"><strong>${date.getDate()}</strong>${items.map(item=>`<span class="calendar-event calendar-event--${calendarStatusClass(item.status)}" title="${escapeScheduleHtml(item.patientName)}">${escapeScheduleHtml(item.time || '—')} · ${escapeScheduleHtml(item.patientName)}</span>`).join('')}</div>`}).join('');
   const label=document.getElementById('calendarPeriodLabel');
   label.textContent=view==='day'?scheduleState.calendarDate.toLocaleDateString('es',{dateStyle:'full'}):view==='week'?`Semana del ${formatDisplayDate(isoLocal(dates[0]))}`:scheduleState.calendarDate.toLocaleDateString('es',{month:'long',year:'numeric'});
   document.querySelectorAll('[data-calendar-view]').forEach(button=>button.classList.toggle('active',button.dataset.calendarView===view));
@@ -205,9 +206,9 @@ function populateScheduleCatalog(appt = null) {
   const service=document.getElementById('scheduleServiceSelect');
   const normalized=new Set(scheduleState.services.map(item=>String(item.name||'').toLocaleLowerCase('es')));
   const types=[...scheduleState.services,...APPOINTMENT_TYPES.filter(item=>!normalized.has(item.name.toLocaleLowerCase('es')))];
-  service.innerHTML='<option value="">Seleccionar tipo de atención…</option>'+types.map(item=>`<option value="${item.id}">${item.name}</option>`).join('');
+  service.innerHTML='<option value="">Seleccionar tipo de atención…</option>'+types.map(item=>`<option value="${escapeScheduleHtml(item.id)}">${escapeScheduleHtml(item.name)}</option>`).join('');
   const professional=document.getElementById('scheduleProfessionalSelect');
-  professional.innerHTML='<option value="">Seleccionar profesional…</option>'+scheduleState.staff.map(item=>`<option value="${item.name}">${item.name}</option>`).join('');
+  professional.innerHTML='<option value="">Seleccionar profesional…</option>'+scheduleState.staff.map(item=>`<option value="${escapeScheduleHtml(item.name)}">${escapeScheduleHtml(item.name)}</option>`).join('');
   const selectedService=appt?.serviceId||appt?.appointmentTypeId;
   if(selectedService)service.value=selectedService;if(appt?.professional)professional.value=appt.professional;
 }
