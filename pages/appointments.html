@@ -171,6 +171,21 @@
                 <option value="">Primero selecciona un servicio…</option>
               </select>
             </label>
+            <div id="injectableFields" class="consult-form-grid full-width hidden-section" style="display:grid">
+              <span class="section-label">Detalle del inyectable</span>
+              <label class="form-field">
+                <span>Vía de administración</span>
+                <select name="injectableRoute" id="injectableRoute">
+                  <option value="">Seleccionar…</option>
+                  <option value="IM">Intramuscular (IM)</option>
+                  <option value="IV">Intravenosa (IV)</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span>Medicamento aplicado</span>
+                <input type="text" name="injectableMedication" id="injectableMedication" maxlength="160" placeholder="Ej.: Metamizol 1 g" autocomplete="off" />
+              </label>
+            </div>
             <div id="clinicalFields" class="consult-form-grid full-width hidden-section" style="display:grid">
             <span class="section-label">Signos vitales</span>
 
