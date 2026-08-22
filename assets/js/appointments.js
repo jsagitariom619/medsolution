@@ -512,6 +512,15 @@ function toggleServiceFields() {
   const service = consultState.services.find((item) => String(item.id || item.name) === String(serviceId));
   const field = document.getElementById('procedureResponsibleField');
   const select = document.getElementById('procedureResponsible');
+  const injectableFields = document.getElementById('injectableFields');
+  const injectableRoute = document.getElementById('injectableRoute');
+  const injectableMedication = document.getElementById('injectableMedication');
+  const isInjectable = Boolean(service && /inyect/i.test(String(service.name || '')));
+  injectableFields?.classList.toggle('hidden-section', !isInjectable);
+  if (!isInjectable) {
+    if (injectableRoute) injectableRoute.value = '';
+    if (injectableMedication) injectableMedication.value = '';
+  }
   field.classList.toggle('hidden-section', !service);
   select.required = Boolean(service);
   if (!service) {
@@ -526,7 +535,19 @@ function toggleServiceFields() {
   select.innerHTML = `<option value="">${staff.length ? 'Seleccionar…' : 'No hay responsables activos autorizados'}</option>` + staff
     .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(person.name)}</option>`).join('');
   if (staff.some((person) => person.name === current)) select.value = current;
+  updateInjectableMedicationHint();
 }
+function updateInjectableMedicationHint() {
+  const route = document.getElementById('injectableRoute')?.value || '';
+  const input = document.getElementById('injectableMedication');
+  if (!input) return;
+  input.placeholder = route === 'IM'
+    ? 'Ej.: Metamizol 1 g IM'
+    : route === 'IV'
+      ? 'Ej.: medicamento IV, nombre y dosis aplicada'
+      : 'Ej.: Metamizol 1 g';
+}
+
 function staffRole(position) {
   const normalized = String(position || '').toLowerCase();
   return normalized.includes('doctor') || normalized.includes('médic') || normalized.includes('medic') ? 'Doctor' : 'Auxiliar';
@@ -582,7 +603,7 @@ function closeConsultModal() {
 }
 function fillConsultForm(form, c) {
   setSelectedPatient(c.patientId, c.patientName);
-  const fields = ['date','time','procedureResponsible','bp','hr','temp','weight','height','spo2',
+  const fields = ['date','time','procedureResponsible','injectableRoute','injectableMedication','bp','hr','temp','weight','height','spo2',
     'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','medications','procedures','prescription','indications','nextControl','observations'];
   fields.forEach((name) => { if (form.elements[name]) form.elements[name].value = c[name] || ''; });
   renderServiceOptions(c.serviceId || c.serviceType);
@@ -646,6 +667,7 @@ function consultationData(form) {
       ? Boolean(service.generates_medical_record)
       : Boolean(storedService?.generatesMedicalRecord),
     procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),
+    injectableRoute: value('injectableRoute'), injectableMedication: value('injectableMedication'),
     clinicalAntecedents: value('clinicalAntecedents'),
     bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
     height: value('height'), spo2: value('spo2'), evolution: value('evolution'),
@@ -847,6 +869,7 @@ async function setupAppointmentsModule() {
     if (choice) chooseService(choice.dataset.chooseService);
   });
   document.getElementById('serviceType')?.addEventListener('change', toggleServiceFields);
+  document.getElementById('injectableRoute')?.addEventListener('change', updateInjectableMedicationHint);
   document.getElementById('closeConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.getElementById('cancelConsultModalBtn')?.addEventListener('click', closeConsultModal);
   document.querySelector('#consultModal .nursing-modal__overlay')?.addEventListener('click', closeConsultModal);
