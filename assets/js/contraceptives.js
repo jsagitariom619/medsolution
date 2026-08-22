@@ -123,7 +123,7 @@ function renderContraceptiveTable() {
     element.style.display = showPrice ? '' : 'none';
   });
   if (!records.length) {
-    body.innerHTML = `<tr><td colspan="${showPrice ? 9 : 8}" class="control-empty">No hay controles para los filtros seleccionados.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${showPrice ? 10 : 9}" class="control-empty">No hay controles para los filtros seleccionados.</td></tr>`;
   } else {
     body.innerHTML = records.map((record) => {
       const patient = contraceptiveState.patients.find((item) => Number(item.id) === Number(record.patientId));
@@ -133,6 +133,7 @@ function renderContraceptiveTable() {
         <td>${formatControlDate(record.applicationDate)}</td>
         <td><strong>${formatControlDate(record.nextApplicationDate)}</strong></td>
         <td>${escapeControlHtml(record.contraceptiveType)}</td>
+        <td>${escapeControlHtml(record.contraceptiveMedication || '—')}</td>
         <td>${escapeControlHtml(record.procedureResponsible || '—')}</td>
         <td>${statusBadge(record)}</td>
         <td data-price-column style="${showPrice ? '' : 'display:none'}">${Number(record.servicePrice || 0).toFixed(2)} Bs</td>
@@ -296,6 +297,7 @@ function openContraceptiveModal(record = null) {
   renderStaffOptions(record?.procedureResponsible);
   form.elements.applicationDate.value = record?.applicationDate || window.MedSolutionDate.today();
   form.elements.contraceptiveType.value = record?.contraceptiveType || '';
+  form.elements.medication.value = record?.contraceptiveMedication || '';
   form.elements.observations.value = record?.contraceptiveObservations || '';
   form.elements.price.value = Number(record?.servicePrice ?? configuredPrice()) || 0;
   document.getElementById('contraceptivePriceField').style.display = hasFullAccess() ? '' : 'none';
@@ -372,6 +374,7 @@ async function saveScheduledDose(control, service, user) {
     contraceptiveSchedule: true,
     sourceContraceptiveRemoteId: control.remoteId,
     contraceptiveType: control.contraceptiveType,
+    contraceptiveMedication: control.contraceptiveMedication || '',
     applicationDate: control.applicationDate,
     nextApplicationDate: control.nextApplicationDate,
     appointmentObservations: `Próxima dosis ${control.contraceptiveType.toLowerCase()}`,
@@ -434,6 +437,7 @@ async function saveContraceptive(event) {
     generatesMedicalRecord: false,
     contraceptiveControl: true,
     contraceptiveType: type,
+    contraceptiveMedication: form.elements.medication.value.trim(),
     applicationDate,
     nextApplicationDate: nextDate,
     nextControl: nextDate,
@@ -497,8 +501,8 @@ function openPatientHistory(record) {
     .sort((a, b) => String(b.applicationDate).localeCompare(String(a.applicationDate)));
   document.getElementById('contraceptiveHistoryTitle').textContent = `Historial · ${record.patientName}`;
   document.getElementById('contraceptiveHistoryBody').innerHTML = patientRecords.length
-    ? patientRecords.map((item) => `<tr><td>${formatControlDate(item.applicationDate)}</td><td>${escapeControlHtml(item.contraceptiveType)}</td><td>${escapeControlHtml(item.procedureResponsible || '—')}</td><td>${formatControlDate(item.nextApplicationDate)}</td><td>${Number(item.servicePrice || 0).toFixed(2)} Bs</td><td>${escapeControlHtml(item.contraceptiveObservations || '—')}</td></tr>`).join('')
-    : '<tr><td colspan="6" class="control-empty">Sin aplicaciones registradas.</td></tr>';
+    ? patientRecords.map((item) => `<tr><td>${formatControlDate(item.applicationDate)}</td><td>${escapeControlHtml(item.contraceptiveType)}</td><td>${escapeControlHtml(item.contraceptiveMedication || '—')}</td><td>${escapeControlHtml(item.procedureResponsible || '—')}</td><td>${formatControlDate(item.nextApplicationDate)}</td><td>${Number(item.servicePrice || 0).toFixed(2)} Bs</td><td>${escapeControlHtml(item.contraceptiveObservations || '—')}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="control-empty">Sin aplicaciones registradas.</td></tr>';
   document.getElementById('contraceptiveHistoryModal').classList.add('nursing-modal--active');
 }
 
