@@ -1,0 +1,1 @@
+MedSolution mantiene temporalmente autenticación local mientras se prepara una migración no disruptiva a Supabase Auth. No retirar acceso `anon` de producción hasta validar el corte completo.
