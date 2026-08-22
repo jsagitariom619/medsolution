@@ -115,6 +115,12 @@ function getInitials(nombre, apellido) {
   return (((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase());
 }
 
+function escapePatientHtml(value) {
+  const element = document.createElement('div');
+  element.textContent = value == null ? '' : String(value);
+  return element.innerHTML;
+}
+
 function getCurrentDateISO() {
   return window.MedSolutionDate.today();
 }
@@ -158,17 +164,17 @@ function renderTable() {
     tr.innerHTML = `
       <td>
         <div class="patient-cell">
-          <span class="patient-photo">${getInitials(p.nombre, p.apellido)}</span>
+          <span class="patient-photo">${escapePatientHtml(getInitials(p.nombre, p.apellido))}</span>
           <div>
-            <strong>${p.nombre} ${p.apellido}</strong>
-            <small>CI: ${p.ci || 'Sin CI'}</small>
+            <strong>${escapePatientHtml(`${p.nombre || ''} ${p.apellido || ''}`.trim())}</strong>
+            <small>CI: ${escapePatientHtml(p.ci || 'Sin CI')}</small>
           </div>
         </div>
       </td>
-      <td>${p.genero || '—'}</td>
+      <td>${escapePatientHtml(p.genero || '—')}</td>
       <td>${formatDate(p.fechaNacimiento)}</td>
-      <td>${p.telefono || '—'}</td>
-      <td>${p.email || '—'}</td>
+      <td>${escapePatientHtml(p.telefono || '—')}</td>
+      <td>${escapePatientHtml(p.email || '—')}</td>
       <td>${formatDate(p.registrado)}</td>
       <td>
         <span class="action-links">
@@ -355,8 +361,17 @@ function showPatientToast(message) {
 }
 
 async function handleDelete(id) {
-  if (!confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')) return;
+  const patient = patientsState.patients.find((item) => Number(item.id) === Number(id));
   try {
+    if (window.MedSolutionData?.isConfigured() && window.MedSolutionData.getPatientDeleteImpact) {
+      const impact = await window.MedSolutionData.getPatientDeleteImpact(id);
+      if (impact.attentions > 0 || impact.medicalRecords > 0) {
+        alert(`No se puede eliminar a ${patient ? `${patient.nombre} ${patient.apellido}`.trim() : 'este paciente'} porque ya posee información clínica vinculada.\n\nAtenciones: ${impact.attentions}\nHistoria clínica: ${impact.medicalRecords ? 'Sí' : 'No'}\n\nEl registro se conserva para evitar pérdida accidental de historias, evoluciones o datos asociados.`);
+        return;
+      }
+    }
+    const label = patient ? `${patient.nombre} ${patient.apellido}`.trim() : 'este paciente';
+    if (!confirm(`¿Eliminar a ${label}?\n\nSolo se permite cuando no existen atenciones ni historia clínica vinculada. Esta acción no se puede deshacer.`)) return;
     if (window.MedSolutionData?.isConfigured()) await window.MedSolutionData.deletePatient(id);
     patientsState.patients = patientsState.patients.filter((p) => p.id !== id);
     savePatients();
