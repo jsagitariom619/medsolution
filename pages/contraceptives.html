@@ -34,8 +34,8 @@
             </div>
             <div class="control-table-wrap">
               <table class="control-table">
-                <thead><tr><th>Paciente</th><th>Teléfono</th><th>Última aplicación</th><th>Próxima aplicación</th><th>Tipo</th><th>Responsable</th><th>Estado</th><th data-price-column>Precio</th><th>Acciones</th></tr></thead>
-                <tbody id="controlTableBody"><tr><td colspan="9" class="control-empty">Cargando controles…</td></tr></tbody>
+                <thead><tr><th>Paciente</th><th>Teléfono</th><th>Última aplicación</th><th>Próxima aplicación</th><th>Tipo</th><th>Medicamento</th><th>Responsable</th><th>Estado</th><th data-price-column>Precio</th><th>Acciones</th></tr></thead>
+                <tbody id="controlTableBody"><tr><td colspan="10" class="control-empty">Cargando controles…</td></tr></tbody>
               </table>
             </div>
           </article>
@@ -65,6 +65,7 @@
             </section>
             <label class="form-field"><span>Fecha de aplicación *</span><input type="date" name="applicationDate" required /></label>
             <label class="form-field"><span>Tipo de anticonceptivo *</span><select name="contraceptiveType" required><option value="">Seleccionar…</option><option value="Mensual">Mensual</option><option value="Trimestral">Trimestral</option></select></label>
+            <label class="form-field"><span>Medicamento aplicado</span><input type="text" name="medication" maxlength="120" placeholder="Ej.: Medroxiprogesterona 150 mg" /></label>
             <label class="form-field full-width" id="contraceptiveResponsibleField"><span>Responsable de la aplicación *</span><select name="responsible" required><option value="">Seleccionar…</option></select></label>
             <label class="form-field full-width"><span>Próxima aplicación calculada</span><div class="control-next-date" id="nextApplicationPreview">Selecciona la fecha y el tipo.</div></label>
             <label class="form-field full-width" id="contraceptivePriceField"><span>Precio configurado (Bs)</span><input type="number" name="price" min="0" step="0.01" readonly /></label>
@@ -80,7 +81,7 @@
       <div class="nursing-modal__overlay"></div>
       <div class="nursing-modal__content" style="width:min(900px,94vw)">
         <div class="nursing-modal__header"><div><span class="eyebrow">Seguimiento por paciente</span><h2 id="contraceptiveHistoryTitle">Historial anticonceptivo</h2></div><button class="nursing-modal__close" id="closeContraceptiveHistoryBtn" type="button" aria-label="Cerrar">✕</button></div>
-        <div class="control-history-scroll"><table class="control-table"><thead><tr><th>Aplicación</th><th>Tipo</th><th>Responsable</th><th>Próxima</th><th>Precio</th><th>Observaciones</th></tr></thead><tbody id="contraceptiveHistoryBody"></tbody></table></div>
+        <div class="control-history-scroll"><table class="control-table"><thead><tr><th>Aplicación</th><th>Tipo</th><th>Medicamento</th><th>Responsable</th><th>Próxima</th><th>Precio</th><th>Observaciones</th></tr></thead><tbody id="contraceptiveHistoryBody"></tbody></table></div>
       </div>
     </div>
 
