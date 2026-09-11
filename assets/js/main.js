@@ -1,4 +1,4 @@
-import { login, logout, guardRoute, restoreSession, getUser, can, syncUsers } from './auth.js';
+import { login, logout, guardRoute, restoreSession, getUser, getRememberedUsername, can, syncUsers } from './auth.js';
 
 // ── Route map ─────────────────────────────────────────────────────────────────
 
@@ -64,7 +64,17 @@ const handleLogin = () => {
   const form = document.querySelector('[data-login-form]');
   if (!form) return;
 
-  // If already authenticated, go straight to dashboard
+  const usernameInput = form.querySelector('input[name="username"]');
+  const passwordInput = form.querySelector('input[name="password"]');
+  const rememberInput = form.querySelector('input[name="remember"]');
+  const rememberedUsername = getRememberedUsername();
+
+  if (rememberedUsername && usernameInput) {
+    usernameInput.value = rememberedUsername;
+    if (rememberInput) rememberInput.checked = true;
+  }
+
+  // If already authenticated in this browser session, go straight to dashboard.
   if (getUser()) {
     window.location.replace(routes.dashboard);
     return;
@@ -72,9 +82,6 @@ const handleLogin = () => {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const usernameInput = form.querySelector('input[name="username"]');
-    const passwordInput = form.querySelector('input[name="password"]');
-    const rememberInput = form.querySelector('input[name="remember"]');
 
     const user = await login(
       usernameInput?.value || '',
