@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Med Solution, plataforma profesional para consultorios médicos." />
-    <title>Med Solution | Acceso</title>
+    <meta name="description" content="MedSolution — Sistema Médico Integral." />
+    <title>MedSolution | Iniciar sesión</title>
     <meta name="theme-color" content="#0F5F5C" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
@@ -13,69 +13,231 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180x180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <style>
+      /* Login simple y aislado: no modifica estilos de los módulos internos. */
+      body.auth-body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #f4f8f9;
+      }
+
+      .auth-shell.auth-shell--simple {
+        display: block;
+        width: min(100%, 500px);
+        min-height: 0;
+        overflow: visible;
+        border: 1px solid #e1ebed;
+        border-radius: 24px;
+        background: #ffffff;
+        box-shadow: 0 18px 45px rgba(15, 76, 92, 0.09);
+      }
+
+      .auth-panel.auth-panel--simple {
+        display: block;
+        padding: 42px 44px 38px;
+      }
+
+      .login-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .login-brand__logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin-bottom: 14px;
+        border-radius: 20px;
+      }
+
+      .login-brand__name {
+        margin: 0;
+        color: #083844;
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+      }
+
+      .login-brand__tagline {
+        margin: 5px 0 0;
+        color: #637681;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .login-form.login-form--simple {
+        display: grid;
+        gap: 18px;
+      }
+
+      .login-heading {
+        margin-bottom: 2px;
+        text-align: center;
+      }
+
+      .login-heading h1 {
+        margin: 0;
+        color: #083844;
+        font-size: 1.7rem;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+      }
+
+      .login-heading p {
+        margin: 8px 0 0;
+        color: #71828a;
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .login-form--simple .form-field {
+        gap: 7px;
+        color: #354b55;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .login-form--simple .form-field input {
+        min-height: 52px;
+        padding: 13px 15px;
+        border: 1px solid #d8e4e7;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: none;
+      }
+
+      .login-form--simple .form-field input:focus {
+        border-color: #2f9b91;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(47, 155, 145, 0.12);
+      }
+
+      .login-options {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 24px;
+      }
+
+      .login-options .check-field {
+        color: #637681;
+        font-size: 0.88rem;
+        font-weight: 500;
+      }
+
+      .login-submit.btn {
+        min-height: 52px;
+        border-radius: 12px;
+        background: #0f5f5c;
+        box-shadow: none;
+        font-weight: 700;
+      }
+
+      .login-submit.btn:hover {
+        transform: none;
+        background: #0b514f;
+      }
+
+      .login-install.btn {
+        min-height: 44px;
+        padding: 10px 14px;
+        border: 1px solid #dce7e9;
+        border-radius: 12px;
+        background: transparent;
+        box-shadow: none;
+        color: #516970;
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      .login-install.btn:hover {
+        transform: none;
+        background: #f7fafb;
+      }
+
+      .login-install.btn:disabled {
+        display: none;
+      }
+
+      .login-form--simple .login-error {
+        margin: 0;
+        text-align: center;
+      }
+
+      @media (max-width: 560px) {
+        body.auth-body {
+          align-items: center;
+          padding: 16px;
+        }
+
+        .auth-shell.auth-shell--simple {
+          width: 100%;
+          border-radius: 20px;
+        }
+
+        .auth-panel.auth-panel--simple {
+          padding: 34px 24px 30px;
+        }
+
+        .login-brand__logo {
+          width: 64px;
+          height: 64px;
+        }
+
+        .login-brand__name {
+          font-size: 1.55rem;
+        }
+
+        .login-heading h1 {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
   </head>
   <body class="auth-body">
-    <main class="auth-shell">
-      <section class="auth-hero" aria-label="Presentación de Med Solution">
-        <div class="brand brand--light">
-          <img class="brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
-          <span class="brand__text">Med Solution</span>
-        </div>
-        <div class="auth-hero__content">
-          <span class="eyebrow">Consultorio médico inteligente</span>
-          <h1>Gestión clínica elegante, segura y preparada para crecer.</h1>
-          <p>
-            Una interfaz moderna para centralizar atenciones, agenda, historias clínicas y pacientes desde una experiencia profesional.
-          </p>
-        </div>
-        <div class="auth-hero__card glass-card">
-          <span class="status-dot"></span>
-          <div>
-            <strong>v1.0 Base comercial</strong>
-            <p>Arquitectura modular lista para Supabase.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="auth-panel" aria-label="Formulario de acceso">
-        <div class="auth-panel__header">
-          <div class="brand">
-            <img class="brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
-            <span class="brand__text">Med Solution</span>
-          </div>
-          <span class="secure-badge">Acceso seguro</span>
+    <main class="auth-shell auth-shell--simple">
+      <section class="auth-panel auth-panel--simple" aria-label="Formulario de acceso a MedSolution">
+        <div class="login-brand">
+          <img class="login-brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
+          <p class="login-brand__name">MedSolution</p>
+          <p class="login-brand__tagline">Sistema Médico Integral</p>
         </div>
 
-        <form class="login-form" data-login-form>
-          <div>
-            <span class="eyebrow">Bienvenido</span>
-            <h2>Ingresa a tu consultorio</h2>
-            <p>Administra tu operación médica diaria desde un panel claro y eficiente.</p>
+        <form class="login-form login-form--simple" data-login-form>
+          <div class="login-heading">
+            <h1>Iniciar sesión</h1>
+            <p>Accede a la plataforma de gestión médica.</p>
           </div>
 
           <label class="form-field">
-            <span>Correo o usuario</span>
-            <input type="text" name="username" placeholder="Correo en Supabase o usuario demo" autocomplete="username" required />
+            <span>Usuario</span>
+            <input type="text" name="username" autocomplete="username" required />
           </label>
 
           <label class="form-field">
             <span>Contraseña</span>
-            <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+            <input type="password" name="password" autocomplete="current-password" required />
           </label>
 
-          <div class="form-row">
+          <div class="login-options">
             <label class="check-field">
               <input type="checkbox" name="remember" />
               <span>Recordarme</span>
             </label>
-            <a href="#" class="text-link">Recuperar acceso</a>
           </div>
 
-          <button class="btn btn--primary btn--full" type="submit">Entrar al sistema</button>
-          <button class="btn btn--secondary btn--full" type="button" data-install-medsolution disabled>Instalar MedSolution</button>
-          <p class="form-note">Modo demo local: <strong>admin</strong> / admin123 · <strong>doctor</strong> / doctor123 · <strong>auxiliar</strong> / aux123</p>
+          <button class="btn btn--primary btn--full login-submit" type="submit">Ingresar</button>
+          <button class="btn btn--secondary btn--full login-install" type="button" data-install-medsolution disabled>Instalar MedSolution</button>
         </form>
       </section>
     </main>
