@@ -7,13 +7,16 @@
  * Password handling: passwords are stored as FNV-1a 32-bit hashes (not plaintext).
  * Este mecanismo conserva la compatibilidad con la instalación original.
  *
- * LocalStorage key used:
+ * SessionStorage key used:
  *   medsolution.authUser — active session (user object, NO password)
+ * LocalStorage preference key used:
+ *   medsolution.rememberedUsername — remembered username only (NO active session)
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTH_KEY = 'medsolution.authUser';
+const REMEMBERED_USER_KEY = 'medsolution.rememberedUsername';
 const USERS_KEY = 'medsolution.systemUsers';
 
 export const ROLES = Object.freeze({
@@ -99,18 +102,16 @@ export async function syncUsers() {
     const remote = await window.MedSolutionData?.getSystemUsers?.();
     if (Array.isArray(remote) && remote.length) {
       const localSession = sessionStorage.getItem(AUTH_KEY);
-      const persistentSession = localStorage.getItem(AUTH_KEY);
-      const cached = JSON.parse(localSession || persistentSession || 'null');
+      const cached = JSON.parse(localSession || 'null');
       localStorage.setItem(USERS_KEY, JSON.stringify(remote));
       const refreshed = remote.find((user) => user.role === cached?.role && user.active !== false);
-      if (refreshed) {
+      if (refreshed && localSession) {
         const payload = JSON.stringify({
           id: refreshed.id, username: refreshed.username, name: refreshed.name,
           role: refreshed.role, position: refreshed.position || '', initials: refreshed.initials,
           photoPath: refreshed.photoPath || '', photoUrl: refreshed.photoUrl || '',
         });
-        if (localSession) sessionStorage.setItem(AUTH_KEY, payload);
-        else if (persistentSession) localStorage.setItem(AUTH_KEY, payload);
+        sessionStorage.setItem(AUTH_KEY, payload);
       }
       return remote;
     }
@@ -123,16 +124,17 @@ export function getUsers() {
   return configuredUsers().map(({ passwordHash, ...user }) => ({ ...user }));
 }
 
-/** Devuelve el usuario de la sesión local activa o null. */
+/** Devuelve el usuario de la sesión activa de esta sesión del navegador o null. */
 export function getSession() {
   try {
-    const raw = sessionStorage.getItem(AUTH_KEY) || localStorage.getItem(AUTH_KEY);
+    // Invalida cualquier sesión persistente heredada de versiones anteriores.
+    localStorage.removeItem(AUTH_KEY);
+    const raw = sessionStorage.getItem(AUTH_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw);
     const user = configuredUsers().find((item) =>
       item.username === cached?.username && item.role === cached?.role && item.active !== false);
     if (!user) {
-      localStorage.removeItem(AUTH_KEY);
       sessionStorage.removeItem(AUTH_KEY);
       return null;
     }
@@ -146,13 +148,22 @@ export function getSession() {
   }
 }
 
+/** Devuelve únicamente el nombre de usuario recordado, nunca una sesión autenticada. */
+export function getRememberedUsername() {
+  try {
+    return localStorage.getItem(REMEMBERED_USER_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
 // ── Auth API ──────────────────────────────────────────────────────────────────
 
 /**
  * Authenticate with username + password.
  * @param {string} username
  * @param {string} password
- * @param {boolean} remember  Persist across browser sessions when true.
+ * @param {boolean} remember  Remember username only; never persist authentication.
  * @returns {object|null} Session user object, or null on failure.
  *
  */
@@ -177,14 +188,14 @@ export async function login(username, password, remember = false) {
   };
   const payload = JSON.stringify(session);
 
-  // Store in sessionStorage (tab-scoped) unless "remember me" is checked
-  if (remember) {
-    localStorage.setItem(AUTH_KEY, payload);
-    sessionStorage.removeItem(AUTH_KEY);
-  } else {
-    sessionStorage.setItem(AUTH_KEY, payload);
-    localStorage.removeItem(AUTH_KEY);
-  }
+  // La autenticación activa vive únicamente en sessionStorage.
+  sessionStorage.setItem(AUTH_KEY, payload);
+  localStorage.removeItem(AUTH_KEY);
+
+  // "Recordarme" conserva solo el nombre de usuario, nunca una sesión autenticada.
+  if (remember) localStorage.setItem(REMEMBERED_USER_KEY, user.username);
+  else localStorage.removeItem(REMEMBERED_USER_KEY);
+
   return session;
 }
 
@@ -217,7 +228,7 @@ export function can(feature) {
   return Boolean(allowed && allowed.includes(user.role));
 }
 
-// ── Route guard ───────────────────────────────────────────────────────────────
+// ── Route guard ────────────────────────────────────────────────────────────────
 
 /**
  * Call on every protected page. Redirects to login if unauthenticated,
