@@ -176,7 +176,15 @@ async function setupFunctionalDashboard(collection='all') {
     const scheduledContraceptiveToday=schedule.filter(item=>item.contraceptiveSchedule===true&&item.date===today&&!['Cancelada','Atendida'].includes(item.status)).length;
     const reminders=pending.length+contraceptiveDue+controlsDue+upcoming-Math.min(contraceptiveDue,scheduledContraceptiveToday);document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
     const notificationItems=[];
-    if(pending.length)notificationItems.push({icon:'🩺',title:'Pacientes pendientes',description:'Atenciones médicas por revisar',count:pending.length,href:'appointments.html'});
+    if(pending.length===1){
+      const attention=pending[0];
+      notificationItems.push({icon:'🩺',title:attention.patientName||'Paciente pendiente',description:`${attention.serviceType||'Atención médica'} · ${attention.status||'Pendiente'}`,count:1,href:`appointments.html?consultationId=${encodeURIComponent(attention.id)}`});
+    } else if(pending.length>1) {
+      pending
+        .slice()
+        .sort((a,b)=>String(b.createdAt||b.date||'').localeCompare(String(a.createdAt||a.date||'')))
+        .forEach(attention=>notificationItems.push({icon:'🩺',title:attention.patientName||'Paciente pendiente',description:`${attention.serviceType||'Atención médica'} · ${attention.status||'Pendiente'}`,count:1,href:`appointments.html?consultationId=${encodeURIComponent(attention.id)}`}));
+    }
     if(upcoming)notificationItems.push({icon:'◷',title:'Próximas citas de hoy',description:'Citas programadas aún pendientes',count:upcoming,href:'schedule.html'});
     if(contraceptiveDue)notificationItems.push({icon:'◉',title:'Anticonceptivos para hoy',description:'Aplicaciones con control programado',count:contraceptiveDue,href:'contraceptives.html'});
     if(controlsDue)notificationItems.push({icon:'↻',title:'Controles médicos para hoy',description:'Pacientes que deben volver a control',count:controlsDue,href:'medical-records.html'});
