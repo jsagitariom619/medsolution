@@ -658,7 +658,7 @@
   .dashboard-page .dashboard-grid--secondary { grid-template-columns: minmax(0, 1fr); }
 }
 
-@media (min-width: 901px) and (max-width: 1180px) {
+@media (min-width: 901px) and (max-width: 1440px) and (max-aspect-ratio: 3/2) {
   .dashboard-page .app-shell { grid-template-columns: 224px minmax(0, 1fr); min-height: 100dvh; }
   .dashboard-page .dashboard-sidebar {
     position: sticky;
