@@ -11,6 +11,17 @@ function closeDashboardMenus(except = '') {
   });
 }
 
+function setDashboardNavigation(open) {
+  const shell = document.body;
+  const trigger = document.querySelector('.menu-trigger');
+  const backdrop = document.querySelector('.sidebar-backdrop');
+  shell.classList.toggle('dashboard-nav-open', open);
+  trigger?.setAttribute('aria-expanded', String(open));
+  trigger?.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+  backdrop?.setAttribute('aria-hidden', String(!open));
+  if (open) closeDashboardMenus();
+}
+
 function toggleDashboardMenu(name) {
   const definitions={notifications:['dashboardNotificationsButton','dashboardNotificationsMenu'],user:['dashboardUserButton','dashboardUserMenu']};
   const [buttonId,menuId]=definitions[name]||[];
@@ -76,16 +87,27 @@ function openDashboardModule(target, pushState = true) {
 
 function setupDashboardShell() {
   const frame = document.getElementById('dashboardModuleFrame');
+  const navigation = document.getElementById('dashboardNavigation');
+  const navigationTrigger = document.querySelector('.menu-trigger');
+  const navigationBackdrop = document.querySelector('.sidebar-backdrop');
+  navigationTrigger?.addEventListener('click', () => {
+    setDashboardNavigation(!document.body.classList.contains('dashboard-nav-open'));
+  });
+  navigationBackdrop?.addEventListener('click', () => setDashboardNavigation(false));
+  window.matchMedia('(min-width: 901px)').addEventListener('change', (event) => {
+    if (event.matches) setDashboardNavigation(false);
+  });
   document.getElementById('dashboardNotificationsButton')?.addEventListener('click',event=>{event.stopPropagation();toggleDashboardMenu('notifications')});
   document.getElementById('dashboardUserButton')?.addEventListener('click',event=>{event.stopPropagation();toggleDashboardMenu('user')});
   document.addEventListener('click',event=>{if(!event.target.closest('.dashboard-menu-anchor'))closeDashboardMenus()});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeDashboardMenus();document.activeElement?.blur()}});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeDashboardMenus();setDashboardNavigation(false);document.activeElement?.blur()}});
   document.addEventListener('click', (event) => {
     const link = event.target.closest('a[href]');
     if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
     const raw = link.getAttribute('href');
     if (!raw || raw.startsWith('#')) return;
     const page = new URL(link.href, location.href).pathname.split('/').pop();
+    if (navigation?.contains(link)) setDashboardNavigation(false);
     if (page === 'dashboard.html') {
       event.preventDefault();
       closeDashboardMenus();

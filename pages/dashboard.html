@@ -19,7 +19,7 @@
   </head>
   <body class="app-body dashboard-page">
     <div class="app-shell">
-      <aside class="sidebar dashboard-sidebar" aria-label="Navegación principal">
+      <aside class="sidebar dashboard-sidebar" id="dashboardNavigation" aria-label="Navegación principal">
         <a class="brand brand--light dashboard-brand" href="dashboard.html">
           <span class="brand__text">MedSolution <small>Sistema Médico Integral</small></span>
         </a>
@@ -54,7 +54,7 @@
       </aside>
       <main class="main-area dashboard-main">
         <header class="topbar dashboard-topbar">
-          <button class="menu-trigger" type="button" aria-label="Abrir menú">☰</button>
+          <button class="menu-trigger" type="button" aria-label="Abrir menú" aria-controls="dashboardNavigation" aria-expanded="false">☰</button>
           <label class="search-box dashboard-search">
             <span>⌕</span>
             <input type="search" placeholder="Buscar paciente..." />
@@ -148,6 +148,7 @@
         <iframe class="dashboard-module-frame" id="dashboardModuleFrame" title="Módulo de MedSolution" hidden></iframe>
       </main>
     </div>
+    <button class="sidebar-backdrop" type="button" aria-label="Cerrar menú de navegación" aria-hidden="true" tabindex="-1"></button>
     <script src="../assets/vendor/supabase.js"></script>
     <script src="../assets/js/supabase-client.js"></script>
     <script src="../assets/js/avatar.js?v=20260807-avatar"></script>
