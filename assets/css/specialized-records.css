@@ -58,3 +58,30 @@
 .specialized-stats-dashboard .specialized-table th{color:#657d82;background:#f7faf9}
 .specialized-stats-dashboard .specialized-empty{color:#70878c}
 .specialized-statistics-table th{background:#f7faf9}
+
+
+/* Tablet/mobile refinements for specialized clinical records and statistics. */
+@media (min-width:641px) and (max-width:1180px){
+  .specialized-statistics-modal__window{width:min(96vw,1100px);max-height:94dvh}
+  .specialized-stats-head{grid-template-columns:minmax(160px,1.4fr) repeat(2,minmax(130px,1fr))}
+  .specialized-stats-head>div:nth-child(n+4){display:none}
+  .specialized-metric-strip{grid-template-columns:repeat(3,minmax(150px,1fr));overflow-x:auto}
+  .specialized-stat-chart-grid{grid-template-columns:1fr}
+  .specialized-stat-chart:last-child{grid-column:auto}
+  .specialized-chart-footer{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .specialized-stats-dashboard .specialized-followups{overflow-x:auto}
+}
+@media (max-width:640px){
+  .specialized-statistics-modal{padding:8px}
+  .specialized-statistics-modal__window{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:14px}
+  .specialized-statistics-modal__bar{padding:12px 14px}
+  .specialized-statistics-modal__bar h2{font-size:1rem}
+  .specialized-stats-head{grid-template-columns:1fr}
+  .specialized-stats-head>div{display:none!important}
+  .specialized-stats-head>.specialized-stats-head__title{display:block!important}
+  .specialized-metric-strip{display:flex;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:6px}
+  .specialized-metric{min-width:160px;scroll-snap-align:start}
+  .specialized-chart-footer{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .specialized-stats-dashboard .specialized-followups{overflow-x:auto}
+  .specialized-stats-dashboard .specialized-table{min-width:640px}
+}
