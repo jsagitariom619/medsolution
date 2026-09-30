@@ -625,6 +625,7 @@
 .dashboard-reminder>span { font-size:1.45rem; }
 .dashboard-reminder strong,.dashboard-reminder small { display:block; }
 .dashboard-reminder small { margin-top:4px;color:var(--aqua);font-weight:900; }
+.dashboard-page .sidebar-backdrop { display: none; }
 /* Alineación final del centro de trabajo. */
 .dashboard-page .dashboard-content { width: min(100%, 1600px); margin-inline: auto; }
 .dashboard-page .dashboard-stats { align-items: stretch; }
