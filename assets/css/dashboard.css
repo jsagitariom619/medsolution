@@ -682,3 +682,31 @@
 .dashboard-page .appointment-row .badge { justify-self: end; }
 .dashboard-page .recent-patients-head > *:last-child,
 .dashboard-page .recent-patient-row > *:last-child { justify-self: start; }
+
+
+/* Tablet/iPad navigation: compact two-column workspace; desktop remains unchanged. */
+@media (min-width:721px) and (max-width:1180px){
+  .dashboard-page .dashboard-sidebar{padding:22px 24px;border-radius:0 0 22px 22px}
+  .dashboard-page .dashboard-sidebar .sidebar__nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .dashboard-page .dashboard-sidebar .nav-link{min-height:48px;padding:10px 12px}
+  .dashboard-page .dashboard-content{padding:24px}
+  .dashboard-page .dashboard-topbar{padding:18px 24px}
+  .dashboard-page .dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-page .quick-actions-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dashboard-page .dashboard-notifications-menu{width:min(420px,calc(100vw - 48px))}
+}
+@media (max-width:820px){
+  .dashboard-page .dashboard-sidebar .sidebar__nav{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-page .dashboard-content,.dashboard-page .dashboard-topbar,.dashboard-page .dashboard-sidebar{padding:18px}
+  .dashboard-page .dashboard-topbar{gap:12px}
+  .dashboard-page .dashboard-notifications-menu{position:fixed;left:12px;right:12px;top:76px;width:auto;max-height:calc(100dvh - 96px);overflow:auto}
+  .dashboard-page .dashboard-month-bars{overflow-x:auto;grid-template-columns:repeat(6,minmax(72px,1fr));padding-bottom:8px}
+}
+@media (max-width:600px){
+  .dashboard-page .dashboard-sidebar .sidebar__nav{grid-template-columns:1fr 1fr}
+  .dashboard-page .dashboard-content,.dashboard-page .dashboard-topbar,.dashboard-page .dashboard-sidebar{padding:14px}
+  .dashboard-page .dashboard-stats{grid-template-columns:1fr}
+  .dashboard-page .quick-actions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-page .quick-action-card{min-width:0;padding:14px 10px}
+  .dashboard-page .dashboard-care-actions{display:grid;grid-template-columns:1fr;width:100%}
+}
