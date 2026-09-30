@@ -119,11 +119,13 @@
   .repeatable-row--medication { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
   .repeatable-row--medication .repeatable-remove { grid-column: -2 / -1; justify-self: end; }
 }
-@media (max-width: 820px) {
+@media (max-width: 560px) {
   .col-8, .col-6, .col-4, .col-3, .col-2 { grid-column: span 12; }
+  .document-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 820px) {
   .repeatable-row--diagnosis, .repeatable-row--medication, .repeatable-row--order { grid-template-columns: 1fr 1fr; }
   .repeatable-remove { justify-self: end; }
-  .document-grid { grid-template-columns: 1fr; }
   .consult-wizard-progress { display: flex; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
   .consult-wizard-progress__step { min-width: 135px; }
 }
