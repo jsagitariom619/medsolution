@@ -444,3 +444,85 @@ button, input { font: inherit; }
   .control-toolbar > *,
   .service-toolbar > * { width: 100%; max-width: none !important; }
 }
+
+
+/* Responsive workspace — tablet/iPad/mobile without altering desktop. */
+@media (min-width: 721px) and (max-width: 1180px) {
+  .module-content-view { padding: 22px 24px 34px !important; }
+  .stats-grid, .module-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .page-header { gap: 16px; }
+  .patients-toolbar,
+  .consult-toolbar,
+  .schedule-toolbar,
+  .control-toolbar,
+  .service-toolbar { flex-wrap: wrap; }
+  .patients-toolbar > *,
+  .consult-toolbar > *,
+  .schedule-toolbar > *,
+  .control-toolbar > *,
+  .service-toolbar > * { min-width: 180px; flex: 1 1 220px; }
+  .card { max-width: 100%; }
+}
+
+@media (max-width: 1180px) {
+  .patients-table,
+  .consult-table,
+  .schedule-table,
+  .control-table,
+  .nursing-table,
+  .specialized-table { min-width: 760px; }
+  .card:has(> .patients-table),
+  .card:has(> .consult-table),
+  .card:has(> .schedule-table),
+  .card:has(> .control-table),
+  .card:has(> .nursing-table),
+  .table-responsive,
+  .patients-table-wrap,
+  .consult-table-wrap,
+  .schedule-table-wrap,
+  .control-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .modal__panel,
+  .record-modal__panel,
+  .nursing-modal__content { max-width: calc(100vw - 32px); }
+}
+
+@media (max-width: 820px) {
+  html { -webkit-text-size-adjust: 100%; }
+  .module-content-view { padding: 18px !important; }
+  .page-header { align-items: stretch !important; gap: 14px; }
+  .page-header h1 { font-size: clamp(1.45rem,5vw,2rem); }
+  .page-header p { max-width: 100%; }
+  .btn,
+  .btn-action,
+  button,
+  input,
+  select,
+  textarea { touch-action: manipulation; }
+  .btn { min-height: 44px; }
+  .patients-table,
+  .consult-table,
+  .schedule-table,
+  .control-table,
+  .nursing-table,
+  .specialized-table { min-width: 700px; }
+}
+
+@media (max-width: 640px) {
+  .module-content-view { padding: 14px !important; }
+  .card { border-radius: 14px; }
+  .modal,
+  .record-modal { padding: 10px !important; }
+  .modal__panel,
+  .record-modal__panel,
+  .nursing-modal__content {
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+  .record-form-actions,
+  .nursing-form__actions { flex-wrap: wrap; }
+  .record-form-actions .btn,
+  .nursing-form__actions .btn { flex: 1 1 140px; }
+}
