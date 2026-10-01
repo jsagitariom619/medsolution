@@ -45,7 +45,7 @@
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     global.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      navigator.serviceWorker.register('/service-worker.js', { scope: '/', updateViaCache: 'none' })
         .catch((error) => console.error('[PWA] No se pudo registrar el service worker:', error));
     });
   }

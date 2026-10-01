@@ -1,8 +1,7 @@
-const CACHE_NAME = 'medsolution-pwa-v8';
+const CACHE_NAME = 'medsolution-pwa-v9';
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/manifest.json',
   '/assets/css/styles.css',
   '/assets/css/components.css',
   '/assets/css/dashboard.css',
@@ -33,6 +32,13 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
+  // Always fetch the install manifest fresh so a stale worker cache cannot
+  // influence orientation or other metadata during a later installation.
+  if (url.pathname === '/manifest.json') {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(
