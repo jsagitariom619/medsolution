@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medsolution-pwa-v9';
+const CACHE_NAME = 'medsolution-pwa-v10';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -11,7 +11,13 @@ const APP_SHELL = [
   '/assets/js/main.js',
   '/assets/js/auth.js',
   '/assets/js/pwa.js',
-  '/pages/dashboard.html'
+  '/pages/dashboard.html',
+  '/pages/reports.html',
+  '/assets/js/patient-movements.js',
+  '/assets/js/report-history.js',
+  '/assets/js/reports.js',
+  '/assets/data/report-history-2024.json',
+  '/assets/data/report-history-2025.json'
 ];
 
 self.addEventListener('install', (event) => {
