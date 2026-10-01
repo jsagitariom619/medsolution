@@ -1,52 +1,114 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Med Solution | Reportes</title><meta name="theme-color" content="#0F5F5C"/><link rel="manifest" href="../manifest.json"/><link rel="icon" href="../assets/icons/favicon.ico" sizes="any"/><link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/icon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/icon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/icon-180x180.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><link rel="stylesheet" href="../assets/css/styles.css"/>
-<style>
-.report-filters{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px}.report-filters label{display:grid;gap:6px;font-size:.78rem;font-weight:800;color:var(--gray-500);text-transform:uppercase}.report-filters select,.report-filters input{padding:11px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50)}
-.report-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}.report-summary article{padding:18px}.report-summary small{display:block;color:var(--gray-500);font-weight:700}.report-summary strong{display:block;margin-top:6px;color:var(--petroleum-dark);font-size:1.65rem}
-@media(max-width:760px){.report-filters,.report-summary{grid-template-columns:1fr}}
-.report-header-actions,.movement-quick-ranges{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.movement-report{margin-top:26px;padding:22px}.movement-report__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.movement-report__heading h2{margin:0;color:var(--petroleum-dark)}.movement-report__heading p{margin:5px 0 0;color:var(--gray-500)}.movement-quick-ranges{margin:12px 0}.movement-quick-ranges button{min-height:38px;padding:8px 12px;border:1px solid var(--gray-200);border-radius:10px;background:#fff;color:var(--petroleum-dark);font:inherit;font-weight:700;cursor:pointer}.movement-filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.movement-filters label{display:grid;gap:6px;min-width:0;color:var(--gray-500);font-size:.76rem;font-weight:800;text-transform:uppercase}.movement-filters input,.movement-filters select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:11px;background:var(--gray-50);color:var(--gray-800);font:inherit;text-transform:none}.movement-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.movement-summary article{padding:15px;border:1px solid var(--gray-100);border-radius:14px;background:#fff}.movement-summary small{display:block;color:var(--gray-500);font-weight:700}.movement-summary strong{display:block;margin-top:5px;color:var(--petroleum-dark);font-size:1.35rem}.movement-patient-summary{margin:12px 0;padding:16px;border:1px solid var(--gray-200);border-radius:14px;background:var(--gray-50)}.movement-patient-summary h3{margin:0 0 8px;color:var(--petroleum-dark)}.movement-patient-summary p{margin:4px 0}.movement-table-wrap{max-width:100%;overflow-x:auto;border:1px solid var(--gray-100);border-radius:12px;overscroll-behavior-inline:contain}.movement-table{width:100%;min-width:740px;border-collapse:collapse}.movement-table th,.movement-table td{padding:11px 12px;border-bottom:1px solid var(--gray-100);text-align:left;vertical-align:top}.movement-table th{background:var(--gray-50);color:var(--gray-500);font-size:.75rem;text-transform:uppercase;white-space:nowrap}.movement-report-total{margin-top:14px;text-align:right;color:var(--petroleum-dark);font-size:1.05rem;font-weight:900}.movement-report-note{margin-top:8px;color:var(--gray-500);font-size:.82rem}.movement-print-header{display:none}.movement-report__status{margin:8px 0;color:var(--gray-500);font-size:.88rem}
-@media(max-width:1050px){.movement-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.movement-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:680px){.movement-report{padding:16px}.movement-report__heading{display:block}.movement-report__heading .report-header-actions{margin-top:12px}.movement-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.movement-summary strong{font-size:1.15rem}.movement-quick-ranges button{flex:1 1 auto}}
-@media print{@page{margin:14mm}.body-print-movements *{visibility:hidden!important}.body-print-movements #patientMovementsReport,.body-print-movements #patientMovementsReport *{visibility:visible!important}.body-print-movements #patientMovementsReport{position:absolute;left:0;top:0;width:100%;margin:0;padding:0;border:0;box-shadow:none;background:#fff;color:#111}.body-print-movements #patientMovementsReport .no-print{display:none!important}.body-print-movements #patientMovementsReport .movement-print-header{display:block;margin:0 0 18px;padding-bottom:12px;border-bottom:2px solid #0f5f5c}.body-print-movements #patientMovementsReport .movement-print-header h1{margin:0;font-size:18pt}.body-print-movements #patientMovementsReport .movement-print-header p{margin:4px 0;font-size:10pt}.body-print-movements #patientMovementsReport .movement-summary{grid-template-columns:repeat(4,1fr)}.body-print-movements #patientMovementsReport .movement-summary article{padding:8px;border:1px solid #bbb}.body-print-movements #patientMovementsReport .movement-summary strong{font-size:12pt}.body-print-movements #patientMovementsReport .movement-table-wrap{overflow:visible;border:0}.body-print-movements #patientMovementsReport .movement-table{min-width:0;font-size:9pt}.body-print-movements #patientMovementsReport .movement-table th,.body-print-movements #patientMovementsReport .movement-table td{padding:6px;border:1px solid #bbb}.body-print-movements #patientMovementsReport .movement-patient-summary{break-inside:avoid}.body-print-movements #patientMovementsReport .movement-report-total{break-inside:avoid}}
-</style></head><body class="app-body">
-<section class="content module-content-view"><div class="page-header"><div><span class="eyebrow">Administración</span><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div><div class="report-header-actions"><a class="btn btn--secondary" href="#patientMovementsReport">Movimientos de pacientes</a><button class="btn btn--secondary" id="printReportBtn" type="button">Imprimir reporte</button></div></div>
-<article class="card" style="padding:22px"><div class="report-filters">
-<label>Servicio<select id="serviceFilter"><option value="">Todos</option></select></label>
-<label>Responsable<select id="responsibleFilter"><option value="">Todos</option></select></label>
-<label>Mes<select id="monthFilter"><option value="">Todos</option></select></label>
-<label>Año<select id="yearFilter"><option value="">Todos</option></select></label>
-</div></article>
-<div class="report-summary"><article class="card"><small>Atenciones</small><strong id="totalAttentions">0</strong></article><article class="card"><small>Total registrado</small><strong id="totalRevenue">0.00 Bs</strong></article><article class="card"><small>Ticket promedio</small><strong id="averageTicket">0.00 Bs</strong></article></div>
-<article class="card" style="padding:22px;overflow-x:auto"><table class="patients-table"><thead><tr><th>Fecha / Hora</th><th>Paciente</th><th>Servicio</th><th>Precio histórico</th><th>Responsable</th><th>Registrado por</th><th>Estado</th></tr></thead>
-<tbody id="reportTableBody"><tr><td colspan="7" class="patients-empty">Cargando atenciones…</td></tr></tbody></table></article>
-<section class="card movement-report" id="patientMovementsReport" aria-labelledby="patientMovementsTitle">
-  <header class="movement-report__heading">
-    <div><span class="eyebrow">Informe administrativo</span><h2 id="patientMovementsTitle">Movimientos de pacientes</h2><p>Atenciones y servicios registrados con su precio histórico.</p></div>
-    <div class="report-header-actions no-print"><button class="btn btn--primary" id="printMovementsBtn" type="button">Imprimir informe</button></div>
-  </header>
-  <div class="movement-print-header" id="movementPrintHeader" aria-hidden="true"></div>
-  <div class="movement-quick-ranges no-print" aria-label="Períodos rápidos">
-    <button type="button" data-movement-range="today">Hoy</button><button type="button" data-movement-range="this-month">Este mes</button><button type="button" data-movement-range="last-month">Mes anterior</button><button type="button" data-movement-range="this-year">Este año</button><button type="button" data-clear-movement-filters>Limpiar filtros</button>
-  </div>
-  <div class="movement-filters no-print">
-    <label>Fecha desde<input id="movementDateFrom" type="date" /></label>
-    <label>Fecha hasta<input id="movementDateTo" type="date" /></label>
-    <label>Paciente<select id="movementPatientFilter"><option value="">Todos los pacientes</option></select></label>
-    <label>Servicio<select id="movementServiceFilter"><option value="">Todos los servicios</option></select></label>
-    <label>Responsable<select id="movementResponsibleFilter"><option value="">Todos</option></select></label>
-    <label>Estado<select id="movementStatusFilter"><option value="">Todos</option></select></label>
-  </div>
-  <p id="movementReportStatus" class="movement-report__status" aria-live="polite"></p>
-  <div class="movement-summary" aria-label="Resumen de movimientos">
-    <article><small>Movimientos</small><strong id="movementCount">0</strong></article>
-    <article><small>Pacientes atendidos</small><strong id="movementPatientCount">0</strong></article>
-    <article><small>Servicios realizados</small><strong id="movementServiceCount">0</strong></article>
-    <article><small>Total servicios</small><strong id="movementCostTotal">0,00 Bs</strong></article>
-  </div>
-  <article id="movementPatientSummary" class="movement-patient-summary" hidden></article>
-  <div class="movement-table-wrap"><table class="movement-table"><thead id="movementTableHead"></thead><tbody id="movementTableBody"><tr><td>Cargando movimientos…</td></tr></tbody></table></div>
-  <p class="movement-report-note">Sólo los estados Atendida y Finalizada se suman al total; los demás movimientos se muestran sin suma económica.</p>
-  <footer class="movement-report-total" id="movementReportTotal">TOTAL DEL PERÍODO: 0,00 Bs</footer>
-</section></section>
-<script src="../assets/vendor/supabase.js"></script><script src="../assets/js/supabase-client.js"></script><script src="../assets/js/pwa.js"></script><script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script><script src="../assets/js/patient-movements.js"></script><script src="../assets/js/reports.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Med Solution | Reportes</title>
+  <meta name="theme-color" content="#0F5F5C" />
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/icons/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/icon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/icon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/icon-180x180.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <style>
+    .reports-page{--report-ink:#18343b;--report-muted:#687982;--report-line:#dfe7e9;--report-soft:#f3f7f8;--report-accent:#0f746d;color:var(--report-ink)}
+    .report-module-header{display:grid;grid-template-columns:minmax(270px,1fr) auto auto;align-items:center;gap:22px;margin-bottom:16px;padding:18px 20px;background:#fff;border:1px solid var(--gray-100);border-radius:16px}
+    .report-module-title{display:flex;align-items:center;gap:14px;min-width:0}.report-module-icon{display:grid;place-items:center;flex:0 0 48px;height:48px;border-radius:13px;background:#e6f5f2;color:var(--report-accent);font-size:1.4rem}.report-module-title h1{margin:0;color:var(--report-ink);font-size:1.35rem}.report-module-title p{margin:5px 0 0;color:var(--report-muted);font-size:.9rem}
+    .report-tabs{display:flex;align-self:stretch;align-items:stretch;gap:6px;border-bottom:1px solid var(--report-line)}.report-tab{position:relative;display:flex;align-items:center;gap:8px;padding:0 12px 10px;border:0;border-bottom:2px solid transparent;background:transparent;color:#566b72;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}.report-tab[aria-selected="true"]{border-bottom-color:#22a995;color:var(--report-accent)}.report-module-header>.btn{min-height:42px;white-space:nowrap}
+    .report-view[hidden]{display:none!important}.report-view{min-width:0}.report-controls{margin:0 0 14px;padding:14px 16px;background:#fff;border:1px solid var(--gray-100);border-radius:14px}.report-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.report-filters label,.movement-filters label{display:grid;gap:5px;min-width:0;color:#667a80;font-size:.72rem;font-weight:800;letter-spacing:.025em;text-transform:uppercase}.report-filters select,.report-filters input,.movement-filters select,.movement-filters input{width:100%;min-width:0;height:42px;padding:8px 11px;border:1px solid #d8e2e4;border-radius:9px;background:#fbfcfc;color:var(--report-ink);font:500 .88rem Inter,system-ui,sans-serif;text-transform:none}.report-filters select:focus,.report-filters input:focus,.movement-filters select:focus,.movement-filters input:focus{outline:2px solid #a8dcd5;outline-offset:1px}
+    .report-preview-stage{display:flex;justify-content:center;align-items:flex-start;min-height:calc(11in * .78);padding:8px 0 18px;background:#eef2f3;border-radius:14px;overflow:hidden}.report-document{box-sizing:border-box;flex:0 0 8.5in;width:8.5in;min-height:11in;margin:0 auto;padding:14mm;background:#fff;border:1px solid #e3e8e9;border-radius:3px;box-shadow:0 5px 18px rgba(29,55,61,.09);zoom:.78;color:#202f34;font-family:Inter,Arial,sans-serif}
+    .report-document__header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:14px;border-bottom:1px solid #cbd7d9}.report-document__brand{display:flex;align-items:center;gap:10px}.report-document__mark{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#e7f5f2;color:#138d80;font-size:1.25rem;font-weight:800}.report-document__brand-name{display:block;font-size:15px;font-weight:800;letter-spacing:-.02em}.report-document__brand-subtitle{display:block;margin-top:2px;color:#65777b;font-size:9px}.report-document__issued{text-align:right;color:#596b70;font-size:9px;line-height:1.5}.report-document__issued strong{display:block;color:#2b3f44;font-weight:700}.report-document__title{margin:14px 0 2px;font-size:19px;line-height:1.25}.report-document__description{margin:0 0 13px;color:#66787d;font-size:10px}.report-document__section-title{margin:13px 0 7px;font-size:10px;font-weight:800}
+    .document-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.document-summary--four{grid-template-columns:repeat(4,minmax(0,1fr))}.document-summary article{display:flex;align-items:center;gap:8px;min-width:0;padding:9px 10px;border:1px solid #e3e9ea;border-radius:8px;background:#f7f9fa}.document-summary__icon{display:grid;place-items:center;flex:0 0 27px;height:27px;border-radius:7px;background:#e5f4f1;color:#138d80;font-size:12px;font-weight:800}.document-summary small{display:block;color:#66777b;font-size:8px;line-height:1.3}.document-summary strong{display:block;margin-top:2px;color:#20363c;font-size:12px;line-height:1.15;overflow-wrap:anywhere}
+    .document-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0 0 11px;padding:9px 10px;border:1px solid #e5eaeb;border-radius:7px;background:#f6f8f9}.document-filters__item{min-width:0}.document-filters__item small{display:block;color:#728186;font-size:7.5px}.document-filters__item strong{display:block;margin-top:2px;color:#35484d;font-size:9px;font-weight:700;overflow-wrap:anywhere}.report-table-wrap{max-width:100%;overflow-x:auto}.report-document table{width:100%;border-collapse:collapse;table-layout:auto;font-size:8px}.report-document th,.report-document td{padding:5px 5px;border:1px solid #dfe5e6;text-align:left;vertical-align:top}.report-document th{background:#f1f4f5;color:#40545a;font-size:7.5px;font-weight:800;line-height:1.25}.report-document td{color:#34474c;line-height:1.3}.report-document td:first-child,.report-document th:first-child{text-align:center}.report-document .amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.report-document tfoot td{font-weight:800;background:#f7f9f9}.report-document__empty{text-align:center!important;color:#687982!important}
+    .document-footer{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:8px;border-top:1px solid #d7e0e1;color:#748287;font-size:8px}.report-applied-status{margin:0 0 9px;color:var(--report-muted);font-size:.82rem}.movement-report__heading{display:none}.movement-quick-ranges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 10px}.movement-quick-ranges button{min-height:34px;padding:6px 10px;border:1px solid #dce4e5;border-radius:8px;background:#fff;color:var(--report-ink);font:600 .78rem Inter,system-ui,sans-serif;cursor:pointer}.movement-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0}.movement-summary{display:none}.movement-patient-summary{margin:8px 0;padding:8px 10px;border:1px solid #e5eaeb;border-radius:7px;background:#f7f9fa;font-size:9px}.movement-patient-summary h3{margin:0 0 4px;font-size:10px}.movement-patient-summary p{margin:2px 0}.movement-table-wrap{max-width:100%;overflow-x:auto}.movement-table th,.movement-table td{padding:5px}.movement-report-note{margin:7px 0 0;color:#66777b;font-size:8px}.movement-report-total{margin-top:8px;text-align:right;color:#20363c;font-size:10px;font-weight:800}.movement-print-header{display:none}
+    @media(max-width:900px){.report-module-header{grid-template-columns:1fr auto;gap:12px}.report-tabs{grid-column:1/-1;grid-row:2;min-height:38px}.report-module-header>.btn{grid-column:2;grid-row:1}.report-filters,.movement-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.document-summary--four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.report-module-header{grid-template-columns:1fr;padding:14px}.report-module-header>.btn{grid-column:1;grid-row:3;justify-self:start}.report-tabs{grid-column:1;grid-row:2;overflow-x:auto}.report-tab{padding-inline:8px;font-size:.8rem}.report-module-title h1{font-size:1.12rem}.report-module-title p{font-size:.8rem}.report-filters,.movement-filters{grid-template-columns:1fr}.report-controls{padding:12px}.report-preview-stage{min-height:calc(11in * .48)}.report-document{zoom:.48}.document-summary,.document-summary--four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(min-width:1500px){.report-document{zoom:.82}.report-preview-stage{min-height:calc(11in * .82)}}
+    @media(max-width:850px) and (min-width:561px){.report-document{zoom:.62}.report-preview-stage{min-height:calc(11in * .62)}}
+    @media print{
+      @page{size:Letter portrait;margin:14mm}
+      html,body{width:auto!important;min-height:0!important;margin:0!important;padding:0!important;background:#fff!important}
+      .reports-page{width:100%!important;margin:0!important;padding:0!important;background:#fff!important}
+      body.print-attentions .report-module-header,body.print-attentions #attentionReportView>.report-controls,body.print-movements .report-module-header,body.print-movements #movementReportView>.movement-report>.report-controls{display:none!important}
+      body.print-attentions #movementReportView,body.print-movements #attentionReportView{display:none!important}
+      body.print-attentions #attentionPrintDocument,body.print-movements #movementPrintDocument{width:100%;min-height:0;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;zoom:1}
+      .report-preview-stage{display:block;min-height:0;padding:0;overflow:visible;background:#fff}
+      .report-document{flex:none;width:100%;min-height:0;padding:0;border:0;border-radius:0;box-shadow:none;zoom:1}
+      .report-document__header{break-inside:avoid}.document-summary,.document-filters{break-inside:avoid}.report-document table{font-size:8pt}.report-document th,.report-document td{padding:5pt}.report-document thead{display:table-header-group}.report-document tr{break-inside:avoid;page-break-inside:avoid}.document-footer{break-inside:avoid}.report-table-wrap,.movement-table-wrap{overflow:visible!important}.report-document .no-print{display:none!important}
+    }
+  </style>
+</head>
+<body class="app-body">
+  <main class="content module-content-view reports-page">
+    <header class="report-module-header">
+      <div class="report-module-title"><span class="report-module-icon" aria-hidden="true">▤</span><div><h1>Reportes de Atenciones</h1><p>Consulta la actividad y los ingresos históricos del consultorio.</p></div></div>
+      <nav class="report-tabs" role="tablist" aria-label="Informes">
+        <button class="report-tab" id="tabAttentions" type="button" role="tab" aria-selected="true" aria-controls="attentionReportView" data-report-view="attentions">▤ <span>Reportes de Atenciones</span></button>
+        <button class="report-tab" id="tabMovements" type="button" role="tab" aria-selected="false" aria-controls="movementReportView" data-report-view="movements">♧ <span>Movimientos de pacientes</span></button>
+      </nav>
+      <button class="btn btn--primary" id="printReportBtn" type="button">▧ &nbsp; Imprimir reporte</button>
+    </header>
+
+    <section id="attentionReportView" class="report-view" role="tabpanel" aria-labelledby="tabAttentions">
+      <article class="report-controls"><div class="report-filters">
+        <label>Servicio<select id="serviceFilter"><option value="">Todos</option></select></label>
+        <label>Responsable<select id="responsibleFilter"><option value="">Todos</option></select></label>
+        <label>Mes<select id="monthFilter"><option value="">Todos</option></select></label>
+        <label>Año<select id="yearFilter"><option value="">Todos</option></select></label>
+      </div></article>
+      <div class="report-preview-stage">
+        <article class="report-document" id="attentionPrintDocument" aria-label="Vista previa tamaño carta del reporte de atenciones">
+          <header class="report-document__header"><div class="report-document__brand"><span class="report-document__mark" aria-hidden="true">✚</span><div><strong class="report-document__brand-name">MedSolution</strong><span class="report-document__brand-subtitle">Sistema Médico Integral</span></div></div><div class="report-document__issued"><span>Fecha de emisión</span><strong id="reportIssuedAt">—</strong></div></header>
+          <h2 class="report-document__title">Reporte de Atenciones</h2><p class="report-document__description">Resumen de la actividad y los ingresos del consultorio.</p>
+          <div class="document-summary">
+            <article><span class="document-summary__icon" aria-hidden="true">♧</span><div><small>Atenciones</small><strong id="totalAttentions">0</strong></div></article>
+            <article><span class="document-summary__icon" aria-hidden="true">Bs</span><div><small>Total registrado</small><strong id="totalRevenue">0.00 Bs</strong></div></article>
+            <article><span class="document-summary__icon" aria-hidden="true">▥</span><div><small>Ticket promedio</small><strong id="averageTicket">0.00 Bs</strong></div></article>
+          </div>
+          <h3 class="report-document__section-title">Filtros aplicados</h3><div class="document-filters" id="reportAppliedFilters"></div>
+          <h3 class="report-document__section-title">Detalle de atenciones</h3>
+          <div class="report-table-wrap"><table><thead><tr><th>N.º</th><th>Fecha / hora</th><th>Paciente</th><th>Servicio</th><th>Responsable</th><th>Registrado por</th><th>Estado</th><th class="amount">Monto (Bs)</th></tr></thead><tbody id="reportTableBody"><tr><td colspan="8" class="report-document__empty">Cargando atenciones…</td></tr></tbody></table></div>
+          <footer class="document-footer"><span>MedSolution — Sistema Médico Integral</span><span>Reporte administrativo</span></footer>
+        </article>
+      </div>
+    </section>
+
+    <section id="movementReportView" class="report-view" role="tabpanel" aria-labelledby="tabMovements" hidden>
+      <section class="movement-report" id="patientMovementsReport">
+        <article class="report-controls">
+          <div class="movement-quick-ranges" aria-label="Períodos rápidos"><button type="button" data-movement-range="today">Hoy</button><button type="button" data-movement-range="this-month">Este mes</button><button type="button" data-movement-range="last-month">Mes anterior</button><button type="button" data-movement-range="this-year">Este año</button><button type="button" data-clear-movement-filters>Limpiar filtros</button></div>
+          <div class="movement-filters"><label>Fecha desde<input id="movementDateFrom" type="date" /></label><label>Fecha hasta<input id="movementDateTo" type="date" /></label><label>Paciente<select id="movementPatientFilter"><option value="">Todos los pacientes</option></select></label><label>Servicio<select id="movementServiceFilter"><option value="">Todos los servicios</option></select></label><label>Responsable<select id="movementResponsibleFilter"><option value="">Todos</option></select></label><label>Estado<select id="movementStatusFilter"><option value="">Todos</option></select></label></div>
+          <p id="movementReportStatus" class="report-applied-status" aria-live="polite"></p>
+        </article>
+        <div class="report-preview-stage"><article class="report-document" id="movementPrintDocument" aria-label="Vista previa tamaño carta del informe de movimientos">
+          <header class="report-document__header"><div class="report-document__brand"><span class="report-document__mark" aria-hidden="true">✚</span><div><strong class="report-document__brand-name">MedSolution</strong><span class="report-document__brand-subtitle">Sistema Médico Integral</span></div></div><div class="report-document__issued"><span>Fecha de emisión</span><strong id="movementIssuedAt">—</strong></div></header>
+          <h2 class="report-document__title">Movimientos de Pacientes</h2><p class="report-document__description">Resumen de los servicios registrados para los pacientes.</p>
+          <div class="document-summary document-summary--four">
+            <article><span class="document-summary__icon" aria-hidden="true">↕</span><div><small>Movimientos</small><strong id="movementCount">0</strong></div></article>
+            <article><span class="document-summary__icon" aria-hidden="true">♧</span><div><small>Pacientes atendidos</small><strong id="movementPatientCount">0</strong></div></article>
+            <article><span class="document-summary__icon" aria-hidden="true">▤</span><div><small>Servicios realizados</small><strong id="movementServiceCount">0</strong></div></article>
+            <article><span class="document-summary__icon" aria-hidden="true">Bs</span><div><small>Total servicios</small><strong id="movementCostTotal">0,00 Bs</strong></div></article>
+          </div>
+          <article id="movementPatientSummary" class="movement-patient-summary" hidden></article>
+          <h3 class="report-document__section-title">Filtros aplicados</h3><div class="document-filters" id="movementAppliedFilters"></div>
+          <h3 class="report-document__section-title">Detalle de movimientos</h3>
+          <div class="movement-table-wrap"><table class="movement-table"><thead id="movementTableHead"></thead><tbody id="movementTableBody"><tr><td>Cargando movimientos…</td></tr></tbody></table></div>
+          <p class="movement-report-note">Sólo los estados Atendida y Finalizada se suman al total; los demás movimientos se muestran sin suma económica.</p>
+          <footer class="movement-report-total" id="movementReportTotal">TOTAL DEL PERÍODO: 0,00 Bs</footer>
+          <footer class="document-footer"><span>MedSolution — Sistema Médico Integral</span><span>Reporte administrativo</span></footer>
+        </article></div>
+      </section>
+    </section>
+  </main>
+  <script src="../assets/vendor/supabase.js"></script>
+  <script src="../assets/js/supabase-client.js"></script>
+  <script src="../assets/js/pwa.js"></script>
+  <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
+  <script src="../assets/js/patient-movements.js"></script>
+  <script src="../assets/js/reports.js"></script>
+</body>
+</html>
