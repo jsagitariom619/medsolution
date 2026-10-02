@@ -28,7 +28,6 @@
           responsible: String(item.procedureResponsible || '').trim(),
           status: String(item.status || '').trim(),
           costCents: Number.isFinite(price) && price >= 0 ? Math.round(price * 100) : 0,
-          source: String(item.source || 'production'),
         };
       });
   }
