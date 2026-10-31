@@ -3,8 +3,21 @@ name: MedSolution manual encrypted backup
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Run the connection-only preflight first. A backup requires explicit destination confirmation.
+        required: true
+        type: choice
+        options:
+          - preflight
+          - backup
+        default: preflight
       store_encrypted_artifact:
-        description: Store the encrypted result as a one-day Actions artifact (may consume plan storage quota).
+        description: Required for backup. Store the encrypted result as a one-day Actions artifact (may consume plan storage quota).
+        required: true
+        type: boolean
+        default: false
+      recoverable_destination_confirmed:
+        description: Required for backup. Confirm you checked artifact quota/access and are ready to download and preserve the encrypted file before it expires.
         required: true
         type: boolean
         default: false
@@ -30,7 +43,7 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Install PostgreSQL 17 tools and age
+      - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
           sudo install -d -m 0755 /usr/share/postgresql-common/pgdg
@@ -39,23 +52,35 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends age ca-certificates curl postgresql-client-17
+          sudo apt-get install -y --no-install-recommends ca-certificates curl postgresql-client-17
 
-      - name: Install pinned Supabase CLI and verify checksum
+      - name: Verify PostgreSQL client version
         run: |
           set -euo pipefail
-          version='2.122.0'
-          expected='59ed066847b98d7461c60e9109d40cab6b9756177ce06ebb05b51338519f5136'
-          archive="$RUNNER_TEMP/supabase.tar.gz"
-          curl --fail --silent --show-error --location \
-            "https://github.com/supabase/cli/releases/download/v${version}/supabase_linux_amd64.tar.gz" \
-            --output "$archive"
-          echo "$expected  $archive" | sha256sum --check --status
-          tar -xzf "$archive" -C "$RUNNER_TEMP" supabase
-          "$RUNNER_TEMP/supabase" --version
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          pg_dump --version
+          psql --version
+          [[ "$(pg_dump --version | sed -E 's/.* ([0-9]+)\..*/\1/')" == '17' ]]
+
+      - name: Preflight PostgreSQL connection and read-only export permissions
+        env:
+          SUPABASE_DB_URL_RO: ${{ secrets.MEDSOLUTION_DB_URL_RO }}
+        run: bash scripts/backup/export.sh --preflight
+
+      - name: Require a recoverable destination for full backup
+        if: ${{ inputs.operation == 'backup' }}
+        run: |
+          set -euo pipefail
+          if [[ '${{ inputs.store_encrypted_artifact }}' != 'true' || '${{ inputs.recoverable_destination_confirmed }}' != 'true' ]]; then
+            echo 'Backup stopped: confirm artifact quota/access and a ready download-and-preservation destination, and enable encrypted artifact storage.' >&2
+            exit 2
+          fi
+
+      - name: Install age for encrypted backup
+        if: ${{ inputs.operation == 'backup' }}
+        run: sudo apt-get install -y --no-install-recommends age
 
       - name: Export read-only database and Storage objects
+        if: ${{ inputs.operation == 'backup' }}
         env:
           SUPABASE_DB_URL_RO: ${{ secrets.MEDSOLUTION_DB_URL_RO }}
           SUPABASE_URL: ${{ secrets.MEDSOLUTION_SUPABASE_URL }}
@@ -63,6 +88,7 @@ jobs:
         run: bash scripts/backup/export.sh "$RUNNER_TEMP/medsolution-backup"
 
       - name: Encrypt before creating any artifact
+        if: ${{ inputs.operation == 'backup' }}
         id: encrypt
         env:
           AGE_RECIPIENT: ${{ secrets.MEDSOLUTION_BACKUP_AGE_RECIPIENT }}
@@ -80,7 +106,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/medsolution-backup"
 
       - name: Upload encrypted artifact (opt-in; 1 day)
-        if: ${{ inputs.store_encrypted_artifact }}
+        if: ${{ inputs.operation == 'backup' && inputs.store_encrypted_artifact }}
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v4.6.2
         with:
           name: medsolution-encrypted-${{ github.run_id }}-${{ github.run_attempt }}
@@ -91,10 +117,10 @@ jobs:
           retention-days: 1
           compression-level: 0
 
-      - name: Report artifact intentionally not stored
-        if: ${{ !inputs.store_encrypted_artifact }}
-        run: echo 'Encrypted backup was created on the ephemeral runner and will be discarded. No artifact was uploaded.'
+      - name: Report preflight result
+        if: ${{ inputs.operation == 'preflight' }}
+        run: echo 'Connection-only preflight completed. No clinical rows or Storage objects were exported.'
 
       - name: Remove encrypted temporary files
-        if: always()
+        if: ${{ always() && inputs.operation == 'backup' }}
         run: rm -rf "$RUNNER_TEMP/medsolution-backup" "$RUNNER_TEMP"/medsolution-backup-*.tar.gz "$RUNNER_TEMP"/medsolution-backup-*.tar.gz.age "$RUNNER_TEMP"/medsolution-backup-*.tar.gz.age.sha256
