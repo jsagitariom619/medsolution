@@ -10,13 +10,24 @@ Una ejecución `backup` vuelve a realizar el mismo preflight antes de exportar. 
 
 El paquete se comprime y cifra con `age` antes de subirlo. Se calcula SHA-256 del ciphertext y, dentro del paquete, de cada archivo. El artifact está configurado para vencer en un día. No hay subida automática fuera de la operación manual ni artifact en modo `preflight`.
 
-## Conexión y permisos que requieren verificación
+## Membresía `pg_monitor` y decisión de seguridad
 
-En la inspección de solo lectura del proyecto se observó que `supabase_read_only_user` puede iniciar sesión, tiene `BYPASSRLS`, `pg_read_all_data` y `pg_monitor`, está configurado con `default_transaction_read_only=on`, no es superusuario ni puede crear roles o bases, y no tiene privilegios de escritura en relaciones de `public`, `auth` o `storage`. La conexión por el Session Pooler todavía no se ha probado porque la URI real de **Connect** y su contraseña no están configuradas. El workflow preflight debe verificar la URI real y el acceso a metadatos del esquema antes de permitir exportación.
+Supabase registra `supabase_admin` como grantor de la membresía `pg_monitor` de `supabase_read_only_user`; la membresía tiene `admin_option=false`, `inherit_option=true` y `set_option=true`. La documentación oficial confirma que el rol `postgres` del cliente no puede revocar membresías concedidas por `supabase_admin`; no se debe intentar `REVOKE`, recrear el usuario ni modificar sus opciones para sortearlo. No se ejecutaron escrituras en producción. La vía sin cambios productivos es admitir explícitamente esta membresía durante el preflight.
 
-`pg_monitor` es una membresía de lectura adicional que no se necesita para `pg_dump`; el preflight la rechaza junto con cualquier membresía distinta de `pg_read_all_data`. No se revoca aquí porque sería un cambio de permisos productivo no autorizado. Para que el preflight pase, la persona propietaria deberá gestionar esa corrección mediante el proceso de cambios de Supabase y volver a ejecutar solo `preflight`. La contraseña nunca debe enviarse por chat.
+`pg_monitor` no concede `INSERT`, `UPDATE`, `DELETE`, creación de esquemas/bases/roles ni administración de otros roles. Añade lectura de configuración y estadísticas de todas las sesiones, y permite funciones de análisis que pueden tomar bloqueos `ACCESS SHARE`. El acceso a estadísticas puede mostrar actividad y consultas en curso; ese es un acceso adicional que debe quedar documentado como excepción, aunque la cuenta ya necesita leer todo el contenido clínico para generar el dump.
 
-El rol requiere `BYPASSRLS` para que `pg_dump` pueda leer de forma consistente tablas protegidas por RLS; ese atributo solo permite eludir RLS y no concede por sí solo permisos de escritura. La cuenta actualmente tiene una configuración por defecto de solo lectura. La conexión pooler y los permisos se validan en el propio workflow antes de leer registros clínicos.
+La inspección de solo lectura observó también:
+
+- `BYPASSRLS=true`, necesario para que `pg_dump` incluya todas las filas de tablas protegidas por RLS.
+- Membresías heredadas en `pg_read_all_data` y `pg_monitor`; ninguna con `ADMIN OPTION`. Puede hacer `SET ROLE` únicamente a esas funciones de lectura/monitoreo entre las funciones privilegiadas comprobadas; no puede asumir `postgres`, `supabase_admin`, `service_role` ni roles de escritura/operación del servidor.
+- Sin atributos `SUPERUSER`, `CREATEDB`, `CREATEROLE` o `REPLICATION`; sin `CREATE` de base/esquema ni DML en las 64 relaciones de aplicación inspeccionadas; sí tiene `SELECT` y `USAGE` en todos sus esquemas de aplicación.
+- `default_transaction_read_only=on`; cero objetos grandes y extensión `pg_net` ausente. No se hallaron funciones `SECURITY DEFINER` ejecutables por este rol en esquemas de aplicación.
+
+El preflight deja de rechazar únicamente la presencia de `pg_monitor`. En su lugar comprueba atributos administrativos, `ADMIN OPTION`, capacidad efectiva de asumir roles privilegiados, CREATE/DML, SELECT/USAGE necesarios, objetos grandes, `pg_net` y funciones `SECURITY DEFINER` ejecutables. Solo admite membresías en `pg_read_all_data` y `pg_monitor`; cualquier otra membresía inesperada detiene el flujo. `pg_dump --schema-only` sigue validando el acceso al esquema sin leer filas clínicas.
+
+**Límite de solo lectura:** `default_transaction_read_only=on` es un valor predeterminado, no una barrera inmutable. El rol puede cambiarlo en su sesión, y PostgreSQL concede a `PUBLIC` ejecución de funciones como `lo_create`/`lo_put`; la inspección encontró esas funciones ejecutables, aunque hoy no hay objetos grandes. El preflight bloquea si ya existen objetos grandes o si se instala `pg_net`/se vuelve ejecutable una función `SECURITY DEFINER` de aplicación. No demuestra que un proceso comprometido no pueda usar otros efectos laterales de funciones. La excepción se justifica solo para el workflow manual, con secretos en pasos acotados, runner efímero, sin `set -x`, errores SQL suprimidos, y código bajo el control del propietario. El workflow no consulta estadísticas ni ejecuta funciones de monitoreo. Si ese riesgo residual no es aceptable, no ejecutar el preflight ni respaldar con este rol; retirar la membresía requiere una intervención soportada por Supabase, no un `REVOKE` desde `postgres`.
+
+El rol requiere `BYPASSRLS` para la integridad de un dump completo; por sí solo no otorga escritura. La conexión por Session Pooler aún no se probó: no se han configurado los secretos y no se ejecutará el workflow hasta que el propietario lo autorice.
 
 ## Secretos de GitHub
 
@@ -45,4 +56,4 @@ Los metadatos de roles no incluyen credenciales ni hashes; restablecer contrase�
 
 ## Estado
 
-No se ha ejecutado el workflow, no se ha autenticado aún por Session Pooler, no se han exportado filas productivas ni Storage, y no se ha producido artifact ni restauración. El artifact/retención no se ha comprobado; la primera ejecución completa queda condicionada a comprobarlo en GitHub y preparar la descarga externa. Este cambio modifica solamente el workflow, el exportador y esta guía; no modifica Supabase, Vercel ni la autenticación de la aplicación.
+No se ha ejecutado el workflow, no se ha autenticado aún por Session Pooler, no se han exportado filas productivas ni Storage, y no se ha producido artifact ni restauración. El artifact/retención no se ha comprobado; la primera ejecución completa queda condicionada a comprobarlo en GitHub y preparar la descarga externa. La membresía `pg_monitor` permanece intacta. Este cambio local modifica solamente el exportador y esta guía; no modifica Supabase, el workflow publicado, Vercel ni la autenticación de la aplicación.

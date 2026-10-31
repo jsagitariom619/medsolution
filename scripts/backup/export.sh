@@ -89,7 +89,7 @@ PGDATABASE='postgres'
 PGSSLMODE='require'
 PGCONNECT_TIMEOUT='15'
 
-# Query only role/catalog metadata. This does not read clinical table rows.
+# Query only role/catalog metadata and effective ACLs. This does not read clinical table rows.
 preflight_sql="
 WITH role_check AS (
   SELECT r.oid, r.rolsuper, r.rolcreatedb, r.rolcreaterole, r.rolreplication,
@@ -98,16 +98,32 @@ WITH role_check AS (
 ), checks AS (
   SELECT
     current_user = '${EXPECTED_ROLE}' AS expected_identity,
-    (SELECT rolbypassrls FROM role_check) AS bypass_rls,
-    (SELECT NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication FROM role_check) AS least_privilege_flags,
-    COALESCE((SELECT 'default_transaction_read_only=on' = ANY(rolconfig) FROM role_check), false) AS read_only_default,
+    COALESCE((SELECT rolbypassrls FROM role_check), false) AS bypass_rls,
+    COALESCE((SELECT NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication FROM role_check), false) AS no_admin_attributes,
+    COALESCE((SELECT 'default_transaction_read_only=on' = ANY(rolconfig) FROM role_check), false)
+      AND current_setting('transaction_read_only') = 'on' AS read_only_session,
     EXISTS (
       SELECT 1 FROM pg_auth_members m JOIN pg_roles granted ON granted.oid = m.roleid
       WHERE m.member = (SELECT oid FROM role_check) AND granted.rolname = 'pg_read_all_data'
     ) AND NOT EXISTS (
       SELECT 1 FROM pg_auth_members m JOIN pg_roles granted ON granted.oid = m.roleid
-      WHERE m.member = (SELECT oid FROM role_check) AND granted.rolname <> 'pg_read_all_data'
-    ) AS only_required_read_role,
+      WHERE m.member = (SELECT oid FROM role_check)
+        AND granted.rolname NOT IN ('pg_read_all_data', 'pg_monitor')
+    ) AS memberships_within_allowlist,
+    NOT EXISTS (
+      SELECT 1 FROM pg_auth_members m
+      WHERE m.member = (SELECT oid FROM role_check) AND m.admin_option
+    ) AS no_membership_admin_option,
+    NOT EXISTS (
+      SELECT 1 FROM pg_roles target
+      WHERE target.rolname <> current_user
+        AND (target.rolsuper OR target.rolcreatedb OR target.rolcreaterole OR target.rolreplication
+          OR target.rolname IN ('pg_write_all_data', 'pg_read_server_files', 'pg_write_server_files',
+            'pg_execute_server_program', 'pg_signal_backend', 'pg_checkpoint', 'pg_maintain',
+            'supabase_admin', 'service_role'))
+        AND pg_has_role(current_user, target.oid, 'SET')
+    ) AS cannot_set_privileged_role,
+    NOT has_database_privilege(current_user, current_database(), 'CREATE') AS no_database_schema_create,
     NOT EXISTS (
       SELECT 1 FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -118,22 +134,45 @@ WITH role_check AS (
           OR has_table_privilege(current_user, c.oid, 'DELETE')
           OR has_table_privilege(current_user, c.oid, 'TRUNCATE'))
     ) AS no_relation_writes,
+    COALESCE((
+      SELECT bool_and(has_table_privilege(current_user, c.oid, 'SELECT'))
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE c.relkind IN ('r','p','v','m','f','S')
+        AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    ), false) AS select_all_application_relations,
+    COALESCE((
+      SELECT bool_and(has_schema_privilege(current_user, n.oid, 'USAGE'))
+      FROM pg_namespace n
+      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    ), false) AS usage_all_application_schemas,
     NOT EXISTS (
       SELECT 1 FROM pg_namespace n
       WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
         AND has_schema_privilege(current_user, n.oid, 'CREATE')
     ) AS no_schema_create,
-    (SELECT count(*) = 0 FROM pg_largeobject_metadata) AS no_unreadable_large_objects
+    has_database_privilege(current_user, current_database(), 'TEMP') AS temporary_object_privilege,
+    (SELECT count(*) = 0 FROM pg_largeobject_metadata) AS no_large_objects,
+    NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net') AS no_pg_net_side_effect_surface,
+    NOT EXISTS (
+      SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+        AND p.prosecdef AND has_function_privilege(current_user, p.oid, 'EXECUTE')
+    ) AS no_executable_application_definers
 )
-SELECT CASE WHEN bool_and(v) THEN 'ok' ELSE 'fail' END
-FROM checks CROSS JOIN LATERAL (VALUES
-  (expected_identity), (bypass_rls), (least_privilege_flags),
-  (read_only_default), (only_required_read_role), (no_relation_writes), (no_schema_create),
-  (no_unreadable_large_objects)
-) AS requirements(v);
+SELECT CASE WHEN bool_and(requirements.v) THEN 'ok' ELSE 'fail' END
+       || '|temp=' || checks.temporary_object_privilege::text
+FROM checks
+CROSS JOIN LATERAL (VALUES
+  (expected_identity), (bypass_rls), (no_admin_attributes), (read_only_session),
+  (memberships_within_allowlist), (no_membership_admin_option), (cannot_set_privileged_role),
+  (no_database_schema_create), (no_relation_writes), (select_all_application_relations),
+  (usage_all_application_schemas), (no_schema_create), (no_large_objects),
+  (no_pg_net_side_effect_surface), (no_executable_application_definers)
+) AS requirements(v)
+GROUP BY checks.temporary_object_privilege;
 "
-if ! result="$(psql -X -w -v ON_ERROR_STOP=1 -Atqc "$preflight_sql" 2>"$error_file")" || [[ "$result" != 'ok' ]]; then
-  echo 'Database preflight failed: connection, identity, read-only privileges, RLS bypass, or large-object access could not be verified.' >&2
+if ! result="$(psql -X -w -v ON_ERROR_STOP=1 -Atqc "$preflight_sql" 2>"$error_file")" || [[ "$result" != 'ok|temp=true' && "$result" != 'ok|temp=false' ]]; then
+  echo 'Database preflight failed: identity, read/write/admin privileges, or full-dump prerequisites could not be verified.' >&2
   exit 1
 fi
 
@@ -148,7 +187,10 @@ fi
 rm -f "$schema_probe"
 
 if [[ "$MODE" == 'preflight' ]]; then
-  echo 'Session Pooler authentication, read-only role checks, and schema-only export access verified; no clinical rows were exported.'
+  echo 'Session Pooler authentication and effective export privileges verified; the documented pg_monitor exception is allowed. No clinical rows were exported.'
+  if [[ "$result" == 'ok|temp=true' ]]; then
+    echo 'The inherited TEMP privilege can create session-local temporary objects; database/schema CREATE and persistent relation writes are denied.'
+  fi
   exit 0
 fi
 
