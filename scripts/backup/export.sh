@@ -34,7 +34,7 @@ cleanup() {
   rm -f "$pgpass_file" "$error_file"
 }
 trap cleanup EXIT
-if ! python3 - "$pgpass_file" "$EXPECTED_ROLE" <<'PY' 2>/dev/null
+if ! connection_metadata="$(python3 - "$pgpass_file" "$EXPECTED_ROLE" <<'PY' 2>/dev/null
 import sys
 import os
 from urllib.parse import unquote, urlsplit, parse_qs
@@ -60,6 +60,9 @@ if username != expected_user or database != 'postgres' or not password:
     sys.exit(1)
 if query.get('sslmode', ['require'])[0] not in ('require', 'verify-ca', 'verify-full'):
     sys.exit(1)
+options = query.get('options', [])
+if len(options) > 1 or (options and options[0] != '-c jit=on'):
+    sys.exit(1)
 if any(ord(char) < 32 or ord(char) == 127 for char in password):
     sys.exit(1)
 
@@ -68,26 +71,33 @@ def pgpass_escape(value):
 
 with open(passfile, 'w', encoding='utf-8') as f:
     f.write(':'.join(map(pgpass_escape, (host, str(port), database, username, password))) + '\n')
+print(host)
+print('jit' if options else 'password')
 PY
-then
+ )"; then
   echo 'Connection secret must be the project Session Pooler URI from Dashboard → Connect: custom role, port 5432, TLS enabled.' >&2
   exit 2
 fi
+connection_host="${connection_metadata%%$'\n'*}"
+auth_mode="${connection_metadata#*$'\n'}"
+unset connection_metadata
+unset SUPABASE_DB_URL_RO
 
 export PGPASSFILE="$pgpass_file"
 export PGHOST PGPORT PGUSER PGDATABASE PGSSLMODE PGCONNECT_TIMEOUT
-PGHOST="$(python3 - <<'PY' 2>/dev/null
-from urllib.parse import urlsplit
-import sys
-import os
-print(urlsplit(os.environ.get('SUPABASE_DB_URL_RO', '')).hostname or '')
-PY
-)"
+PGHOST="$connection_host"
+unset connection_host
 PGPORT='5432'
 PGUSER="$EXPECTED_ROLE"
 PGDATABASE='postgres'
 PGSSLMODE='require'
 PGCONNECT_TIMEOUT='15'
+unset PGOPTIONS
+if [[ "$auth_mode" == 'jit' ]]; then
+  # libpq sends this as the connection startup option required by Supabase
+  # Temporary Access on the shared Session Pooler. The token remains in PGPASSFILE.
+  export PGOPTIONS='-c jit=on'
+fi
 
 # Query only role/catalog metadata and effective ACLs. This does not read clinical table rows.
 preflight_sql="
