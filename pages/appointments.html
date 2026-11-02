@@ -214,32 +214,39 @@
               <input type="number" name="spo2" placeholder="Ej. 98" min="50" max="100" />
             </label>
 
-            <!-- Consulta clínica -->
-            <span class="section-label">Consulta clínica</span>
-            <label class="form-field full-width"><span>Motivo de consulta *</span><input type="text" name="chiefComplaint" placeholder="Motivo de consulta…" /></label>
-            <label class="form-field full-width"><span>Enfermedad actual *</span><textarea name="evolution" rows="3" placeholder="Evolución y enfermedad actual…"></textarea></label>
-            <label class="form-field full-width"><span>Antecedentes *</span><textarea name="clinicalAntecedents" rows="3" placeholder="Antecedentes relevantes para la consulta…"></textarea></label>
+            <!-- SOAP compacto: un solo espacio para cada dimensión clínica. -->
+            <span class="section-label">Evolución clínica · SOAP</span>
+            <p class="full-width" style="margin:0;color:var(--gray-500);font-size:.85rem">Registra únicamente la información pertinente. Los cuatro apartados son opcionales.</p>
+            <label class="form-field full-width">
+              <span>S · Motivo de consulta y enfermedad actual</span>
+              <textarea name="chiefComplaint" rows="3" placeholder="Motivo, síntomas, evolución y relato del paciente…"></textarea>
+            </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-physical-exam">
-              <span>Examen físico *</span>
-              <textarea name="physicalExam" rows="3" placeholder="Hallazgos al examen físico…"></textarea>
+              <span>O · Examen físico y hallazgos</span>
+              <textarea name="physicalExam" rows="2" placeholder="Exploración y hallazgos objetivos, cuando corresponda…"></textarea>
             </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-diagnosis">
-              <span>Diagnóstico *</span>
-              <input type="text" name="diagnosis" placeholder="Ej. Hipertensión arterial, CIE-10 I10" />
+              <span>A · Diagnóstico o impresión clínica</span>
+              <textarea name="diagnosis" rows="2" placeholder="Diagnóstico confirmado, probable o impresión clínica…"></textarea>
             </label>
             <label class="form-field full-width" data-role-feature="appointments.edit-treatment">
-              <span>Tratamiento *</span>
-              <textarea name="treatment" rows="3" placeholder="Plan terapéutico…"></textarea>
+              <span>P · Tratamiento e indicaciones</span>
+              <textarea name="treatment" rows="3" placeholder="Conducta, tratamiento, recomendaciones y seguimiento, si corresponde…"></textarea>
             </label>
-            <label class="form-field full-width"><span>Medicamentos</span><textarea name="medications" rows="3" placeholder="Medicamentos, dosis, vía y duración…"></textarea></label>
-            <label class="form-field full-width"><span>Procedimientos</span><textarea name="procedures" rows="3" placeholder="Procedimientos realizados durante la consulta…"></textarea></label>
-            <label class="form-field full-width"><span>Receta</span><textarea name="prescription" rows="3" placeholder="Medicamentos, dosis, vía y duración…"></textarea></label>
-            <label class="form-field full-width"><span>Indicaciones *</span><textarea name="indications" rows="2" placeholder="Cuidados e indicaciones para el paciente…"></textarea></label>
-            <label class="form-field"><span>Próximo control</span><input type="date" name="nextControl" /></label>
-            <label class="form-field full-width">
-              <span>Observaciones</span>
-              <textarea name="observations" rows="2" placeholder="Notas adicionales…"></textarea>
-            </label>
+            <!-- Mantener los campos legados para no perder su contenido en ediciones. -->
+            <input type="hidden" name="evolution" />
+            <input type="hidden" name="indications" />
+            <details class="full-width" style="border:1px solid var(--gray-200);border-radius:12px;padding:12px 14px">
+              <summary style="cursor:pointer;color:var(--petroleum);font-weight:700">Más datos clínicos (opcionales)</summary>
+              <div class="consult-form-grid" style="padding-top:14px">
+                <label class="form-field full-width"><span>Antecedentes relevantes</span><textarea name="clinicalAntecedents" rows="2" placeholder="Si son pertinentes para esta consulta…"></textarea></label>
+                <label class="form-field full-width"><span>Medicamentos</span><textarea name="medications" rows="2" placeholder="Medicamentos, dosis, vía y duración, si corresponde…"></textarea></label>
+                <label class="form-field full-width"><span>Procedimientos</span><textarea name="procedures" rows="2" placeholder="Procedimientos realizados, si corresponde…"></textarea></label>
+                <label class="form-field full-width"><span>Receta</span><textarea name="prescription" rows="2" placeholder="Prescripción específica, si corresponde…"></textarea></label>
+                <label class="form-field"><span>Próximo control</span><input type="date" name="nextControl" /></label>
+                <label class="form-field full-width"><span>Observaciones adicionales</span><textarea name="observations" rows="2" placeholder="Datos complementarios, si existen…"></textarea></label>
+              </div>
+            </details>
             </div>
           </div>
           <div class="nursing-form__actions">
@@ -300,6 +307,6 @@
     <script src="../assets/js/supabase-client.js"></script>
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/appointments.js?v=20260807-daily-view"></script>
+    <script src="../assets/js/appointments.js?v=20261102-soap1"></script>
   </body>
 </html>

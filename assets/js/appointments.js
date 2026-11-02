@@ -522,7 +522,10 @@ function toggleServiceFields() {
     if (injectableMedication) injectableMedication.value = '';
   }
   field.classList.toggle('hidden-section', !service);
-  select.required = Boolean(service);
+  const clinicalMode = ['clinical', 'new-clinical', 'edit-clinical', 'view-clinical'].includes(consultState.mode);
+  select.required = Boolean(service) && !clinicalMode;
+  const label = field?.querySelector('span');
+  if (label) label.textContent = clinicalMode ? 'Responsable del servicio (opcional)' : 'Responsable del servicio *';
   if (!service) {
     select.innerHTML = '<option value="">Primero selecciona un servicio…</option>';
     select.value = '';
@@ -558,6 +561,12 @@ function configureFormMode(mode) {
   const clinicalMode = ['clinical', 'new-clinical', 'edit-clinical', 'view-clinical'].includes(mode);
   clinical.classList.toggle('hidden-section', !clinicalMode);
   document.getElementById('serviceType').disabled = clinicalMode || mode === 'create';
+  const dateLabel = document.querySelector('[name="date"]')?.closest('label')?.querySelector('span');
+  if (dateLabel) dateLabel.textContent = clinicalMode ? 'Fecha (automática)' : 'Fecha *';
+  const serviceLabel = document.getElementById('serviceType')?.closest('label')?.querySelector('span');
+  if (serviceLabel) serviceLabel.textContent = clinicalMode ? 'Tipo de servicio (automático)' : 'Tipo de servicio *';
+  document.querySelector('[name="date"]')?.toggleAttribute('required', !clinicalMode);
+  document.getElementById('serviceType')?.toggleAttribute('required', !clinicalMode);
   document.getElementById('serviceType').closest('.form-field').style.display=mode==='new-clinical'?'none':'';
   document.querySelector('[name="clinicalAntecedents"]')?.closest('.form-field')?.classList.toggle('hidden-section',mode==='new-clinical');
   document.getElementById('pickPatientBtn').style.display = clinicalMode ? 'none' : '';
@@ -601,11 +610,24 @@ function closeConsultModal() {
   consultState.selectedServiceId = null;
   consultState.pendingPatient = null;
 }
+function composeSoapSections(primary, secondary, label) {
+  const first = String(primary || '').trim();
+  const second = String(secondary || '').trim();
+  return second ? [first, `${label}: ${second}`].filter(Boolean).join('\n\n') : first;
+}
+
 function fillConsultForm(form, c) {
   setSelectedPatient(c.patientId, c.patientName);
   const fields = ['date','time','procedureResponsible','injectableRoute','injectableMedication','bp','hr','temp','weight','height','spo2',
     'chiefComplaint','evolution','clinicalAntecedents','physicalExam','diagnosis','treatment','medications','procedures','prescription','indications','nextControl','observations'];
   fields.forEach((name) => { if (form.elements[name]) form.elements[name].value = c[name] || ''; });
+  // Una sola caja SOAP por sección; los campos legados permanecen intactos al guardar sin cambios.
+  if (form.elements.chiefComplaint) {
+    form.elements.chiefComplaint.value = composeSoapSections(c.chiefComplaint, c.evolution, 'Enfermedad actual');
+  }
+  if (form.elements.treatment) {
+    form.elements.treatment.value = composeSoapSections(c.treatment, c.indications, 'Indicaciones');
+  }
   renderServiceOptions(c.serviceId || c.serviceType);
   if (!form.elements.serviceType.value && c.serviceType) {
     const option = document.createElement('option');
@@ -652,6 +674,12 @@ function consultationData(form) {
   const currentAttention = consultState.editingId !== null
     ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))
     : null;
+  const soapSubjective = value('chiefComplaint');
+  const soapPlan = value('treatment');
+  const keepLegacySubjective = Boolean(currentAttention)
+    && soapSubjective === composeSoapSections(currentAttention.chiefComplaint, currentAttention.evolution, 'Enfermedad actual');
+  const keepLegacyPlan = Boolean(currentAttention)
+    && soapPlan === composeSoapSections(currentAttention.treatment, currentAttention.indications, 'Indicaciones');
   const storedService = !service && currentAttention && (
     String(currentAttention.serviceId || currentAttention.serviceType) === String(serviceId)
   ) ? currentAttention : null;
@@ -666,14 +694,18 @@ function consultationData(form) {
     generatesMedicalRecord: service
       ? Boolean(service.generates_medical_record)
       : Boolean(storedService?.generatesMedicalRecord),
-    procedureResponsible: value('procedureResponsible'), chiefComplaint: value('chiefComplaint'),
+    procedureResponsible: value('procedureResponsible'),
+    chiefComplaint: keepLegacySubjective ? currentAttention.chiefComplaint : soapSubjective,
     injectableRoute: value('injectableRoute'), injectableMedication: value('injectableMedication'),
     clinicalAntecedents: value('clinicalAntecedents'),
     bp: value('bp'), hr: value('hr'), temp: value('temp'), weight: value('weight'),
-    height: value('height'), spo2: value('spo2'), evolution: value('evolution'),
-    physicalExam: value('physicalExam'), diagnosis: value('diagnosis'), treatment: value('treatment'),
+    height: value('height'), spo2: value('spo2'),
+    evolution: keepLegacySubjective ? currentAttention.evolution : '',
+    physicalExam: value('physicalExam'), diagnosis: value('diagnosis'),
+    treatment: keepLegacyPlan ? currentAttention.treatment : soapPlan,
     medications: value('medications'), procedures: value('procedures'),
-    prescription: value('prescription'), indications: value('indications'),
+    prescription: value('prescription'),
+    indications: keepLegacyPlan ? currentAttention.indications : '',
     nextControl: value('nextControl'), observations: value('observations'),
     registeredBy: consultState.editingId !== null
       ? consultState.consultations.find((item) => Number(item.id) === Number(consultState.editingId))?.registeredBy
@@ -701,25 +733,14 @@ async function handleConsultSave(event) {
   if (!data.date || !data.serviceType) {
     return setFormStatus('consultFormStatus', 'Fecha y servicio son requeridos.');
   }
-  if (!data.procedureResponsible) {
+  const clinical = ['clinical', 'new-clinical', 'edit-clinical'].includes(consultState.mode);
+  if (clinical && !data.procedureResponsible) {
+    data.procedureResponsible = getAuthUser()?.name || getAuthUser()?.username || '';
+  }
+  if (!clinical && !data.procedureResponsible) {
     return setFormStatus('consultFormStatus', 'Selecciona al responsable del servicio.');
   }
-
-  const clinical = ['clinical', 'new-clinical', 'edit-clinical'].includes(consultState.mode);
-  const requiredClinical=[
-    data.chiefComplaint,
-    data.evolution,
-    data.physicalExam,
-    data.diagnosis,
-    data.treatment,
-    data.indications,
-  ];if(consultState.mode!=='new-clinical')requiredClinical.push(data.clinicalAntecedents);
-  if (clinical && requiredClinical.some((value) => !String(value || '').trim())) {
-    return setFormStatus(
-      'consultFormStatus',
-      consultState.mode==='new-clinical'?'Completa motivo, enfermedad actual, examen físico, diagnóstico, tratamiento e indicaciones.':'Completa motivo, enfermedad actual, antecedentes, examen físico, diagnóstico, tratamiento e indicaciones.',
-    );
-  }
+  // Los apartados SOAP son opcionales; la atención permanece vinculada al paciente.
   let saved = null;
   let editIndex = -1;
   if (consultState.editingId !== null) {
