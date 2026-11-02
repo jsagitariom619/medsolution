@@ -122,7 +122,7 @@ test('a stuck synchronization falls back after the bounded timeout and ignores l
 });
 
 test('the service worker installs the new startup module and replaces the prior cache', () => {
-  assert.match(serviceWorker, /medsolution-pwa-v15/);
+  assert.match(serviceWorker, /medsolution-pwa-v16/);
   assert.match(serviceWorker, /'\/assets\/js\/login-startup\.js'/);
   assert.match(serviceWorker, /self\.skipWaiting\(\)/);
   assert.match(serviceWorker, /self\.clients\.claim\(\)/);
@@ -132,9 +132,12 @@ test('the service worker installs the new startup module and replaces the prior 
 test('new installations use Registro Clínico and all current icons are precached', () => {
   assert.equal(manifest.name, 'Registro Clínico');
   assert.equal(manifest.short_name, 'Registro Clínico');
-  assert.ok(manifest.icons.some((icon) => icon.src === '/assets/icons/icon-192x192-maskable.png' && icon.purpose === 'maskable'));
-  assert.ok(manifest.icons.some((icon) => icon.src === '/assets/icons/icon-512x512-maskable.png' && icon.purpose === 'maskable'));
-  for (const icon of manifest.icons) assert.ok(serviceWorker.includes("'" + icon.src + "'"), icon.src + ' is precached');
+  assert.ok(manifest.icons.some((icon) => icon.src === '/assets/icons/icon-192x192-maskable.png?v=rc-icon-20261102-v2' && icon.purpose === 'maskable'));
+  assert.ok(manifest.icons.some((icon) => icon.src === '/assets/icons/icon-512x512-maskable.png?v=rc-icon-20261102-v2' && icon.purpose === 'maskable'));
+  for (const icon of manifest.icons) {
+    assert.ok(icon.src.endsWith('?v=rc-icon-20261102-v2'), icon.src + ' is versioned');
+    assert.ok(serviceWorker.includes("'" + icon.src + "'"), icon.src + ' is precached');
+  }
   assert.match(html, /assets\/icons\/favicon\.ico/);
   assert.match(html, /apple-touch-icon/);
   assert.match(html, /Instalar Registro Clínico/);
