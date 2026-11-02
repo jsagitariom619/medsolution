@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medsolution-pwa-v13';
+const CACHE_NAME = 'medsolution-pwa-v14';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -8,6 +8,16 @@ const APP_SHELL = [
   '/assets/images/medsolution-logo.png',
   '/assets/icons/icon-192x192.png',
   '/assets/icons/icon-512x512.png',
+  '/assets/icons/icon-192x192-maskable.png',
+  '/assets/icons/icon-512x512-maskable.png',
+  '/assets/icons/icon-180x180.png',
+  '/assets/icons/icon-144x144.png',
+  '/assets/icons/icon-96x96.png',
+  '/assets/icons/icon-72x72.png',
+  '/assets/icons/icon-48x48.png',
+  '/assets/icons/icon-32x32.png',
+  '/assets/icons/icon-16x16.png',
+  '/assets/icons/favicon.ico',
   '/assets/js/main.js',
   '/assets/js/auth.js',
   '/assets/js/login-startup.js',

@@ -14,7 +14,7 @@
       button.hidden = installed;
       button.disabled = !installPrompt;
       button.title = installPrompt
-        ? 'Instalar MedSolution en este dispositivo'
+        ? 'Instalar Registro Clínico en este dispositivo'
         : 'La instalación estará disponible cuando el navegador complete la verificación';
     });
   }
