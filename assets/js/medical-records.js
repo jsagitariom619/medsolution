@@ -4,6 +4,8 @@ const PATIENTS_KEY = 'medsolution.patients';
 const RECORDS_KEY = 'medsolution.medicalRecords';
 
 const recordsState = { patients: [], consultations: [], records: [], users: [], selectedPatientId: null, patientSearch: '', patientOrder: 'latest', attachmentConsultationId: null, uploading: false, savingRecord: false, realtimeTimers: new Map() };
+const clinicalCameraState = { stream: null, file: null, previewUrl: null, opening: false };
+const MAX_CLINICAL_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
 function readArray(key) {
   try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : []; }
@@ -132,7 +134,7 @@ function entryHtml(c) {
       ${field('Indicaciones', c.indications, true)}${field('Próximo control', formatDate(c.nextControl), false)}
       ${field('Observaciones', c.observations, true)}
       ${field('Médico responsable', medicalResponsible(c), true)}
-      <section class="record-attachments"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><strong style="color:var(--petroleum)">Archivos Adjuntos (${attachments.length})</strong><button class="btn btn--secondary" style="padding:8px 12px;font-size:.8rem" type="button" data-attach-files="${c.id}">Adjuntar archivos</button></div>
+      <section class="record-attachments"><div class="record-attachment-actions"><strong style="color:var(--petroleum)">Documentos y estudios (${attachments.length})</strong><div class="record-attachment-actions__buttons"><button class="btn btn--secondary" type="button" data-attach-files="${c.id}">📎 Adjuntar archivo</button><button class="btn btn--secondary" type="button" data-take-photo="${c.id}">📷 Tomar fotografía</button></div></div>
       <div class="record-attachments__list">${attachments.length ? attachments.map((item) => attachmentHtml(item, c.id)).join('') : '<small style="color:var(--gray-500)">Sin archivos adjuntos en esta evolución.</small>'}</div></section>
     </div></div>`;
 }
@@ -224,6 +226,9 @@ async function uploadClinicalFiles(files) {
     const saved = await window.MedSolutionData.saveAttention({ ...consultation, attachments });
     Object.assign(consultation, saved, { attachments });
     await renderPatientRecord(recordsState.selectedPatientId);
+    // Mostrar inmediatamente el nuevo documento bajo la consulta correcta.
+    document.querySelector('[data-record-tab="clinical"]')?.click();
+    document.querySelector(`.record-entry[data-entry-id="${Number(consultation.id)}"]`)?.classList.remove('record-entry--collapsed');
   } catch (error) {
     await Promise.all(uploaded.map((item) => window.MedSolutionData.deleteStoredFile(item.path).catch(() => {})));
     throw error;
@@ -289,6 +294,131 @@ function printPrescription(consultId) {
     ${c.indications ? `<div class="block"><strong>Indicaciones:</strong><p>${escapeHtml(c.indications)}</p></div>` : ''}<p style="margin-top:80px;text-align:center">____________________________<br>Firma y sello médico</p>`);
 }
 
+
+function cameraStatus(message) {
+  const el = document.getElementById('clinicalCameraStatus');
+  if (el) el.textContent = message;
+}
+function stopCamera() {
+  clinicalCameraState.stream?.getTracks().forEach(track => track.stop());
+  clinicalCameraState.stream = null;
+  const video = document.getElementById('clinicalCameraVideo');
+  if (video) { video.pause(); video.srcObject = null; video.hidden = true; }
+}
+function clearCameraPreview() {
+  if (clinicalCameraState.previewUrl) URL.revokeObjectURL(clinicalCameraState.previewUrl);
+  clinicalCameraState.previewUrl = null;
+  clinicalCameraState.file = null;
+  const preview = document.getElementById('clinicalCameraPreview');
+  if (preview) { preview.hidden = true; preview.removeAttribute('src'); }
+}
+function cameraActions() {
+  const hasPhoto = Boolean(clinicalCameraState.file);
+  const hasVideo = Boolean(clinicalCameraState.stream);
+  const capture = document.getElementById('clinicalCameraCapture');
+  const repeat = document.getElementById('clinicalCameraRepeat');
+  const save = document.getElementById('clinicalCameraSave');
+  const native = document.getElementById('clinicalNativeCameraButton');
+  if (capture) capture.hidden = !hasVideo || hasPhoto;
+  if (repeat) repeat.hidden = !hasPhoto;
+  if (native) native.hidden = hasVideo || hasPhoto;
+  if (save) { save.hidden = !hasPhoto; save.disabled = !hasPhoto || recordsState.uploading; }
+}
+function closeCamera(force = false) {
+  if (recordsState.uploading && !force) return;
+  document.getElementById('clinicalCameraModal')?.classList.remove('modal--open');
+  stopCamera();
+  clearCameraPreview();
+  recordsState.attachmentConsultationId = null;
+  cameraActions();
+}
+async function startCamera() {
+  if (clinicalCameraState.opening) return;
+  stopCamera();
+  clearCameraPreview();
+  cameraActions();
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraStatus('La vista en vivo no está disponible. Usa el botón «Usar cámara del dispositivo».');
+    return;
+  }
+  clinicalCameraState.opening = true;
+  cameraStatus('Solicitando permiso para utilizar la cámara…');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false, video: { facingMode: { ideal: 'environment' } }
+    });
+    if (!document.getElementById('clinicalCameraModal')?.classList.contains('modal--open')) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    clinicalCameraState.stream = stream;
+    const video = document.getElementById('clinicalCameraVideo');
+    video.srcObject = stream;
+    video.hidden = false;
+    await video.play();
+    cameraStatus('Encuadra el documento. La fotografía solo se guardará cuando confirmes.');
+  } catch (error) {
+    stopCamera();
+    cameraStatus('No se pudo abrir la cámara. Comprueba los permisos o usa «Usar cámara del dispositivo».');
+  } finally { clinicalCameraState.opening = false; cameraActions(); }
+}
+function previewPhoto(file) {
+  if (!file?.type?.startsWith('image/') || !file.size || file.size > MAX_CLINICAL_ATTACHMENT_SIZE) {
+    cameraStatus('Selecciona una imagen válida de 10 MB o menos.');
+    return;
+  }
+  stopCamera();
+  clearCameraPreview();
+  clinicalCameraState.file = file;
+  clinicalCameraState.previewUrl = URL.createObjectURL(file);
+  const image = document.getElementById('clinicalCameraPreview');
+  image.src = clinicalCameraState.previewUrl;
+  image.hidden = false;
+  cameraStatus('Revisa la fotografía. Puedes repetirla antes de guardarla.');
+  cameraActions();
+}
+function capturePhoto() {
+  const video = document.getElementById('clinicalCameraVideo');
+  if (!clinicalCameraState.stream || !video?.videoWidth || !video?.videoHeight) {
+    cameraStatus('La cámara todavía no está lista.');
+    return;
+  }
+  const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob(blob => {
+    if (!blob || !document.getElementById('clinicalCameraModal')?.classList.contains('modal--open')) return;
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    previewPhoto(new File([blob], `estudio-clinico-${stamp}.jpg`, { type: 'image/jpeg' }));
+  }, 'image/jpeg', 0.87);
+}
+async function openCamera(consultationId) {
+  if (recordsState.uploading) return;
+  const consultation = recordsState.consultations.find(c => Number(c.id) === Number(consultationId));
+  if (!consultation?.remoteId) return alert('Primero guarda la consulta para poder adjuntar fotografías.');
+  closeCamera();
+  recordsState.attachmentConsultationId = Number(consultationId);
+  document.getElementById('clinicalCameraModal').classList.add('modal--open');
+  await startCamera();
+}
+async function saveCameraPhoto() {
+  if (!clinicalCameraState.file || recordsState.uploading) return;
+  const id = recordsState.attachmentConsultationId;
+  cameraStatus('Guardando fotografía…');
+  const save = document.getElementById('clinicalCameraSave');
+  save.disabled = true;
+  try {
+    await uploadClinicalFiles([clinicalCameraState.file]);
+    closeCamera(true);
+  } catch (error) {
+    recordsState.attachmentConsultationId = id;
+    cameraStatus('No se pudo guardar: ' + (error?.message || 'Error desconocido'));
+    save.disabled = false;
+  }
+}
+
 async function setupMedicalRecords() {
   await window.MedSolutionData?.ready;
   try { await loadData(); } catch (error) { alert(`No se pudo cargar la información clínica: ${error.message}`); return; }
@@ -323,7 +453,9 @@ async function setupMedicalRecords() {
       document.querySelector('[data-record-panel="clinical"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     const attach = e.target.closest('[data-attach-files]');
-    if (attach) { recordsState.attachmentConsultationId = Number(attach.dataset.attachFiles); document.getElementById('clinicalAttachmentInput')?.click(); }
+    if (attach && !recordsState.uploading) { recordsState.attachmentConsultationId = Number(attach.dataset.attachFiles); document.getElementById('clinicalAttachmentInput')?.click(); }
+    const photo = e.target.closest('[data-take-photo]');
+    if (photo) openCamera(photo.dataset.takePhoto).catch(error => alert(error.message));
     const remove = e.target.closest('[data-delete-attachment]');
     if (remove) deleteClinicalFile(remove.dataset.consultationId, remove.dataset.deleteAttachment).catch((error) => alert(error.message));
   });
@@ -331,6 +463,27 @@ async function setupMedicalRecords() {
     const files = [...(event.target.files || [])];
     event.target.value = '';
     uploadClinicalFiles(files).catch((error) => alert(`No se pudieron adjuntar los archivos: ${error.message}`));
+  });
+  document.querySelectorAll('[data-close-clinical-camera]').forEach(el => el.addEventListener('click', () => closeCamera()));
+  document.getElementById('clinicalCameraCapture')?.addEventListener('click', capturePhoto);
+  document.getElementById('clinicalCameraRepeat')?.addEventListener('click', () => startCamera().catch(error => cameraStatus(error.message)));
+  document.getElementById('clinicalCameraSave')?.addEventListener('click', () => saveCameraPhoto());
+  document.getElementById('clinicalNativeCameraButton')?.addEventListener('click', () => document.getElementById('clinicalNativeCameraInput')?.click());
+  document.getElementById('clinicalNativeCameraInput')?.addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) previewPhoto(file);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('clinicalCameraModal')?.classList.contains('modal--open')) closeCamera();
+  });
+  window.addEventListener('pagehide', stopCamera);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && clinicalCameraState.stream) {
+      stopCamera();
+      cameraStatus('Cámara detenida. Pulsa «Usar cámara del dispositivo» o «Repetir foto» para continuar.');
+      cameraActions();
+    }
   });
   const patientId = Number(new URLSearchParams(location.search).get('patientId'));
   if (patientId) selectPatient(patientId);

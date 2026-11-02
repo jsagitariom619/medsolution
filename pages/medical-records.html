@@ -58,6 +58,16 @@
       .record-tab--active { background:var(--petroleum);border-color:var(--petroleum);color:white; }
       .record-tab-panel[hidden] { display:none; }
       .record-attachments{grid-column:1/-1;padding:14px 16px;background:rgba(15,76,92,.035);border-top:1px solid var(--gray-200)}.record-attachments__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}.record-attachment{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--gray-200);border-radius:12px;background:white;min-width:0}.record-attachment__preview{width:48px;height:48px;border-radius:9px;object-fit:cover;background:var(--gray-100);display:grid;place-items:center;font-size:1.3rem;flex:none}.record-attachment__meta{min-width:0;flex:1}.record-attachment__meta strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.8rem}.record-attachment__meta small{color:var(--gray-500);font-size:.72rem}.record-attachment__actions{display:flex;gap:5px}.record-attachment__actions button,.record-attachment__actions a{border:0;background:transparent;color:var(--aqua);font-weight:800;cursor:pointer;text-decoration:none;padding:3px}
+
+      .record-attachment-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+      .record-attachment-actions__buttons{display:flex;gap:8px;flex-wrap:wrap}
+      .record-attachment-actions__buttons .btn{padding:8px 12px;font-size:.8rem}
+      .clinical-camera-panel{width:min(650px,94vw)}
+      .clinical-camera-visual{display:grid;place-items:center;min-height:170px;background:#102a36;border-radius:12px;overflow:hidden}
+      .clinical-camera-visual video,.clinical-camera-visual img{display:block;width:100%;max-height:55vh;object-fit:contain}
+      .clinical-camera-visual [hidden],.clinical-camera-actions [hidden]{display:none!important}
+      .clinical-camera-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:14px}
+      .clinical-camera-status{margin:12px 0 0;font-size:.87rem;color:var(--gray-600);line-height:1.5}
     </style>
   </head>
   <body class="app-body">
@@ -93,6 +103,25 @@
           </div>
     </section>
     <input id="clinicalAttachmentInput" type="file" multiple accept="image/*,application/pdf,.dcm,.dicom,.doc,.docx,.xls,.xlsx" hidden />
+    <input id="clinicalNativeCameraInput" type="file" accept="image/*" capture="environment" hidden />
+    <div class="record-modal" id="clinicalCameraModal" role="dialog" aria-modal="true" aria-labelledby="clinicalCameraTitle" aria-describedby="clinicalCameraStatus">
+      <div class="record-modal__backdrop" data-close-clinical-camera></div>
+      <section class="record-modal__panel clinical-camera-panel">
+        <header class="record-modal__head"><div><span class="eyebrow">Documentos y estudios</span><h2 id="clinicalCameraTitle">Tomar fotografía</h2></div><button type="button" class="record-modal__close" data-close-clinical-camera aria-label="Cerrar cámara">✕</button></header>
+        <div class="clinical-camera-visual">
+          <video id="clinicalCameraVideo" autoplay muted playsinline hidden></video>
+          <img id="clinicalCameraPreview" alt="Vista previa de la fotografía clínica" hidden />
+        </div>
+        <p class="clinical-camera-status" id="clinicalCameraStatus" role="status" aria-live="polite">Se solicitará permiso de cámara únicamente al pulsar «Tomar fotografía».</p>
+        <div class="clinical-camera-actions">
+          <button type="button" class="btn btn--secondary" data-close-clinical-camera>Cancelar</button>
+          <button type="button" class="btn btn--secondary" id="clinicalNativeCameraButton" hidden>Usar cámara del dispositivo</button>
+          <button type="button" class="btn btn--secondary" id="clinicalCameraRepeat" hidden>Repetir foto</button>
+          <button type="button" class="btn btn--secondary" id="clinicalCameraCapture" hidden>Capturar foto</button>
+          <button type="button" class="btn btn--primary" id="clinicalCameraSave" hidden disabled>Guardar fotografía</button>
+        </div>
+      </section>
+    </div>
     <div class="record-modal" id="generalRecordModal" role="dialog" aria-modal="true" aria-labelledby="generalRecordModalTitle"><div class="record-modal__backdrop" data-close-general-record></div><section class="record-modal__panel"><header class="record-modal__head"><div><span class="eyebrow">Historia Clínica General</span><h2 id="generalRecordModalTitle">Editar información permanente</h2></div><button class="record-modal__close" type="button" data-close-general-record aria-label="Cerrar">✕</button></header><form id="generalRecordForm"><div class="record-form-grid"><label class="form-field"><span>Grupo sanguíneo</span><input name="bloodGroup" type="text" /></label><label class="form-field full"><span>Antecedentes personales</span><textarea name="personalHistory" rows="3"></textarea></label><label class="form-field full"><span>Antecedentes familiares</span><textarea name="familyHistory" rows="3"></textarea></label><label class="form-field full"><span>Alergias</span><textarea name="allergicHistory" rows="3"></textarea></label><label class="form-field full"><span>Enfermedades previas o crónicas</span><textarea name="chronicDiseases" rows="3"></textarea></label><label class="form-field full"><span>Cirugías</span><textarea name="surgicalHistory" rows="3"></textarea></label><label class="form-field full"><span>Hábitos</span><textarea name="habits" rows="3"></textarea></label><label class="form-field full"><span>Medicación habitual</span><textarea name="currentMedications" rows="3"></textarea></label><label class="form-field full"><span>Hospitalizaciones</span><textarea name="hospitalizations" rows="3"></textarea></label><label class="form-field full"><span>Antecedentes gineco-obstétricos</span><textarea name="gynecologicalHistory" rows="3"></textarea></label><label class="form-field full"><span>Inmunizaciones</span><textarea name="immunizations" rows="3"></textarea></label><label class="form-field full"><span>Historia de la enfermedad / notas permanentes</span><textarea name="notes" rows="4"></textarea></label></div><div class="record-form-actions"><button class="btn btn--secondary" type="button" data-close-general-record>Cancelar</button><button class="btn btn--primary" type="submit">Guardar información</button></div></form></section></div>
 
     <script src="../assets/vendor/supabase.js"></script>
@@ -100,6 +129,6 @@
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
     <script src="../assets/js/specialized-records.js?v=20260805-specialized-records"></script>
-    <script src="../assets/js/medical-records.js?v=20260805-specialized-records"></script>
+    <script src="../assets/js/medical-records.js?v=20261102-camera1"></script>
   </body>
 </html>
