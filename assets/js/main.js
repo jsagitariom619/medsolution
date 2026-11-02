@@ -1,4 +1,4 @@
-import { login, logout, guardRoute, restoreSession, getUser, getRememberedUsername, can, syncUsers } from './auth.js';
+import { login, logout, guardRoute, restoreSession, getUser, getRememberedUsername, can } from './auth.js';
 
 // ── Route map ─────────────────────────────────────────────────────────────────
 
@@ -248,8 +248,23 @@ async function initializeApplication() {
 setupAutomaticCapitalization();
 initializeApplication();
 window.addEventListener('storage', async (event) => {
-  if (event.key !== 'medsolution.systemUsers') return;
-  await syncUsers();
-  if (window.MedSolutionAuth) window.MedSolutionAuth.user = getUser();
+  if (event.key === 'medsolution.authUser') {
+    window.location.reload();
+    return;
+  }
+  if (event.key !== 'medsolution.systemUsers' || !window.MedSolutionAuth) return;
+
+  const previous = window.MedSolutionAuth.user;
+  const user = getUser();
+  if (!user) {
+    const inPages = window.location.pathname.includes('/pages/');
+    window.location.replace(inPages ? '../index.html' : 'index.html');
+    return;
+  }
+  if (previous?.role !== user.role) {
+    window.location.reload();
+    return;
+  }
+  window.MedSolutionAuth.user = user;
   updateUserChip();
 });

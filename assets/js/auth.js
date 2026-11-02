@@ -7,8 +7,8 @@
  * Password handling: passwords are stored as FNV-1a 32-bit hashes (not plaintext).
  * Este mecanismo conserva la compatibilidad con la instalación original.
  *
- * SessionStorage key used:
- *   medsolution.authUser — active session (user object, NO password)
+ * LocalStorage key used:
+ *   medsolution.authUser — per-browser-profile session (user object, NO password)
  * LocalStorage preference key used:
  *   medsolution.rememberedUsername — remembered username only (NO active session)
  */
@@ -18,6 +18,8 @@
 const AUTH_KEY = 'medsolution.authUser';
 const REMEMBERED_USER_KEY = 'medsolution.rememberedUsername';
 const USERS_KEY = 'medsolution.systemUsers';
+let sessionReady = false;
+let remoteUsersSyncSucceeded = false;
 
 export const ROLES = Object.freeze({
   ADMIN: 'Administrador',
@@ -92,30 +94,85 @@ const DEFAULT_USERS = Object.freeze([
 
 function configuredUsers() {
   try {
-    const stored = JSON.parse(localStorage.getItem(USERS_KEY));
-    return Array.isArray(stored) && stored.length ? stored : DEFAULT_USERS;
+    const raw = localStorage.getItem(USERS_KEY);
+    if (raw === null) return DEFAULT_USERS;
+    const stored = JSON.parse(raw);
+    return Array.isArray(stored) ? stored : DEFAULT_USERS;
   } catch { return DEFAULT_USERS; }
 }
 
-export async function syncUsers() {
+function toSessionUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    position: user.position || '',
+    initials: user.initials || '',
+    photoPath: user.photoPath || '',
+    photoUrl: user.photoUrl || '',
+  };
+}
+
+function readStoredSession() {
   try {
-    const remote = await window.MedSolutionData?.getSystemUsers?.();
-    if (Array.isArray(remote) && remote.length) {
-      const localSession = sessionStorage.getItem(AUTH_KEY);
-      const cached = JSON.parse(localSession || 'null');
-      localStorage.setItem(USERS_KEY, JSON.stringify(remote));
-      const refreshed = remote.find((user) => user.role === cached?.role && user.active !== false);
-      if (refreshed && localSession) {
-        const payload = JSON.stringify({
-          id: refreshed.id, username: refreshed.username, name: refreshed.name,
-          role: refreshed.role, position: refreshed.position || '', initials: refreshed.initials,
-          photoPath: refreshed.photoPath || '', photoUrl: refreshed.photoUrl || '',
-        });
-        sessionStorage.setItem(AUTH_KEY, payload);
-      }
-      return remote;
+    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    return cached && cached.id !== undefined && cached.id !== null ? cached : null;
+  } catch { return null; }
+}
+
+function storeSession(user) {
+  const session = toSessionUser(user);
+  localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+  sessionStorage.removeItem(AUTH_KEY);
+  sessionReady = true;
+  return session;
+}
+
+function clearStoredSession(keepValidation = false) {
+  try { localStorage.removeItem(AUTH_KEY); } catch { /* almacenamiento no disponible */ }
+  try { sessionStorage.removeItem(AUTH_KEY); } catch { /* almacenamiento no disponible */ }
+  sessionReady = keepValidation;
+}
+
+function refreshStoredSession(users) {
+  const cached = readStoredSession();
+  if (!cached) {
+    clearStoredSession(true);
+    return;
+  }
+
+  // The stable profile ID is the identity key; a matching role is never enough.
+  const user = users.find((item) => String(item.id) === String(cached.id));
+  if (!user || user.active === false) {
+    clearStoredSession(true);
+    return;
+  }
+  storeSession(user);
+}
+
+export async function syncUsers() {
+  remoteUsersSyncSucceeded = false;
+  try {
+    const data = window.MedSolutionData;
+    if (!data || typeof data.getSystemUsers !== 'function') return configuredUsers();
+    await data.ready;
+    if (typeof data.isConfigured === 'function' && !data.isConfigured()) return configuredUsers();
+
+    const remote = await data.getSystemUsers();
+    if (!Array.isArray(remote)) return configuredUsers();
+
+    const serialized = JSON.stringify(remote);
+    if (localStorage.getItem(USERS_KEY) !== serialized) {
+      localStorage.setItem(USERS_KEY, serialized);
     }
-  } catch { /* El acceso inicial continúa disponible con los perfiles base. */ }
+    remoteUsersSyncSucceeded = true;
+    sessionReady = true;
+    refreshStoredSession(remote);
+    return remote;
+  } catch { /* Keep the local login fallback; session restoration fails closed below. */ }
   return configuredUsers();
 }
 
@@ -124,25 +181,24 @@ export function getUsers() {
   return configuredUsers().map(({ passwordHash, ...user }) => ({ ...user }));
 }
 
-/** Devuelve el usuario de la sesión activa de esta sesión del navegador o null. */
+/** Devuelve el usuario de la sesión persistida en este perfil de navegador o null. */
 export function getSession() {
+  if (!sessionReady) return null;
   try {
-    // Invalida cualquier sesión persistente heredada de versiones anteriores.
-    localStorage.removeItem(AUTH_KEY);
-    const raw = sessionStorage.getItem(AUTH_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    const user = configuredUsers().find((item) =>
-      item.username === cached?.username && item.role === cached?.role && item.active !== false);
+    const cached = readStoredSession();
+    if (!cached) return null;
+    const user = configuredUsers().find((item) => String(item.id) === String(cached.id));
     if (!user) {
-      sessionStorage.removeItem(AUTH_KEY);
+      clearStoredSession(true);
       return null;
     }
-    return {
-      id: user.id, username: user.username, name: user.name,
-      role: user.role, position: user.position || '', initials: user.initials,
-      photoPath: user.photoPath || '', photoUrl: user.photoUrl || '',
-    };
+    if (user.active === false) {
+      clearStoredSession(true);
+      return null;
+    }
+    const session = toSessionUser(user);
+    if (JSON.stringify(cached) !== JSON.stringify(session)) storeSession(user);
+    return session;
   } catch {
     return null;
   }
@@ -163,7 +219,7 @@ export function getRememberedUsername() {
  * Authenticate with username + password.
  * @param {string} username
  * @param {string} password
- * @param {boolean} remember  Remember username only; never persist authentication.
+ * @param {boolean} remember  Remember username separately from the session.
  * @returns {object|null} Session user object, or null on failure.
  *
  */
@@ -178,19 +234,7 @@ export async function login(username, password, remember = false) {
   );
   if (!user) return null;
 
-  const session = {
-    id: user.id,
-    username: user.username,
-    name: user.name,
-    role: user.role,
-    position: user.position || '', initials: user.initials,
-    photoPath: user.photoPath || '', photoUrl: user.photoUrl || '',
-  };
-  const payload = JSON.stringify(session);
-
-  // La autenticación activa vive únicamente en sessionStorage.
-  sessionStorage.setItem(AUTH_KEY, payload);
-  localStorage.removeItem(AUTH_KEY);
+  const session = storeSession(user);
 
   // "Recordarme" conserva solo el nombre de usuario, nunca una sesión autenticada.
   if (remember) localStorage.setItem(REMEMBERED_USER_KEY, user.username);
@@ -203,8 +247,7 @@ export async function login(username, password, remember = false) {
  * Destroy the current session.
  */
 export async function logout() {
-  localStorage.removeItem(AUTH_KEY);
-  sessionStorage.removeItem(AUTH_KEY);
+  clearStoredSession();
 }
 
 /** Returns the current user from the active session, or null. */
@@ -257,6 +300,8 @@ export function guardRoute() {
 }
 
 export async function restoreSession() {
+  sessionReady = false;
   await syncUsers();
+  if (!remoteUsersSyncSucceeded) return null;
   return getSession();
 }
