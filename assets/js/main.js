@@ -1,4 +1,5 @@
 import { login, logout, guardRoute, restoreSession, getUser, getRememberedUsername, can } from './auth.js';
+import { resolveLoginStartup } from './login-startup.js';
 
 // ── Route map ─────────────────────────────────────────────────────────────────
 
@@ -229,12 +230,21 @@ const isLoginPage = window.location.pathname.split('/').pop() === 'index.html'
 async function initializeApplication() {
   if (redirectStandaloneModuleToShell()) return;
   setupEmbeddedModuleLayout();
-  await window.MedSolutionData?.ready;
   if (isLoginPage) {
-    await restoreSession();
-    handleLogin();
+    const hasSessionCandidate = document.documentElement.classList.contains('auth-session-pending');
+    await resolveLoginStartup({
+      hasSessionCandidate,
+      restoreSession,
+      isAuthenticated: () => Boolean(getUser()),
+      onAuthenticated: () => window.location.replace(routes.dashboard),
+      onLogin: () => {
+        document.documentElement.classList.remove('auth-session-pending');
+        handleLogin();
+      },
+    });
     return;
   }
+  await window.MedSolutionData?.ready;
   await restoreSession();
   const user = guardRoute();
   if (user) {

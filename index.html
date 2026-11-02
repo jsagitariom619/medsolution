@@ -11,6 +11,13 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180x180.png" />
+    <script>
+      try {
+        if (localStorage.getItem('medsolution.authUser') || sessionStorage.getItem('medsolution.authUser')) {
+          document.documentElement.classList.add('auth-session-pending');
+        }
+      } catch { /* Si el almacenamiento no está disponible, mostrar el acceso normal. */ }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -25,6 +32,34 @@
         padding: 24px;
         background: #f4f8f9;
       }
+
+      .auth-startup {
+        display: none;
+        width: min(100%, 360px);
+        min-height: 190px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 30px;
+        border: 1px solid #e1ebed;
+        border-radius: 22px;
+        background: #ffffff;
+        box-shadow: 0 18px 45px rgba(15, 76, 92, 0.07);
+        color: #516970;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .auth-startup__logo {
+        width: 58px;
+        height: 58px;
+        object-fit: contain;
+      }
+
+      html.auth-session-pending .auth-startup { display: flex; }
+      html.auth-session-pending [data-login-shell] { display: none; }
 
       .auth-shell.auth-shell--simple {
         display: block;
@@ -205,7 +240,12 @@
     </style>
   </head>
   <body class="auth-body">
-    <main class="auth-shell auth-shell--simple">
+    <div class="auth-startup" data-auth-startup role="status" aria-live="polite">
+      <img class="auth-startup__logo" src="assets/images/medsolution-logo.png" alt="" />
+      <span>Iniciando MedSolution...</span>
+    </div>
+
+    <main class="auth-shell auth-shell--simple" data-login-shell>
       <section class="auth-panel auth-panel--simple" aria-label="Formulario de acceso a MedSolution">
         <div class="login-brand">
           <img class="login-brand__logo" src="assets/images/medsolution-logo.png" alt="MedSolution" />
