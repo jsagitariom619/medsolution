@@ -141,19 +141,18 @@ function renderContraceptiveTable() {
       const patient = contraceptiveState.patients.find(item => Number(item.id) === Number(record.patientId));
       const due = canApplyScheduledDose(record);
       const actions = hasFullAccess()
-        ? `<details class="control-actions-menu"><summary aria-label="Más acciones para ${escapeControlHtml(record.patientName)}" title="Más acciones">⋯</summary><div class="control-actions-menu__items">
-          <button type="button" data-control-action="history" data-id="${record.id}">Ver historial</button>
-          <button type="button" data-control-action="edit" data-id="${record.id}">Editar registro</button>
-          <button type="button" data-control-action="delete" data-id="${record.id}">Eliminar registro</button>
-        </div></details>` : '';
+        ? `<button class="control-action-icon" type="button" data-control-action="history" data-id="${record.id}" title="Ver historial" aria-label="Ver historial de ${escapeControlHtml(record.patientName)}">▣</button>
+          <button class="control-action-icon" type="button" data-control-action="edit" data-id="${record.id}" title="Editar aplicación" aria-label="Editar aplicación de ${escapeControlHtml(record.patientName)}">✎</button>
+          <button class="control-action-icon control-action-icon--danger" type="button" data-control-action="delete" data-id="${record.id}" title="Eliminar aplicación" aria-label="Eliminar aplicación de ${escapeControlHtml(record.patientName)}">×</button>`
+        : '';
       return `<tr>
         <td data-label="Paciente"><strong class="control-patient-name">${escapeControlHtml(record.patientName || patientName(patient))}</strong><span class="control-secondary">${escapeControlHtml(patient?.telefono || 'Sin teléfono')}</span></td>
         <td data-label="Última"><span class="control-date">${formatControlDate(record.applicationDate)}</span></td>
         <td data-label="Próxima"><strong class="control-date">${formatControlDate(record.nextApplicationDate)}</strong></td>
         <td data-label="Anticonceptivo"><strong>${escapeControlHtml(record.contraceptiveType || '—')}</strong><span class="control-secondary">${escapeControlHtml(record.contraceptiveMedication || 'Sin medicamento registrado')}</span></td>
-        <td data-label="Responsable">${escapeControlHtml(record.procedureResponsible || '—')}</td>
-        <td data-label="Estado">${statusBadge(record)}</td>
-        <td data-label="Acciones"><div class="control-row-actions">
+        <td data-label="Responsable" class="control-responsible">${escapeControlHtml(record.procedureResponsible || '—')}</td>
+        <td data-label="Estado" class="control-status-cell">${statusBadge(record)}</td>
+        <td data-label="Acciones" class="control-actions-cell"><div class="control-row-actions">
           ${due ? `<button type="button" class="control-apply-btn" data-control-action="apply" data-id="${record.id}" title="Abrir registro de nueva aplicación; requiere confirmación">Aplicar</button>` : ''}
           ${actions || (!due ? '<span class="control-secondary">—</span>' : '')}
         </div></td>

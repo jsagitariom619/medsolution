@@ -49,3 +49,25 @@ test('aplicar inicia NUEVO registro y exige confirmación antes de guardarlo', (
   assert.match(js,/if \(!confirm\(/);
   assert.match(js,/pageSize: 6/);
 });
+
+test('acciones existentes quedan visibles sin menú de tres puntos', () => {
+  for (const action of ['history','edit','delete','apply']) {
+    assert.match(js,new RegExp('data-control-action="'+action+'"'));
+  }
+  assert.doesNotMatch(js,/class="control-actions-menu"/);
+  assert.match(js,/class="control-action-icon control-action-icon--danger"/);
+  assert.match(js,/aria-label="Eliminar aplicación/);
+});
+test('estado completo en una sola línea y responsable más discreto', () => {
+  assert.match(html,/\.control-status\{[^}]*white-space:nowrap/);
+  assert.match(html,/\.control-table-wrap \.control-table td\.control-status-cell\{white-space:nowrap/);
+  assert.match(html,/\.control-table-wrap \.control-table td\.control-responsible\{font-size:\.73rem;font-weight:400/);
+});
+test('acciones reciben más espacio sin agregar columnas ni scroll', () => {
+  assert.match(html,/th:nth-child\(4\)\{width:17%\}/);
+  assert.match(html,/th:nth-child\(5\)\{width:11%\}/);
+  assert.match(html,/th:nth-child\(6\)\{width:11%\}/);
+  assert.match(html,/th:nth-child\(7\)\{width:20%\}/);
+  assert.match(html,/\.control-row-actions\{[^}]*flex-wrap:nowrap/);
+  assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
+});
