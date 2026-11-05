@@ -71,3 +71,12 @@ test('acciones reciben más espacio sin agregar columnas ni scroll', () => {
   assert.match(html,/\.control-row-actions\{[^}]*flex-wrap:nowrap/);
   assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
 });
+
+test('las siete columnas del listado mantienen encabezados y celdas centrados', () => {
+  assert.match(html,/\.control-table-wrap \.control-table th,\s*\.control-table-wrap \.control-table td\s*\{\s*text-align:center;\s*vertical-align:middle;/);
+  assert.match(html,/\.control-table-wrap \.control-table td\.control-responsible\s*\{\s*text-align:center;/);
+  assert.match(html,/\.control-table-wrap \.control-table td\.control-status-cell \.control-status\s*\{\s*justify-content:center;/);
+  assert.match(html,/\.control-table-wrap \.control-table td\.control-actions-cell \.control-row-actions\s*\{\s*justify-content:center;/);
+  assert.match(html,/\.control-table-wrap \.control-table td::before\s*\{\s*text-align:center;/);
+  assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
+});

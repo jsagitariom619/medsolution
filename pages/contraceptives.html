@@ -72,6 +72,38 @@
 
       .control-table-wrap .control-table tr.control-row--notified{background:rgba(47,183,166,.11)}
       @media(max-width:900px){.control-table-wrap .control-table tr.control-row--notified{border-color:var(--aqua);box-shadow:0 0 0 2px rgba(47,183,166,.13)}}
+
+      /* Alineación uniforme de columnas; solo cambia la presentación del listado. */
+      .control-table-wrap .control-table th,
+      .control-table-wrap .control-table td{
+        text-align:center;
+        vertical-align:middle;
+      }
+      .control-table-wrap .control-table td .control-patient-name,
+      .control-table-wrap .control-table td .control-secondary{
+        text-align:center;
+      }
+      .control-table-wrap .control-table td.control-status-cell .control-status{
+        justify-content:center;
+        vertical-align:middle;
+      }
+      .control-table-wrap .control-table td.control-responsible{
+        text-align:center;
+        font-weight:400;
+      }
+      .control-table-wrap .control-table td.control-actions-cell .control-row-actions{
+        justify-content:center;
+      }
+      @media(max-width:900px){
+        .control-table-wrap .control-table td,
+        .control-table-wrap .control-table td:last-child,
+        .control-table-wrap .control-table td::before{
+          text-align:center;
+        }
+        .control-table-wrap .control-table td.control-actions-cell .control-row-actions{
+          justify-content:center;
+        }
+      }
     </style>
   </head>
   <body class="app-body">
