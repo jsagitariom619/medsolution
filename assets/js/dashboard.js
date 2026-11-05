@@ -150,6 +150,44 @@ function dashboardFormatDate(date) { if(!date)return '—';const [year,month,day
 function dashboardBoliviaNow() { const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/La_Paz',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(part=>[part.type,part.value]));return {date:`${parts.year}-${parts.month}-${parts.day}`,time:`${parts.hour}:${parts.minute}`}; }
 function dashboardToday() { return dashboardBoliviaNow().date; }
 
+
+/** Recordatorios derivados de registros reales, sin escrituras ni mensajes a pacientes. */
+function dashboardContraceptiveReminders(attentions, today) {
+  const controls = attentions.filter(item => item.contraceptiveControl === true && Number(item.patientId));
+  const latest = new Map();
+  for (const control of controls) {
+    const key = String(control.patientId);
+    const previous = latest.get(key);
+    const order = item => [String(item.applicationDate || item.date || ''), String(item.createdAt || ''), Number(item.id || 0)];
+    const a = order(control), b = previous ? order(previous) : null;
+    if (!previous || a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] > b[2])))) latest.set(key, control);
+  }
+  const parseDate = value => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return NaN;
+    const ms = Date.parse(value + 'T00:00:00Z');
+    return Number.isFinite(ms) && new Date(ms).toISOString().startsWith(value) ? ms : NaN;
+  };
+  const current = parseDate(today);
+  if (!Number.isFinite(current)) return [];
+  return [...latest.values()].flatMap(item => {
+    const next = String(item.nextApplicationDate || '').slice(0,10);
+    const planned = parseDate(next);
+    if (!Number.isFinite(planned)) return [];
+    const days = Math.round((planned - current) / 86400000);
+    if (days > 3) return [];
+    const status = days < 0 ? 'Vencida' : days === 0 ? 'Hoy' : 'Próxima';
+    return [{ ...item, reminderDate: next, daysUntil: days, reminderStatus: status }];
+  }).sort((a, b) => a.daysUntil - b.daysUntil ||
+    String(a.patientName || '').localeCompare(String(b.patientName || ''), 'es'));
+}
+
+function dashboardContraceptiveReminderLabel(reminder) {
+  if (reminder.daysUntil < 0) return 'Aplicación vencida';
+  if (reminder.daysUntil === 0) return 'Aplicación para hoy';
+  return reminder.daysUntil === 1 ? 'Aplicación mañana' :
+    `Aplicación en ${reminder.daysUntil} días`;
+}
+
 function renderDashboardChart(attentions) {
   const target=document.getElementById('dashboardMonthlyChart');
   const now=new Date();const months=[];
@@ -179,12 +217,14 @@ async function setupFunctionalDashboard(collection='all') {
     else if(collection==='patients')dashboardData.patients=await window.MedSolutionData.getPatients();
     else if(collection==='attentions')dashboardData.attentions=await window.MedSolutionData.getAttentions();
     const {patients,attentions,histories}=dashboardData;
+    dashboardData.lastReminderDate=dashboardToday();
     const schedule=attentions.filter(item=>item.contraceptiveControl!==true).map(item=>({...item,serviceName:item.serviceType,status:item.scheduleStatus||({'Pendiente de consulta':'Pendiente','En consulta':'En Atención',Finalizada:'Atendida'}[item.status]||item.status)}));
     const today=dashboardToday(),month=today.slice(0,7);
     const medical=attentions.filter(item=>item.contraceptiveControl!==true&&item.contraceptiveSchedule!==true&&item.scheduledOnly!==true),monthly=medical.filter(item=>String(item.date||'').startsWith(month));
     const pending=medical.filter(item=>['Pendiente','Pendiente de consulta','En consulta'].includes(item.status));
     const todaySchedule=schedule.filter(item=>item.date===today&&!['Cancelada','Atendida'].includes(item.status));
-    const contraceptiveDue=attentions.filter(item=>item.contraceptiveControl===true&&item.nextApplicationDate===today).length;
+    const contraceptiveReminders=dashboardContraceptiveReminders(attentions,today);
+    const contraceptiveDue=contraceptiveReminders.filter(item=>item.daysUntil===0).length;
     const controlsDue=medical.filter(item=>item.nextControl===today).length;
     document.getElementById('dashboardPatientCount').textContent=patients.length;
     document.getElementById('dashboardMonthlyCareCount').textContent=monthly.length;
@@ -196,8 +236,21 @@ async function setupFunctionalDashboard(collection='all') {
     document.getElementById('dashboardControlsDue').textContent=controlsDue;
     const upcoming=renderDashboardAppointments(schedule);document.getElementById('dashboardUpcomingToday').textContent=upcoming;
     const scheduledContraceptiveToday=schedule.filter(item=>item.contraceptiveSchedule===true&&item.date===today&&!['Cancelada','Atendida'].includes(item.status)).length;
-    const reminders=pending.length+contraceptiveDue+controlsDue+upcoming-Math.min(contraceptiveDue,scheduledContraceptiveToday);document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
+    const reminders=pending.length+contraceptiveReminders.length+controlsDue+upcoming-Math.min(contraceptiveDue,scheduledContraceptiveToday);document.getElementById('dashboardReminderCount').textContent=`${reminders} pendiente${reminders===1?'':'s'}`;
     const notificationItems=[];
+    // Una notificación por paciente; el botón abre la aplicación pendiente específica.
+    contraceptiveReminders.forEach(reminder => {
+      const name=reminder.patientName || patients.find(p=>Number(p.id)===Number(reminder.patientId))?.nombre || 'Paciente sin nombre';
+      const label=dashboardContraceptiveReminderLabel(reminder);
+      notificationItems.push({
+        icon:reminder.daysUntil<0?'🔴':reminder.daysUntil===0?'🔔':'📅',
+        title:`${name} · ${label}`,
+        description:`${reminder.contraceptiveType || 'Anticonceptivo'} · ${dashboardFormatDate(reminder.reminderDate)} · ${reminder.contraceptiveMedication || 'Medicamento sin especificar'}`,
+        count:1,
+        href:`contraceptives.html?controlId=${encodeURIComponent(reminder.id)}`,
+      });
+    });
+
     if(pending.length===1){
       const attention=pending[0];
       notificationItems.push({icon:'🩺',title:attention.patientName||'Paciente pendiente',description:`${attention.serviceType||'Atención médica'} · ${attention.status||'Pendiente'}`,count:1,href:`appointments.html?consultationId=${encodeURIComponent(attention.id)}`});
@@ -208,7 +261,6 @@ async function setupFunctionalDashboard(collection='all') {
         .forEach(attention=>notificationItems.push({icon:'🩺',title:attention.patientName||'Paciente pendiente',description:`${attention.serviceType||'Atención médica'} · ${attention.status||'Pendiente'}`,count:1,href:`appointments.html?consultationId=${encodeURIComponent(attention.id)}`}));
     }
     if(upcoming)notificationItems.push({icon:'◷',title:'Próximas citas de hoy',description:'Citas programadas aún pendientes',count:upcoming,href:'schedule.html'});
-    if(contraceptiveDue)notificationItems.push({icon:'◉',title:'Anticonceptivos para hoy',description:'Aplicaciones con control programado',count:contraceptiveDue,href:'contraceptives.html'});
     if(controlsDue)notificationItems.push({icon:'↻',title:'Controles médicos para hoy',description:'Pacientes que deben volver a control',count:controlsDue,href:'medical-records.html'});
     renderDashboardNotifications(notificationItems);
     renderDashboardChart(medical);renderDashboardPatients(patients,medical);
@@ -221,6 +273,17 @@ function bootDashboard() {
   window.__medSolutionDashboardBooted = true;
   setupFunctionalDashboard();
   setupDashboardShell();
+  // La campana se recalcula al volver a la PWA y al cambiar el día en Bolivia.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && dashboardData.attentions.length) setupFunctionalDashboard('attentions');
+  });
+  window.addEventListener('focus', () => {
+    if (dashboardData.attentions.length) setupFunctionalDashboard('attentions');
+  });
+  setInterval(() => {
+    if (!document.hidden && dashboardData.lastReminderDate && dashboardData.lastReminderDate !== dashboardToday())
+      setupFunctionalDashboard('attentions');
+  }, 60000);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootDashboard, { once: true });
 else bootDashboard();

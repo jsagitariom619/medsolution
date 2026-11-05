@@ -69,6 +69,9 @@
         .control-table-wrap .control-table td.control-empty{grid-column:1/-1;padding:14px;text-align:center}
       }
       @media(max-width:520px){.control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.control-filter select{padding:7px}.control-card{padding:12px}}
+
+      .control-table-wrap .control-table tr.control-row--notified{background:rgba(47,183,166,.11)}
+      @media(max-width:900px){.control-table-wrap .control-table tr.control-row--notified{border-color:var(--aqua);box-shadow:0 0 0 2px rgba(47,183,166,.13)}}
     </style>
   </head>
   <body class="app-body">
@@ -150,6 +153,6 @@
     <script src="../assets/js/patient-autocomplete.js"></script>
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/contraceptives.js?v=20261105-compact2"></script>
+    <script src="../assets/js/contraceptives.js?v=20261105-reminder1"></script>
   </body>
 </html>

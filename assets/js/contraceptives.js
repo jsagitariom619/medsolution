@@ -145,7 +145,7 @@ function renderContraceptiveTable() {
           <button class="control-action-icon" type="button" data-control-action="edit" data-id="${record.id}" title="Editar aplicación" aria-label="Editar aplicación de ${escapeControlHtml(record.patientName)}">✎</button>
           <button class="control-action-icon control-action-icon--danger" type="button" data-control-action="delete" data-id="${record.id}" title="Eliminar aplicación" aria-label="Eliminar aplicación de ${escapeControlHtml(record.patientName)}">×</button>`
         : '';
-      return `<tr>
+      return `<tr data-control-id="${record.id}">
         <td data-label="Paciente"><strong class="control-patient-name">${escapeControlHtml(record.patientName || patientName(patient))}</strong><span class="control-secondary">${escapeControlHtml(patient?.telefono || 'Sin teléfono')}</span></td>
         <td data-label="Última"><span class="control-date">${formatControlDate(record.applicationDate)}</span></td>
         <td data-label="Próxima"><strong class="control-date">${formatControlDate(record.nextApplicationDate)}</strong></td>
@@ -166,6 +166,31 @@ function renderContraceptiveTable() {
   document.getElementById('controlPageLabel').textContent = `Página ${contraceptiveState.page} de ${pageCount}`;
   document.getElementById('controlPrevPage').disabled = contraceptiveState.page === 1;
   document.getElementById('controlNextPage').disabled = contraceptiveState.page === pageCount;
+}
+
+
+function focusNotifiedContraceptive() {
+  const raw = new URLSearchParams(location.search).get('controlId');
+  if (!raw || !/^\d+$/.test(raw)) return;
+  const id = Number(raw);
+  const record = contraceptiveState.records.find(item => Number(item.id) === id);
+  if (!record) return;
+  // Reemplazar filtros solo para mostrar el control solicitado desde la campana.
+  if (Object.values(contraceptiveState.filters).some(Boolean)) {
+    contraceptiveState.filters={ service:'', responsible:'', month:'', year:'' };
+    ['controlServiceFilter','controlResponsibleFilter','controlMonthFilter','controlYearFilter'].forEach(filterId=>{
+      const filter=document.getElementById(filterId);
+      if (filter) filter.value='';
+    });
+  }
+  const index=filteredRecords().findIndex(item=>Number(item.id)===id);
+  if (index < 0) return;
+  contraceptiveState.page=Math.floor(index/contraceptiveState.pageSize)+1;
+  renderContraceptiveTable();
+  const row=document.querySelector(`#controlTableBody tr[data-control-id="${id}"]`);
+  if (!row) return;
+  row.classList.add('control-row--notified');
+  row.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 function renderStaffOptions(selected = '') {
@@ -586,6 +611,7 @@ async function setupContraceptives() {
   }
   renderContraceptiveTable();
   renderResponsibleFilter();
+  focusNotifiedContraceptive();
   contraceptiveState.patientAutocomplete=window.MedSolutionPatientAutocomplete.create({root:'#contraceptivePatientAutocomplete',patients:contraceptiveState.patients,medicalRecords:contraceptiveState.medicalRecords,onSelect:()=>showContraceptiveStatus()});
   document.getElementById('newContraceptiveBtn').addEventListener('click', () => openContraceptiveModal());
   document.getElementById('closeContraceptiveModalBtn').addEventListener('click', closeContraceptiveModal);
