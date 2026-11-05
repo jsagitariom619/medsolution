@@ -19,6 +19,9 @@ const contraceptiveState = {
   patientAutocomplete: null,
   editingId: null,
   saving: false,
+  page: 1,
+  pageSize: 6,
+  applyingSourceId: null,
   filters: { service:'', responsible:'', month:'', year:'' },
 };
 
@@ -68,12 +71,21 @@ function controlStatus(record) {
 
 function statusBadge(record) {
   const status = controlStatus(record);
-  const config = {
-    Vigente: ['🟢', 'control-status--current'],
-    Próximo: ['🟡', 'control-status--soon'],
-    Vencido: ['🔴', 'control-status--expired'],
-  }[status];
-  return `<span class="control-status ${config[1]}">${config[0]} ${status}</span>`;
+  const cssClass = { Vigente:'control-status--current', Próximo:'control-status--soon', Vencido:'control-status--expired' }[status];
+  const text = record.nextApplicationDate === window.MedSolutionDate.today() ? 'Hoy' : status;
+  return `<span class="control-status ${cssClass}" title="${escapeControlHtml(status)}"><span class="control-status__dot" aria-hidden="true"></span>${text}</span>`;
+}
+function latestPatientControl(patientId, controls = contraceptiveState.records) {
+  return controls.filter(row => Number(row.patientId) === Number(patientId))
+    .sort((a,b) => String(b.applicationDate || b.date || '').localeCompare(String(a.applicationDate || a.date || ''))
+      || Number(b.id || 0) - Number(a.id || 0))[0] || null;
+}
+function canApplyScheduledDose(control, controls = contraceptiveState.records, today = window.MedSolutionDate.today()) {
+  if (!control || !['Mensual','Trimestral'].includes(control.contraceptiveType)) return false;
+  const next = String(control.nextApplicationDate || '').slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(next) || next > today) return false;
+  const latest = latestPatientControl(control.patientId, controls);
+  return latest && String(latest.remoteId || latest.id) === String(control.remoteId || control.id);
 }
 
 function contraceptiveService() {
@@ -118,34 +130,43 @@ function filteredRecords() {
 function renderContraceptiveTable() {
   const body = document.getElementById('controlTableBody');
   const records = filteredRecords();
-  const showPrice = hasFullAccess();
-  document.querySelectorAll('[data-price-column]').forEach((element) => {
-    element.style.display = showPrice ? '' : 'none';
-  });
-  if (!records.length) {
-    body.innerHTML = `<tr><td colspan="${showPrice ? 10 : 9}" class="control-empty">No hay controles para los filtros seleccionados.</td></tr>`;
+  const pageCount = Math.max(1, Math.ceil(records.length / contraceptiveState.pageSize));
+  contraceptiveState.page = Math.max(1, Math.min(pageCount, contraceptiveState.page));
+  const start = (contraceptiveState.page - 1) * contraceptiveState.pageSize;
+  const visible = records.slice(start, start + contraceptiveState.pageSize);
+  if (!visible.length) {
+    body.innerHTML = '<tr><td colspan="7" class="control-empty">No hay controles para los filtros seleccionados.</td></tr>';
   } else {
-    body.innerHTML = records.map((record) => {
-      const patient = contraceptiveState.patients.find((item) => Number(item.id) === Number(record.patientId));
+    body.innerHTML = visible.map((record) => {
+      const patient = contraceptiveState.patients.find(item => Number(item.id) === Number(record.patientId));
+      const due = canApplyScheduledDose(record);
+      const actions = hasFullAccess()
+        ? `<details class="control-actions-menu"><summary aria-label="Más acciones para ${escapeControlHtml(record.patientName)}" title="Más acciones">⋯</summary><div class="control-actions-menu__items">
+          <button type="button" data-control-action="history" data-id="${record.id}">Ver historial</button>
+          <button type="button" data-control-action="edit" data-id="${record.id}">Editar registro</button>
+          <button type="button" data-control-action="delete" data-id="${record.id}">Eliminar registro</button>
+        </div></details>` : '';
       return `<tr>
-        <td><strong>${escapeControlHtml(record.patientName)}</strong></td>
-        <td>${escapeControlHtml(patient?.telefono || '—')}</td>
-        <td>${formatControlDate(record.applicationDate)}</td>
-        <td><strong>${formatControlDate(record.nextApplicationDate)}</strong></td>
-        <td>${escapeControlHtml(record.contraceptiveType)}</td>
-        <td>${escapeControlHtml(record.contraceptiveMedication || '—')}</td>
-        <td>${escapeControlHtml(record.procedureResponsible || '—')}</td>
-        <td>${statusBadge(record)}</td>
-        <td data-price-column style="${showPrice ? '' : 'display:none'}">${Number(record.servicePrice || 0).toFixed(2)} Bs</td>
-        <td><span class="action-links">
-          ${hasFullAccess() ? `<button class="btn-action" type="button" data-control-action="history" data-id="${record.id}" title="Ver historial">▣</button>
-          <button class="btn-action" type="button" data-control-action="edit" data-id="${record.id}" title="Editar">✎</button>
-          <button class="btn-action btn-action--delete" type="button" data-control-action="delete" data-id="${record.id}" title="Eliminar">✕</button>` : '<span style="color:var(--gray-500)">—</span>'}
-        </span></td>
+        <td data-label="Paciente"><strong class="control-patient-name">${escapeControlHtml(record.patientName || patientName(patient))}</strong><span class="control-secondary">${escapeControlHtml(patient?.telefono || 'Sin teléfono')}</span></td>
+        <td data-label="Última"><span class="control-date">${formatControlDate(record.applicationDate)}</span></td>
+        <td data-label="Próxima"><strong class="control-date">${formatControlDate(record.nextApplicationDate)}</strong></td>
+        <td data-label="Anticonceptivo"><strong>${escapeControlHtml(record.contraceptiveType || '—')}</strong><span class="control-secondary">${escapeControlHtml(record.contraceptiveMedication || 'Sin medicamento registrado')}</span></td>
+        <td data-label="Responsable">${escapeControlHtml(record.procedureResponsible || '—')}</td>
+        <td data-label="Estado">${statusBadge(record)}</td>
+        <td data-label="Acciones"><div class="control-row-actions">
+          ${due ? `<button type="button" class="control-apply-btn" data-control-action="apply" data-id="${record.id}" title="Abrir registro de nueva aplicación; requiere confirmación">Aplicar</button>` : ''}
+          ${actions || (!due ? '<span class="control-secondary">—</span>' : '')}
+        </div></td>
       </tr>`;
     }).join('');
   }
-  document.getElementById('controlCount').textContent = `${records.length} registro${records.length === 1 ? '' : 's'}`;
+  const count = document.getElementById('controlCount');
+  if (count) count.textContent = `${records.length} registro${records.length === 1 ? '' : 's'}`;
+  const pagination = document.getElementById('controlPagination');
+  pagination.hidden = pageCount < 2;
+  document.getElementById('controlPageLabel').textContent = `Página ${contraceptiveState.page} de ${pageCount}`;
+  document.getElementById('controlPrevPage').disabled = contraceptiveState.page === 1;
+  document.getElementById('controlNextPage').disabled = contraceptiveState.page === pageCount;
 }
 
 function renderStaffOptions(selected = '') {
@@ -290,6 +311,8 @@ function openContraceptiveModal(record = null) {
   const form = document.getElementById('contraceptiveForm');
   form.reset();
   contraceptiveState.editingId = record?.id || null;
+  contraceptiveState.applyingSourceId = null;
+  document.getElementById('controlApplyNotice').hidden = true;
   document.getElementById('contraceptiveModalTitle').textContent = record ? 'Editar aplicación' : 'Nueva aplicación';
   hideQuickPatientForm();
   contraceptiveState.patientAutocomplete.clear();
@@ -309,7 +332,33 @@ function openContraceptiveModal(record = null) {
   document.getElementById('contraceptiveModal').classList.add('nursing-modal--active');
 }
 
+
+function openApplyScheduledDose(record) {
+  if (!canApplyScheduledDose(record)) {
+    showContraceptiveToast('Esta dosis no está pendiente o ya tiene una aplicación posterior.', 'error');
+    return;
+  }
+  if (!contraceptiveState.patients.some(patient => Number(patient.id) === Number(record.patientId))) {
+    showContraceptiveToast('No se encontró el paciente. Actualiza el listado antes de continuar.', 'error');
+    return;
+  }
+  // Siempre abrir una NUEVA aplicación: no editar la dosis anterior.
+  openContraceptiveModal();
+  const form = document.getElementById('contraceptiveForm');
+  contraceptiveState.patientAutocomplete.select(record.patientId);
+  contraceptiveState.applyingSourceId = record.remoteId || record.id;
+  form.elements.applicationDate.value = window.MedSolutionDate.today();
+  form.elements.contraceptiveType.value = record.contraceptiveType || '';
+  form.elements.medication.value = record.contraceptiveMedication || '';
+  form.elements.responsible.value = ''; // Revalidar responsable en cada aplicación.
+  document.getElementById('contraceptiveModalTitle').textContent = 'Registrar aplicación programada';
+  document.getElementById('controlApplyNotice').hidden = false;
+  updateNextApplicationPreview();
+}
+
 function closeContraceptiveModal() {
+  contraceptiveState.applyingSourceId = null;
+  document.getElementById('controlApplyNotice').hidden = true;
   document.getElementById('contraceptiveForm').reset();
   hideQuickPatientForm();
   document.getElementById('contraceptiveModal').classList.remove('nursing-modal--active');
@@ -447,6 +496,24 @@ async function saveContraceptive(event) {
   showContraceptiveStatus();
   setContraceptiveSaving(true);
   try {
+    // Comprobar datos recientes antes de guardar para reducir duplicados en equipos distintos.
+    if (!previous) {
+      const fresh = await window.MedSolutionData.getAttentions();
+      const controls = fresh.filter(item => item.contraceptiveControl === true);
+      const duplicate = controls.some(item => Number(item.patientId) === patientId
+        && String(item.applicationDate || item.date || '').slice(0,10) === applicationDate
+        && item.contraceptiveType === type);
+      if (duplicate) throw new Error('Ya existe una aplicación de este tipo registrada para este paciente y fecha. Revisa su historial.');
+      if (contraceptiveState.applyingSourceId !== null) {
+        const source = controls.find(item => String(item.remoteId || item.id) === String(contraceptiveState.applyingSourceId));
+        if (!canApplyScheduledDose(source, controls)) {
+          throw new Error('La dosis ya fue registrada o cambió su programación. Actualiza el listado.');
+        }
+        if (!confirm(`¿Confirmas que se administró el anticonceptivo ${type.toLowerCase()} a ${patientName(patient)} el ${formatControlDate(applicationDate)}?\nVerifica medicamento y responsable antes de continuar.`)) {
+          return;
+        }
+      }
+    }
     const saved = await window.MedSolutionData.saveAttention(record);
     if (!saved?.remoteId || !Number(saved.id)) {
       throw new Error('Supabase no confirmó la creación del registro.');
@@ -545,7 +612,9 @@ async function setupContraceptives() {
     document.querySelector('#contraceptiveForm [name="price"]').value = configuredPrice();
   });
   document.querySelector('#contraceptiveForm [name="responsible"]').addEventListener('change', () => showContraceptiveStatus());
-  [['controlServiceFilter','service'],['controlResponsibleFilter','responsible'],['controlMonthFilter','month'],['controlYearFilter','year']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',event=>{contraceptiveState.filters[key]=event.target.value;renderContraceptiveTable()}));
+  [['controlServiceFilter','service'],['controlResponsibleFilter','responsible'],['controlMonthFilter','month'],['controlYearFilter','year']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',event=>{contraceptiveState.filters[key]=event.target.value;contraceptiveState.page=1;renderContraceptiveTable()}));
+  document.getElementById('controlPrevPage').addEventListener('click', () => { contraceptiveState.page -= 1; renderContraceptiveTable(); });
+  document.getElementById('controlNextPage').addEventListener('click', () => { contraceptiveState.page += 1; renderContraceptiveTable(); });
   document.getElementById('closeContraceptiveHistoryBtn').addEventListener('click', closePatientHistory);
   document.querySelector('#contraceptiveHistoryModal .nursing-modal__overlay').addEventListener('click', closePatientHistory);
   document.getElementById('controlTableBody').addEventListener('click', (event) => {
@@ -553,6 +622,7 @@ async function setupContraceptives() {
     if (!button) return;
     const record = contraceptiveState.records.find((item) => Number(item.id) === Number(button.dataset.id));
     if (!record) return;
+    if (button.dataset.controlAction === 'apply') openApplyScheduledDose(record);
     if (button.dataset.controlAction === 'history') openPatientHistory(record);
     if (button.dataset.controlAction === 'edit') openContraceptiveModal(record);
     if (button.dataset.controlAction === 'delete') deleteContraceptive(record);

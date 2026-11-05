@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
+
+const js = await readFile(new URL('../assets/js/contraceptives.js', import.meta.url), 'utf8');
+const html = await readFile(new URL('../pages/contraceptives.html', import.meta.url), 'utf8');
+const helpers = js.slice(js.indexOf('function latestPatientControl('),js.indexOf('function contraceptiveService()'));
+const samples = [
+  { id:1, patientId:1, applicationDate:'2026-04-05', nextApplicationDate:'2026-05-05', contraceptiveType:'Mensual' },
+  { id:2, patientId:1, applicationDate:'2026-10-05', nextApplicationDate:'2026-11-05', contraceptiveType:'Mensual' },
+  { id:3, patientId:2, applicationDate:'2026-10-10', nextApplicationDate:'2026-11-10', contraceptiveType:'Mensual' },
+  { id:4, patientId:3, applicationDate:'2026-08-01', nextApplicationDate:'2026-11-01', contraceptiveType:'Trimestral' },
+];
+
+function eligible(rows, id, today='2026-11-05') {
+  const context = { controls: rows, id, today };
+  return runInNewContext(`
+    const contraceptiveState = { records: controls };
+    const window = { MedSolutionDate: { today: () => today } };
+    ${helpers}
+    canApplyScheduledDose(controls.find(x=>x.id===id));
+  `, context);
+}
+
+test('evita aplicar una dosis histórica cuando hay otra más reciente', () => {
+  assert.equal(eligible(samples,1),false);
+  assert.equal(eligible(samples,2),true);
+});
+test('habilita dosis para hoy y vencidas; oculta futuras', () => {
+  assert.equal(eligible(samples,2),true);
+  assert.equal(eligible(samples,3),false);
+  assert.equal(eligible(samples,4),true);
+});
+test('el bloque principal se adapta sin scroll horizontal ni vertical internos', () => {
+  assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
+  assert.match(html,/\.control-table-wrap \.control-table\{width:100%;min-width:0;table-layout:fixed/);
+  assert.match(html,/\.control-table-wrap \.control-table tr\{display:grid/);
+});
+test('precio ya no ocupa una columna principal, pero el historial sigue intacto', () => {
+  assert.match(html,/<th>Anticonceptivo<\/th><th>Responsable<\/th><th>Estado<\/th><th>Acciones<\/th>/);
+  assert.match(html,/controlHistoryBody|contraceptiveHistoryBody/);
+  assert.match(html,/<th>Precio<\/th>/);
+});
+test('aplicar inicia NUEVO registro y exige confirmación antes de guardarlo', () => {
+  assert.match(js,/function openApplyScheduledDose\(record\)/);
+  assert.match(js,/const fresh = await window.MedSolutionData.getAttentions\(\)/);
+  assert.match(js,/if \(duplicate\) throw new Error/);
+  assert.match(js,/if \(!confirm\(/);
+  assert.match(js,/pageSize: 6/);
+});

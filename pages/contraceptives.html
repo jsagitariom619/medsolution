@@ -15,6 +15,56 @@
     <link rel="stylesheet" href="../assets/css/patient-autocomplete.css" />
     <style>
       .control-card{padding:24px}.control-toolbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:end;gap:14px}.control-filter{display:grid;gap:7px;min-width:0}.control-filter span{font-size:.78rem;font-weight:700;color:var(--gray-500)}.control-filter input,.control-filter select{width:100%;min-height:44px;padding:10px 14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);font:inherit;color:var(--gray-700);outline:none}.control-filter input:focus,.control-filter select:focus{border-color:var(--aqua);background:var(--white);box-shadow:0 0 0 4px rgba(47,183,166,.14)}.control-count{grid-column:1/-1;justify-self:end;color:var(--gray-500);font-size:.88rem;font-weight:700}.control-table-wrap{max-height:min(58vh,620px);overflow:auto;margin-top:20px;border:1px solid var(--gray-200);border-radius:14px;scrollbar-gutter:stable}.control-table{width:100%;min-width:1080px;border-collapse:collapse;font-size:.91rem}.control-table th{position:sticky;top:0;z-index:1;text-align:left;padding:12px 14px;background:var(--gray-50);color:var(--gray-500);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--gray-200);white-space:nowrap}.control-table td{padding:14px;border-bottom:1px solid var(--gray-200);vertical-align:middle}.control-table th:last-child,.control-table td:last-child{text-align:center}.control-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:800;font-size:.78rem;white-space:nowrap}.control-status--current{background:#dcf7ed;color:#13765d}.control-status--soon{background:#fff5cc;color:#8a6500}.control-status--expired{background:#fde2e2;color:#a52d40}.contraceptive-modal__content{width:min(780px,94vw);max-height:92vh;overflow:hidden;display:flex;flex-direction:column}.contraceptive-modal__content .nursing-form{overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}.control-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.control-form-grid .full-width{grid-column:1/-1}.control-next-date{display:flex;align-items:center;min-height:46px;padding:12px 14px;border:1px solid rgba(47,183,166,.24);border-radius:12px;background:rgba(47,183,166,.09);color:var(--petroleum-dark);font-weight:800}.quick-patient-actions{display:flex;justify-content:flex-end;margin-top:-4px}.quick-patient-panel{grid-column:1/-1;padding:16px;border:1px solid var(--gray-200);border-radius:14px;background:var(--gray-50)}.quick-patient-panel h3{margin:0 0 12px;color:var(--petroleum-dark);font-size:.95rem}.quick-patient-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.control-empty{text-align:center;padding:38px;color:var(--gray-500)}.control-history-scroll{max-height:65vh;padding:24px;overflow:auto}.control-history-scroll .control-table{min-width:780px}@media(max-width:760px){.control-card{padding:18px}.control-toolbar{grid-template-columns:1fr 1fr}.control-count{justify-self:start}.control-form-grid,.quick-patient-grid{grid-template-columns:1fr}.control-form-grid .full-width{grid-column:1}.page-header{align-items:flex-start}.page-header .btn{width:100%}}@media(max-width:520px){.control-toolbar{grid-template-columns:1fr}.contraceptive-modal__content{width:96vw}.nursing-form__actions{display:grid;grid-template-columns:1fr}.nursing-form__actions .btn{width:100%}}
+
+      /* Tabla principal sin barras de desplazamiento internas. El historial en modal se conserva. */
+      .control-card{padding:16px}
+      .control-toolbar{gap:10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+      .control-filter input,.control-filter select{min-height:36px;padding:7px 10px;font-size:.84rem}
+      .control-table-wrap{max-height:none;overflow:visible;scrollbar-gutter:auto;margin-top:12px;border-radius:10px}
+      .control-table-wrap .control-table{width:100%;min-width:0;table-layout:fixed;font-size:.79rem}
+      .control-table-wrap .control-table th{position:static;padding:9px 7px;font-size:.68rem;line-height:1.2;white-space:normal;letter-spacing:.015em}
+      .control-table-wrap .control-table td{padding:9px 7px;line-height:1.32;overflow-wrap:anywhere}
+      .control-table-wrap .control-table th:nth-child(1){width:19%}
+      .control-table-wrap .control-table th:nth-child(2){width:12%}
+      .control-table-wrap .control-table th:nth-child(3){width:12%}
+      .control-table-wrap .control-table th:nth-child(4){width:21%}
+      .control-table-wrap .control-table th:nth-child(5){width:13%}
+      .control-table-wrap .control-table th:nth-child(6){width:9%}
+      .control-table-wrap .control-table th:nth-child(7){width:14%}
+      .control-patient-name{display:block;font-weight:800}
+      .control-secondary{display:block;color:var(--gray-500);font-size:.71rem;margin-top:2px}
+      .control-date{white-space:nowrap;font-variant-numeric:tabular-nums}
+      .control-status{font-size:.68rem;padding:3px 6px;gap:4px;max-width:100%;white-space:normal}
+      .control-status__dot{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+      .control-row-actions{display:flex;gap:4px;align-items:center;justify-content:center}
+      .control-apply-btn{font:inherit;font-size:.71rem;font-weight:800;border:1px solid var(--aqua);color:var(--petroleum-dark);background:#e8f8f2;border-radius:8px;padding:6px 8px;cursor:pointer}
+      .control-apply-btn:hover,.control-apply-btn:focus-visible{background:#d4f5e8;outline-offset:2px}
+      .control-actions-menu{position:relative}
+      .control-actions-menu summary{list-style:none;display:grid;place-items:center;border:1px solid var(--gray-200);background:white;border-radius:8px;width:25px;height:29px;cursor:pointer;font-size:1.05rem;color:var(--petroleum)}
+      .control-actions-menu summary::-webkit-details-marker{display:none}
+      .control-actions-menu__items{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:130px;display:grid;gap:3px;border:1px solid var(--gray-200);padding:5px;border-radius:9px;background:white;box-shadow:var(--shadow-lg)}
+      .control-actions-menu__items button{padding:7px 9px;background:transparent;border:0;border-radius:6px;text-align:left;font:inherit;font-size:.76rem;cursor:pointer}
+      .control-actions-menu__items button:hover{background:var(--gray-100)}
+      .control-pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:.8rem;color:var(--gray-600)}
+      .control-pagination[hidden],.control-apply-notice[hidden]{display:none}
+      .control-pagination .btn{padding:6px 10px;font-size:.76rem}
+      .control-pagination .btn:disabled{opacity:.45;cursor:default}
+      .control-apply-notice{margin:8px 22px 14px;padding:10px 12px;background:#edf7f3;border:1px solid #b9e5d2;border-radius:9px;font-size:.83rem;color:var(--petroleum-dark);line-height:1.45}
+      @media(max-width:900px){
+        .control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .control-table-wrap{border:0}
+        .control-table-wrap .control-table,.control-table-wrap .control-table tbody{display:block;min-width:0;width:100%}
+        .control-table-wrap .control-table thead{display:none}
+        .control-table-wrap .control-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 10px;padding:12px;margin-bottom:9px;border:1px solid var(--gray-200);border-radius:11px}
+        .control-table-wrap .control-table td{display:block;border:0;padding:0;text-align:left}
+        .control-table-wrap .control-table td::before{content:attr(data-label);display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.025em;color:var(--gray-500);font-weight:800;margin-bottom:2px}
+        .control-table-wrap .control-table td:nth-child(1),.control-table-wrap .control-table td:nth-child(4),.control-table-wrap .control-table td:nth-child(7){grid-column:1/-1}
+        .control-table-wrap .control-table td:nth-child(7){border-top:1px solid var(--gray-200);padding-top:8px}
+        .control-table-wrap .control-table td:last-child{text-align:left}
+        .control-row-actions{justify-content:flex-start}
+        .control-table-wrap .control-table td.control-empty{grid-column:1/-1;padding:14px;text-align:center}
+      }
+      @media(max-width:520px){.control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.control-filter select{padding:7px}.control-card{padding:12px}}
     </style>
   </head>
   <body class="app-body">
@@ -34,10 +84,15 @@
             </div>
             <div class="control-table-wrap">
               <table class="control-table">
-                <thead><tr><th>Paciente</th><th>Teléfono</th><th>Última aplicación</th><th>Próxima aplicación</th><th>Tipo</th><th>Medicamento</th><th>Responsable</th><th>Estado</th><th data-price-column>Precio</th><th>Acciones</th></tr></thead>
-                <tbody id="controlTableBody"><tr><td colspan="10" class="control-empty">Cargando controles…</td></tr></tbody>
+                <thead><tr><th>Paciente</th><th>Última</th><th>Próxima</th><th>Anticonceptivo</th><th>Responsable</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="controlTableBody"><tr><td colspan="7" class="control-empty">Cargando controles…</td></tr></tbody>
               </table>
             </div>
+            <nav id="controlPagination" class="control-pagination" aria-label="Páginas de controles anticonceptivos" hidden>
+              <button id="controlPrevPage" class="btn btn--secondary" type="button">Anterior</button>
+              <span id="controlPageLabel" aria-live="polite"></span>
+              <button id="controlNextPage" class="btn btn--secondary" type="button">Siguiente</button>
+            </nav>
           </article>
     </section>
 
@@ -46,6 +101,7 @@
       <div class="nursing-modal__content contraceptive-modal__content">
         <div class="nursing-modal__header"><div><span class="eyebrow">Control de aplicación</span><h2 id="contraceptiveModalTitle" style="margin:4px 0 0">Nueva aplicación</h2></div><button class="nursing-modal__close" id="closeContraceptiveModalBtn" type="button" aria-label="Cerrar">✕</button></div>
         <form class="nursing-form" id="contraceptiveForm" novalidate>
+          <p id="controlApplyNotice" class="control-apply-notice" hidden>Comprueba la identidad del paciente, el medicamento, la fecha y el responsable. Este formulario solo registra la administración después de confirmarla y guardarla.</p>
           <div class="control-form-grid">
             <div class="form-field full-width"><span>Paciente *</span><div class="patient-autocomplete" id="contraceptivePatientAutocomplete"><input class="patient-autocomplete__input" data-patient-autocomplete-input type="search" placeholder="Nombre, apellido, CI, teléfono o Historia Clínica…" autocomplete="off"/><input data-patient-autocomplete-value type="hidden" name="patientId"/><div class="patient-autocomplete__selected" data-patient-autocomplete-selected hidden></div><div class="patient-autocomplete__results" data-patient-autocomplete-results hidden></div></div></div>
             <div class="quick-patient-actions full-width"><button class="btn btn--secondary" id="showQuickPatientBtn" type="button">+ Nuevo paciente</button></div>
@@ -90,6 +146,6 @@
     <script src="../assets/js/patient-autocomplete.js"></script>
     <script src="../assets/js/pwa.js"></script>
     <script type="module" src="../assets/js/main.js?v=20260731-master-layout"></script>
-    <script src="../assets/js/contraceptives.js?v=20260806-patient-search"></script>
+    <script src="../assets/js/contraceptives.js?v=20261105-compact1"></script>
   </body>
 </html>
