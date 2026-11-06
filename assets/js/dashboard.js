@@ -174,15 +174,15 @@ function dashboardContraceptiveReminders(attentions, today) {
     const planned = parseDate(next);
     if (!Number.isFinite(planned)) return [];
     const days = Math.round((planned - current) / 86400000);
-    if (days > 3) return [];
-    const status = days < 0 ? 'Vencida' : days === 0 ? 'Hoy' : 'Próxima';
+    // Después de la fecha programada el registro permanece Vencido, pero sale de la campana.
+    if (days < 0 || days > 3) return [];
+    const status = days === 0 ? 'Hoy' : 'Próxima';
     return [{ ...item, reminderDate: next, daysUntil: days, reminderStatus: status }];
   }).sort((a, b) => a.daysUntil - b.daysUntil ||
     String(a.patientName || '').localeCompare(String(b.patientName || ''), 'es'));
 }
 
 function dashboardContraceptiveReminderLabel(reminder) {
-  if (reminder.daysUntil < 0) return 'Aplicación vencida';
   if (reminder.daysUntil === 0) return 'Aplicación para hoy';
   return reminder.daysUntil === 1 ? 'Aplicación mañana' :
     `Aplicación en ${reminder.daysUntil} días`;
@@ -243,7 +243,7 @@ async function setupFunctionalDashboard(collection='all') {
       const name=reminder.patientName || patients.find(p=>Number(p.id)===Number(reminder.patientId))?.nombre || 'Paciente sin nombre';
       const label=dashboardContraceptiveReminderLabel(reminder);
       notificationItems.push({
-        icon:reminder.daysUntil<0?'🔴':reminder.daysUntil===0?'🔔':'📅',
+        icon:reminder.daysUntil===0?'🔔':'📅',
         title:`${name} · ${label}`,
         description:`${reminder.contraceptiveType || 'Anticonceptivo'} · ${dashboardFormatDate(reminder.reminderDate)} · ${reminder.contraceptiveMedication || 'Medicamento sin especificar'}`,
         count:1,

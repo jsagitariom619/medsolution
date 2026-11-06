@@ -23,14 +23,14 @@ function eligible(rows, id, today='2026-11-05') {
   `, context);
 }
 
-test('evita aplicar una dosis histórica cuando hay otra más reciente', () => {
+test('solo el control vigente más reciente permite Aplicar el día programado', () => {
   assert.equal(eligible(samples,1),false);
   assert.equal(eligible(samples,2),true);
 });
-test('habilita dosis para hoy y vencidas; oculta futuras', () => {
+test('Aplicar solo está disponible el día indicado: nunca para vencidas o futuras', () => {
   assert.equal(eligible(samples,2),true);
   assert.equal(eligible(samples,3),false);
-  assert.equal(eligible(samples,4),true);
+  assert.equal(eligible(samples,4),false);
 });
 test('el bloque principal se adapta sin scroll horizontal ni vertical internos', () => {
   assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
@@ -51,7 +51,7 @@ test('aplicar inicia NUEVO registro y exige confirmación antes de guardarlo', (
 });
 
 test('acciones existentes quedan visibles sin menú de tres puntos', () => {
-  for (const action of ['history','edit','delete','apply']) {
+  for (const action of ['history','edit','delete','apply','new-after-expiry']) {
     assert.match(js,new RegExp('data-control-action="'+action+'"'));
   }
   assert.doesNotMatch(js,/class="control-actions-menu"/);
@@ -79,4 +79,28 @@ test('las siete columnas del listado mantienen encabezados y celdas centrados', 
   assert.match(html,/\.control-table-wrap \.control-table td\.control-actions-cell \.control-row-actions\s*\{\s*justify-content:center;/);
   assert.match(html,/\.control-table-wrap \.control-table td::before\s*\{\s*text-align:center;/);
   assert.match(html,/\.control-table-wrap\{max-height:none;overflow:visible;/);
+});
+
+test('un control vencido ofrece Nueva aplicación, sin habilitar Aplicar',()=>{
+  const context={controls:samples,today:'2026-11-05'};
+  const evaluate=runInNewContext(`
+    const contraceptiveState={records:controls};
+    const window={MedSolutionDate:{today:()=>today}};
+    ${helpers}
+    [canApplyScheduledDose(controls[3]),canStartNewApplicationAfterExpiry(controls[3]),
+     canStartNewApplicationAfterExpiry(controls[0]),canStartNewApplicationAfterExpiry(controls[2])]
+  `,context);
+  assert.deepEqual(Array.from(evaluate),[false,true,false,false]);
+  assert.match(js,/data-control-action="new-after-expiry"/);
+  assert.match(js,/function openNewApplicationAfterExpiry\(record\)/);
+});
+test('crear nuevo registro no modifica la aplicación vencida y exige confirmación',()=>{
+  assert.match(js,/contraceptiveState\.renewingExpiredId = record\.remoteId \|\| record\.id/);
+  assert.match(js,/form\.elements\.applicationDate\.value = window\.MedSolutionDate\.today\(\)/);
+  assert.match(js,/form\.elements\.contraceptiveType\.value = ''/);
+  assert.match(js,/form\.elements\.medication\.value = ''/);
+  assert.match(js,/if \(contraceptiveState\.renewingExpiredId !== null\)/);
+  assert.match(js,/canStartNewApplicationAfterExpiry\(source, controls\)/);
+  assert.match(js,/Se guardará una nueva aplicación sin modificar la vencida/);
+  assert.match(html,/control-new-btn/);
 });

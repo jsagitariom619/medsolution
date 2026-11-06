@@ -22,6 +22,7 @@ const contraceptiveState = {
   page: 1,
   pageSize: 6,
   applyingSourceId: null,
+  renewingExpiredId: null,
   filters: { service:'', responsible:'', month:'', year:'' },
 };
 
@@ -83,9 +84,18 @@ function latestPatientControl(patientId, controls = contraceptiveState.records) 
 function canApplyScheduledDose(control, controls = contraceptiveState.records, today = window.MedSolutionDate.today()) {
   if (!control || !['Mensual','Trimestral'].includes(control.contraceptiveType)) return false;
   const next = String(control.nextApplicationDate || '').slice(0,10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(next) || next > today) return false;
+  // El acceso rápido a Aplicar corresponde únicamente al día de la fecha programada.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(next) || next !== today) return false;
   const latest = latestPatientControl(control.patientId, controls);
   return latest && String(latest.remoteId || latest.id) === String(control.remoteId || control.id);
+}
+
+function canStartNewApplicationAfterExpiry(control, controls = contraceptiveState.records, today = window.MedSolutionDate.today()) {
+  if (!control || !['Mensual','Trimestral'].includes(control.contraceptiveType)) return false;
+  const next = String(control.nextApplicationDate || '').slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(next) || next >= today) return false;
+  const latest = latestPatientControl(control.patientId, controls);
+  return Boolean(latest && String(latest.remoteId || latest.id) === String(control.remoteId || control.id));
 }
 
 function contraceptiveService() {
@@ -140,6 +150,7 @@ function renderContraceptiveTable() {
     body.innerHTML = visible.map((record) => {
       const patient = contraceptiveState.patients.find(item => Number(item.id) === Number(record.patientId));
       const due = canApplyScheduledDose(record);
+      const expired = canStartNewApplicationAfterExpiry(record);
       const actions = hasFullAccess()
         ? `<button class="control-action-icon" type="button" data-control-action="history" data-id="${record.id}" title="Ver historial" aria-label="Ver historial de ${escapeControlHtml(record.patientName)}">▣</button>
           <button class="control-action-icon" type="button" data-control-action="edit" data-id="${record.id}" title="Editar aplicación" aria-label="Editar aplicación de ${escapeControlHtml(record.patientName)}">✎</button>
@@ -153,8 +164,9 @@ function renderContraceptiveTable() {
         <td data-label="Responsable" class="control-responsible">${escapeControlHtml(record.procedureResponsible || '—')}</td>
         <td data-label="Estado" class="control-status-cell">${statusBadge(record)}</td>
         <td data-label="Acciones" class="control-actions-cell"><div class="control-row-actions">
-          ${due ? `<button type="button" class="control-apply-btn" data-control-action="apply" data-id="${record.id}" title="Abrir registro de nueva aplicación; requiere confirmación">Aplicar</button>` : ''}
-          ${actions || (!due ? '<span class="control-secondary">—</span>' : '')}
+          ${due ? `<button type="button" class="control-apply-btn" data-control-action="apply" data-id="${record.id}" title="Registrar aplicación correspondiente a hoy">Aplicar</button>` : ''}
+          ${expired ? `<button type="button" class="control-apply-btn control-new-btn" data-control-action="new-after-expiry" data-id="${record.id}" title="Nueva aplicación, sin modificar el registro vencido">Nueva aplicación</button>` : ''}
+          ${actions || (!due && !expired ? '<span class="control-secondary">—</span>' : '')}
         </div></td>
       </tr>`;
     }).join('');
@@ -336,7 +348,10 @@ function openContraceptiveModal(record = null) {
   form.reset();
   contraceptiveState.editingId = record?.id || null;
   contraceptiveState.applyingSourceId = null;
-  document.getElementById('controlApplyNotice').hidden = true;
+  contraceptiveState.renewingExpiredId = null;
+  const notice = document.getElementById('controlApplyNotice');
+  notice.hidden = true;
+  notice.textContent = 'Comprueba la identidad del paciente, la fecha, el medicamento y el responsable. La aplicación se registra solo después de confirmarla.';
   document.getElementById('contraceptiveModalTitle').textContent = record ? 'Editar aplicación' : 'Nueva aplicación';
   hideQuickPatientForm();
   contraceptiveState.patientAutocomplete.clear();
@@ -380,8 +395,35 @@ function openApplyScheduledDose(record) {
   updateNextApplicationPreview();
 }
 
+function openNewApplicationAfterExpiry(record) {
+  if (!canStartNewApplicationAfterExpiry(record)) {
+    showContraceptiveToast('Este control ya no está vencido o existe una aplicación posterior.', 'error');
+    return;
+  }
+  if (!contraceptiveState.patients.some(patient => Number(patient.id) === Number(record.patientId))) {
+    showContraceptiveToast('No se encontró el paciente. Actualiza el listado antes de continuar.', 'error');
+    return;
+  }
+  // Un vencimiento NO confirma una nueva administración ni que el medicamento sea inválido.
+  // El profesional decide según la situación clínica; nunca se edita la dosis histórica.
+  openContraceptiveModal();
+  const form = document.getElementById('contraceptiveForm');
+  contraceptiveState.patientAutocomplete.select(record.patientId);
+  contraceptiveState.renewingExpiredId = record.remoteId || record.id;
+  form.elements.applicationDate.value = window.MedSolutionDate.today();
+  form.elements.contraceptiveType.value = '';
+  form.elements.medication.value = '';
+  form.elements.responsible.value = '';
+  document.getElementById('contraceptiveModalTitle').textContent = 'Nueva aplicación — fecha anterior vencida';
+  const notice = document.getElementById('controlApplyNotice');
+  notice.textContent = 'La fecha programada anterior ya pasó. Antes de registrar una nueva administración, verifica si procede clínicamente y confirma fecha, anticonceptivo, medicamento y responsable. Se conservará el registro histórico.';
+  notice.hidden = false;
+  updateNextApplicationPreview();
+}
+
 function closeContraceptiveModal() {
   contraceptiveState.applyingSourceId = null;
+  contraceptiveState.renewingExpiredId = null;
   document.getElementById('controlApplyNotice').hidden = true;
   document.getElementById('contraceptiveForm').reset();
   hideQuickPatientForm();
@@ -537,6 +579,15 @@ async function saveContraceptive(event) {
           return;
         }
       }
+      if (contraceptiveState.renewingExpiredId !== null) {
+        const source = controls.find(item => String(item.remoteId || item.id) === String(contraceptiveState.renewingExpiredId));
+        if (!canStartNewApplicationAfterExpiry(source, controls)) {
+          throw new Error('El control cambió o ya se registró una aplicación posterior. Actualiza el listado.');
+        }
+        if (!confirm(`¿Confirmas que se administró el anticonceptivo ${type.toLowerCase()} a ${patientName(patient)} el ${formatControlDate(applicationDate)}?\nSe guardará una nueva aplicación sin modificar la vencida.`)) {
+          return;
+        }
+      }
     }
     const saved = await window.MedSolutionData.saveAttention(record);
     if (!saved?.remoteId || !Number(saved.id)) {
@@ -648,6 +699,7 @@ async function setupContraceptives() {
     const record = contraceptiveState.records.find((item) => Number(item.id) === Number(button.dataset.id));
     if (!record) return;
     if (button.dataset.controlAction === 'apply') openApplyScheduledDose(record);
+    if (button.dataset.controlAction === 'new-after-expiry') openNewApplicationAfterExpiry(record);
     if (button.dataset.controlAction === 'history') openPatientHistory(record);
     if (button.dataset.controlAction === 'edit') openContraceptiveModal(record);
     if (button.dataset.controlAction === 'delete') deleteContraceptive(record);
