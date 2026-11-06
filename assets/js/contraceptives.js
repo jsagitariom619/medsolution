@@ -71,16 +71,25 @@ function controlStatus(record) {
 }
 
 function statusBadge(record) {
-  const status = controlStatus(record);
-  const cssClass = { Vigente:'control-status--current', Próximo:'control-status--soon', Vencido:'control-status--expired' }[status];
-  const text = record.nextApplicationDate === window.MedSolutionDate.today() ? 'Hoy' : status;
-  return `<span class="control-status ${cssClass}" title="${escapeControlHtml(status)}"><span class="control-status__dot" aria-hidden="true"></span>${text}</span>`;
+  // No llamar "Vencido" a aplicaciones anteriores cuando ya hay un registro posterior.
+  const historical = isHistoricalContraceptiveControl(record);
+  const status = historical ? 'Histórico' : controlStatus(record);
+  const cssClass = { Vigente:'control-status--current', Próximo:'control-status--soon', Vencido:'control-status--expired', Histórico:'control-status--historical' }[status];
+  const text = !historical && record.nextApplicationDate === window.MedSolutionDate.today() ? 'Hoy' : status;
+  const tooltip = historical ? 'Registro anterior: este paciente tiene una aplicación más reciente' : status;
+  return `<span class="control-status ${cssClass}" title="${escapeControlHtml(tooltip)}"><span class="control-status__dot" aria-hidden="true"></span>${text}</span>`;
 }
 function latestPatientControl(patientId, controls = contraceptiveState.records) {
   return controls.filter(row => Number(row.patientId) === Number(patientId))
     .sort((a,b) => String(b.applicationDate || b.date || '').localeCompare(String(a.applicationDate || a.date || ''))
       || Number(b.id || 0) - Number(a.id || 0))[0] || null;
 }
+function isHistoricalContraceptiveControl(control, controls = contraceptiveState.records) {
+  if (!control || !Number(control.patientId)) return false;
+  const latest = latestPatientControl(control.patientId, controls);
+  return Boolean(latest && String(latest.remoteId || latest.id) !== String(control.remoteId || control.id));
+}
+
 function canApplyScheduledDose(control, controls = contraceptiveState.records, today = window.MedSolutionDate.today()) {
   if (!control || !['Mensual','Trimestral'].includes(control.contraceptiveType)) return false;
   const next = String(control.nextApplicationDate || '').slice(0,10);
@@ -91,7 +100,9 @@ function canApplyScheduledDose(control, controls = contraceptiveState.records, t
 }
 
 function canStartNewApplicationAfterExpiry(control, controls = contraceptiveState.records, today = window.MedSolutionDate.today()) {
-  if (!control || !['Mensual','Trimestral'].includes(control.contraceptiveType)) return false;
+  // Nueva aplicación requiere un control realmente vencido y actual, no uno histórico.
+  // El tipo se vuelve a seleccionar en el nuevo formulario; no depender de su dato antiguo.
+  if (!control || isHistoricalContraceptiveControl(control, controls)) return false;
   const next = String(control.nextApplicationDate || '').slice(0,10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(next) || next >= today) return false;
   const latest = latestPatientControl(control.patientId, controls);

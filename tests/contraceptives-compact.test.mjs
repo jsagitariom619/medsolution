@@ -114,3 +114,34 @@ test('en tablets, las siete columnas permanecen alineadas como en computadora', 
   assert.match(html, /\.control-table-wrap \.control-table tr\{display:grid/);
   assert.match(html, /\.control-table-wrap \.control-table th,\s*\.control-table-wrap \.control-table td\s*\{\s*text-align:center;/);
 });
+
+test('registro anterior se muestra Histórico y nunca habilita Nueva aplicación',()=>{
+  const context={today:'2026-11-06',controls:[
+    {id:20,patientId:3,applicationDate:'2026-09-22',nextApplicationDate:'2026-10-22',contraceptiveType:'Mensual'},
+    {id:21,patientId:3,applicationDate:'2026-10-22',nextApplicationDate:'2026-11-22',contraceptiveType:'Mensual'},
+    {id:22,patientId:4,applicationDate:'2026-09-30',nextApplicationDate:'2026-10-30',contraceptiveType:'Mensual'}
+  ]};
+  const actual=runInNewContext(`
+    const contraceptiveState={records:controls};
+    const window={MedSolutionDate:{today:()=>today}};
+    ${helpers}
+    [isHistoricalContraceptiveControl(controls[0]),
+     canStartNewApplicationAfterExpiry(controls[0]),
+     isHistoricalContraceptiveControl(controls[1]),
+     canStartNewApplicationAfterExpiry(controls[2])]
+  `,context);
+  assert.deepEqual(Array.from(actual),[true,false,false,true]);
+  assert.match(js,/Histórico:'control-status--historical'/);
+  assert.match(html,/\.control-status--historical\{background:#edf1f5;color:#526679\}/);
+});
+test('última aplicación vencida sin tipo antiguo válido también permite abrir Nueva aplicación',()=>{
+  const context={today:'2026-11-06',controls:[{id:32,patientId:5,applicationDate:'2026-09-05',nextApplicationDate:'2026-10-05',contraceptiveType:''}]};
+  assert.equal(runInNewContext(`
+    const contraceptiveState={records:controls};
+    const window={MedSolutionDate:{today:()=>today}};
+    ${helpers}
+    canStartNewApplicationAfterExpiry(controls[0])
+  `,context),true);
+  assert.match(js,/form\.elements\.contraceptiveType\.value = ''/);
+  assert.match(js,/form\.elements\.medication\.value = ''/);
+});
