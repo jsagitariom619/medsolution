@@ -104,3 +104,13 @@ test('crear nuevo registro no modifica la aplicación vencida y exige confirmaci
   assert.match(js,/Se guardará una nueva aplicación sin modificar la vencida/);
   assert.match(html,/control-new-btn/);
 });
+
+test('en tablets, las siete columnas permanecen alineadas como en computadora', () => {
+  assert.match(html, /@media \(min-width:620px\) and \(max-width:900px\)/);
+  assert.match(html, /\.control-table-wrap \.control-table\{width:100%;min-width:0;table-layout:fixed;font-size:\.69rem\}/);
+  assert.match(html, /\.control-table-wrap \.control-table th:nth-child\(7\)\{width:27%\}/);
+  assert.match(html, /\.control-table-wrap\{max-height:none;overflow:visible;border:1px solid var\(--gray-200\)/);
+  assert.match(html, /@media\(max-width:619px\)\{\s*\.control-toolbar/);
+  assert.match(html, /\.control-table-wrap \.control-table tr\{display:grid/);
+  assert.match(html, /\.control-table-wrap \.control-table th,\s*\.control-table-wrap \.control-table td\s*\{\s*text-align:center;/);
+});

@@ -51,7 +51,7 @@
       .control-pagination .btn{padding:6px 10px;font-size:.76rem}
       .control-pagination .btn:disabled{opacity:.45;cursor:default}
       .control-apply-notice{margin:8px 22px 14px;padding:10px 12px;background:#edf7f3;border:1px solid #b9e5d2;border-radius:9px;font-size:.83rem;color:var(--petroleum-dark);line-height:1.45}
-      @media(max-width:900px){
+      @media(max-width:619px){
         .control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
         .control-table-wrap{border:0}
         .control-table-wrap .control-table,.control-table-wrap .control-table tbody{display:block;min-width:0;width:100%}
@@ -71,7 +71,7 @@
       @media(max-width:520px){.control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.control-filter select{padding:7px}.control-card{padding:12px}}
 
       .control-table-wrap .control-table tr.control-row--notified{background:rgba(47,183,166,.11)}
-      @media(max-width:900px){.control-table-wrap .control-table tr.control-row--notified{border-color:var(--aqua);box-shadow:0 0 0 2px rgba(47,183,166,.13)}}
+      @media(max-width:619px){.control-table-wrap .control-table tr.control-row--notified{border-color:var(--aqua);box-shadow:0 0 0 2px rgba(47,183,166,.13)}}
 
       /* Alineación uniforme de columnas; solo cambia la presentación del listado. */
       .control-table-wrap .control-table th,
@@ -94,7 +94,7 @@
       .control-table-wrap .control-table td.control-actions-cell .control-row-actions{
         justify-content:center;
       }
-      @media(max-width:900px){
+      @media(max-width:619px){
         .control-table-wrap .control-table td,
         .control-table-wrap .control-table td:last-child,
         .control-table-wrap .control-table td::before{
@@ -105,6 +105,35 @@
         }
       }
       .control-new-btn{font-size:.65rem;padding:5px 5px;letter-spacing:-.015em}
+
+      /* Tablet: conservar la misma tabla de 7 columnas que en computadora,
+         también dentro del iframe del dashboard (ancho útil reducido por el menú). */
+      @media (min-width:620px) and (max-width:900px){
+        .control-card{padding:12px}
+        .control-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        .control-table-wrap{max-height:none;overflow:visible;border:1px solid var(--gray-200);margin-top:10px}
+        .control-table-wrap .control-table{width:100%;min-width:0;table-layout:fixed;font-size:.69rem}
+        .control-table-wrap .control-table th{padding:8px 3px;font-size:.57rem;white-space:normal;line-height:1.25}
+        .control-table-wrap .control-table td{padding:9px 3px;font-size:.69rem;line-height:1.25;vertical-align:middle}
+        .control-table-wrap .control-table th:nth-child(1){width:18%}
+        .control-table-wrap .control-table th:nth-child(2){width:10%}
+        .control-table-wrap .control-table th:nth-child(3){width:10%}
+        .control-table-wrap .control-table th:nth-child(4){width:16%}
+        .control-table-wrap .control-table th:nth-child(5){width:10%}
+        .control-table-wrap .control-table th:nth-child(6){width:9%}
+        .control-table-wrap .control-table th:nth-child(7){width:27%}
+        .control-table-wrap .control-table .control-patient-name{font-size:.70rem;line-height:1.22}
+        .control-table-wrap .control-table .control-secondary{font-size:.61rem;line-height:1.2}
+        .control-table-wrap .control-table .control-date{font-size:.65rem;white-space:nowrap}
+        .control-table-wrap .control-table td.control-responsible{font-size:.64rem;line-height:1.2}
+        .control-table-wrap .control-table td.control-status-cell{white-space:nowrap}
+        .control-table-wrap .control-table .control-status{font-size:.61rem;padding:3px 4px;gap:3px;white-space:nowrap}
+        .control-row-actions{justify-content:center;gap:2px;flex-wrap:nowrap}
+        .control-action-icon{width:25px;min-width:25px;height:27px;font-size:.9rem}
+        .control-apply-btn{padding:5px 5px;font-size:.61rem;white-space:nowrap}
+        .control-new-btn{font-size:.57rem;padding:5px 4px}
+        .control-table-wrap .control-table td.control-actions-cell{padding-left:2px;padding-right:2px}
+      }
     </style>
   </head>
   <body class="app-body">
