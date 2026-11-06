@@ -79,10 +79,32 @@ function statusBadge(record) {
   const tooltip = historical ? 'Registro anterior: este paciente tiene una aplicación más reciente' : status;
   return `<span class="control-status ${cssClass}" title="${escapeControlHtml(tooltip)}"><span class="control-status__dot" aria-hidden="true"></span>${text}</span>`;
 }
+function newerContraceptiveRecord(a, b) {
+  if (!b) return true;
+  const dateA = String(a.applicationDate || a.date || '').slice(0, 10);
+  const dateB = String(b.applicationDate || b.date || '').slice(0, 10);
+  if (dateA !== dateB) return dateA > dateB;
+  return Number(a.id || 0) > Number(b.id || 0);
+}
 function latestPatientControl(patientId, controls = contraceptiveState.records) {
   return controls.filter(row => Number(row.patientId) === Number(patientId))
-    .sort((a,b) => String(b.applicationDate || b.date || '').localeCompare(String(a.applicationDate || a.date || ''))
-      || Number(b.id || 0) - Number(a.id || 0))[0] || null;
+    .reduce((latest, row) => newerContraceptiveRecord(row, latest) ? row : latest, null);
+}
+/** Vista de seguimiento, una única fila por identidad de paciente.
+ * Los movimientos originales permanecen en atenciones e historial.
+ * No unir dos pacientes por nombre: solo por patientId.
+ */
+function activePatientControls(controls = contraceptiveState.records) {
+  const byPatient = new Map();
+  for (const item of controls) {
+    const patientId = Number(item.patientId);
+    const key = Number.isSafeInteger(patientId) && patientId > 0
+      ? `patient:${patientId}`
+      : `unlinked:${item.remoteId || item.id}`;
+    const prior = byPatient.get(key);
+    if (newerContraceptiveRecord(item, prior)) byPatient.set(key, item);
+  }
+  return [...byPatient.values()];
 }
 function isHistoricalContraceptiveControl(control, controls = contraceptiveState.records) {
   if (!control || !Number(control.patientId)) return false;
@@ -140,12 +162,14 @@ async function loadContraceptiveData() {
 }
 
 function filteredRecords() {
-  return contraceptiveState.records
+  // Aplicar filtros a la última ficha POR paciente, nunca al movimiento histórico.
+  return activePatientControls()
     .filter((record) => !contraceptiveState.filters.service || record.serviceType === contraceptiveState.filters.service)
     .filter((record) => !contraceptiveState.filters.responsible || record.procedureResponsible === contraceptiveState.filters.responsible)
     .filter((record) => !contraceptiveState.filters.month || String(record.applicationDate||record.date||'').slice(5,7) === contraceptiveState.filters.month)
     .filter((record) => !contraceptiveState.filters.year || String(record.applicationDate||record.date||'').slice(0,4) === contraceptiveState.filters.year)
-    .sort((a, b) => String(b.applicationDate).localeCompare(String(a.applicationDate)));
+    .sort((a, b) => String(b.applicationDate||b.date||'').localeCompare(String(a.applicationDate||a.date||''))
+      || Number(b.id||0) - Number(a.id||0));
 }
 
 function renderContraceptiveTable() {
@@ -183,7 +207,7 @@ function renderContraceptiveTable() {
     }).join('');
   }
   const count = document.getElementById('controlCount');
-  if (count) count.textContent = `${records.length} registro${records.length === 1 ? '' : 's'}`;
+  if (count) count.textContent = `${records.length} paciente${records.length === 1 ? '' : 's'}`;
   const pagination = document.getElementById('controlPagination');
   pagination.hidden = pageCount < 2;
   document.getElementById('controlPageLabel').textContent = `Página ${contraceptiveState.page} de ${pageCount}`;
@@ -206,14 +230,20 @@ function focusNotifiedContraceptive() {
       if (filter) filter.value='';
     });
   }
-  const index=filteredRecords().findIndex(item=>Number(item.id)===id);
+  // Un enlace desde Atenciones puede apuntar a un movimiento anterior; localizar
+  // su paciente y mostrar la ficha vigente, sin perder el acceso al historial.
+  const latest = latestPatientControl(record.patientId);
+  if (!latest) return;
+  const currentId = Number(latest.id);
+  const index=filteredRecords().findIndex(item=>Number(item.id)===currentId);
   if (index < 0) return;
   contraceptiveState.page=Math.floor(index/contraceptiveState.pageSize)+1;
   renderContraceptiveTable();
-  const row=document.querySelector(`#controlTableBody tr[data-control-id="${id}"]`);
+  const row=document.querySelector(`#controlTableBody tr[data-control-id="${currentId}"]`);
   if (!row) return;
   row.classList.add('control-row--notified');
   row.scrollIntoView({behavior:'smooth',block:'center'});
+  if (currentId !== id && hasFullAccess()) openPatientHistory(latest);
 }
 
 function renderStaffOptions(selected = '') {
@@ -226,11 +256,12 @@ function renderStaffOptions(selected = '') {
 }
 
 function renderResponsibleFilter() {
+  const activeControls = activePatientControls();
   const names = [...new Set([
     ...contraceptiveState.staff.map((person) => person.name),
-    ...contraceptiveState.records.map((record) => record.procedureResponsible),
+    ...activeControls.map((record) => record.procedureResponsible),
   ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
-  const definitions=[['controlServiceFilter',[...new Set(contraceptiveState.records.map(record=>record.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['controlResponsibleFilter',names],['controlMonthFilter',[...new Set(contraceptiveState.records.map(record=>String(record.applicationDate||record.date||'').slice(5,7)).filter(Boolean))].sort()],['controlYearFilter',[...new Set(contraceptiveState.records.map(record=>String(record.applicationDate||record.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
+  const definitions=[['controlServiceFilter',[...new Set(activeControls.map(record=>record.serviceType).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))],['controlResponsibleFilter',names],['controlMonthFilter',[...new Set(activeControls.map(record=>String(record.applicationDate||record.date||'').slice(5,7)).filter(Boolean))].sort()],['controlYearFilter',[...new Set(activeControls.map(record=>String(record.applicationDate||record.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a))]];
   definitions.forEach(([id,values])=>{const select=document.getElementById(id),current=select.value;select.innerHTML='<option value="">Todos</option>'+values.map(value=>`<option value="${escapeControlHtml(value)}">${id==='controlMonthFilter'?new Intl.DateTimeFormat('es',{month:'long'}).format(new Date(2024,Number(value)-1,1)):escapeControlHtml(value)}</option>`).join('');select.value=current});
 }
 
@@ -617,6 +648,7 @@ async function saveContraceptive(event) {
     }
     await loadContraceptiveData();
     renderResponsibleFilter();
+    contraceptiveState.page = 1; // Mostrar inmediatamente la fecha nueva en la ficha única.
     renderContraceptiveTable();
     form.reset();
     closeContraceptiveModal();

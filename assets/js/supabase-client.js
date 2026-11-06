@@ -381,9 +381,13 @@ window.MedSolutionDate.today = window.MedSolutionDate.today || function medSolut
   async function getAttentions() {
     const connection = await db();
     if (!connection) return localArray('medsolution.consultations');
-    const { data, error } = await connection.from('atenciones')
-      .select('*, pacientes(legacy_id,nombre,apellido)').order('fecha_hora', { ascending: false });
-    throwIfError(error); return (data || []).map(mapAttention);
+    // Cargar todas las páginas: la ficha del anticonceptivo necesita también a pacientes
+    // con controles antiguos, y Atenciones debe conservar el historial completo.
+    const data = await fetchAllPages(() => connection.from('atenciones')
+      .select('*, pacientes(legacy_id,nombre,apellido)')
+      .order('fecha_hora', { ascending: false })
+      .order('id', { ascending: false }));
+    return data.map(mapAttention);
   }
   async function deleteAttention(id) {
     const connection = await db(true);

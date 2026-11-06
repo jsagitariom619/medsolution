@@ -247,7 +247,8 @@ function specializedActivityRows() {
 function visibleConsultations() {
   const today = boliviaNowParts().date;
   return [...consultState.consultations, ...specializedActivityRows()]
-    .filter((c) => c.contraceptiveControl !== true && c.contraceptiveSchedule !== true)
+    // Una administración REAL es una atención. Solo excluir dosis futuras de Agenda.
+    .filter((c) => c.contraceptiveSchedule !== true)
     .filter((c) => c.scheduledOnly !== true)
     .filter((c) => !consultState.todayOnly || c.date === today)
     .filter((c) => !consultState.monthFilters.service || c.serviceType === consultState.monthFilters.service)
@@ -269,6 +270,11 @@ function updateAttentionViewContext() {
 function rowActions(c) {
   if (c.specializedActivity) {
     return `<a class="btn-action" href="medical-records.html?patientId=${c.patientId}" title="Abrir Historia Clínica">▣</a>`;
+  }
+  if (c.contraceptiveControl === true) {
+    // No editar ni borrar un movimiento de anticonceptivo desde el formulario general.
+    // La corrección documentada del movimiento permanece en su módulo especializado.
+    return `<a class="btn-action" href="contraceptives.html?controlId=${encodeURIComponent(c.id)}" title="Abrir registro e historial de la aplicación">▣</a>`;
   }
   if (!isDoctor() && requiresMedical(c)) {
     return '<small style="color:var(--gray-500);font-weight:700">Enviado al doctor</small>';
@@ -353,10 +359,13 @@ function renderConsultations() {
   items.forEach((c) => {
     const tr = document.createElement('tr');
     tr.dataset.consultRow = c.id;
+    const movementDetail = c.contraceptiveControl === true
+      ? [c.contraceptiveType || 'Anticonceptivo', c.contraceptiveMedication || 'Medicamento sin especificar', c.procedureResponsible ? `Responsable: ${c.procedureResponsible}` : ''].filter(Boolean).join(' · ')
+      : c.chiefComplaint || '';
     tr.innerHTML = `
       <td><strong>${escapeHtml(c.time || '—')}</strong><br><small style="color:var(--gray-500)">${formatDisplayDate(c.date)}</small></td>
       <td><div class="patient-cell"><span class="patient-photo">${getInitials(c.patientName)}</span><span>${escapeHtml(c.patientName)}</span></div></td>
-      <td><strong>${escapeHtml(c.serviceType)}</strong><br><small style="color:var(--gray-500)">${escapeHtml(c.chiefComplaint || '')}</small></td>
+      <td><strong>${escapeHtml(c.contraceptiveControl === true ? 'Aplicación anticonceptiva' : c.serviceType)}</strong><br><small style="color:var(--gray-500)">${escapeHtml(movementDetail)}</small></td>
       <td><span class="status-badge ${statusClass(c.status)}">${escapeHtml(c.status)}</span></td>
       <td><span class="action-links">${rowActions(c)}${c.specializedActivity ? '' : `<button class="btn-action" data-action="print" data-id="${c.id}" title="Imprimir atención">🖨</button>`}</span></td>`;
     tbody.insertBefore(tr, empty);
@@ -368,6 +377,11 @@ function renderConsultations() {
 function printAttention(attention) {
   const popup=window.open('','_blank','width=850,height=700');
   if(!popup)return alert('Permite ventanas emergentes para imprimir.');
+  if (attention.contraceptiveControl === true) {
+    popup.document.write(`<!doctype html><html><head><title>Aplicación anticonceptiva</title><style>body{font-family:Arial;padding:36px;color:#18343b}h1{color:#0f4c5c;border-bottom:2px solid #2fb7a6;padding-bottom:12px}.field{padding:9px 0;border-bottom:1px solid #ddd}strong{color:#0f4c5c}</style></head><body><h1>Registro Clínico · Aplicación anticonceptiva</h1><p><strong>Paciente:</strong> ${escapeHtml(attention.patientName || '—')}</p><div class="field"><strong>Fecha:</strong> ${formatDisplayDate(attention.applicationDate || attention.date)} ${escapeHtml(attention.time || '')}</div><div class="field"><strong>Tipo:</strong> ${escapeHtml(attention.contraceptiveType || '—')}</div><div class="field"><strong>Medicamento:</strong> ${escapeHtml(attention.contraceptiveMedication || '—')}</div><div class="field"><strong>Responsable:</strong> ${escapeHtml(attention.procedureResponsible || '—')}</div><div class="field"><strong>Próxima aplicación:</strong> ${formatDisplayDate(attention.nextApplicationDate)}</div><div class="field"><strong>Observaciones:</strong> ${escapeHtml(attention.contraceptiveObservations || '—')}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    popup.document.close();
+    return;
+  }
   popup.document.write(`<!doctype html><html><head><title>Atención médica</title><style>body{font-family:Arial;padding:36px;color:#18343b}h1{color:#0f4c5c;border-bottom:2px solid #2fb7a6;padding-bottom:12px}.field{padding:9px 0;border-bottom:1px solid #ddd}strong{color:#0f4c5c}</style></head><body><h1>Med Solution · Atención</h1><p><strong>Paciente:</strong> ${escapeHtml(attention.patientName)}<br><strong>Fecha:</strong> ${formatDisplayDate(attention.date)} ${escapeHtml(attention.time||'')}</p><div class="field"><strong>Servicio:</strong> ${escapeHtml(attention.serviceType)}</div><div class="field"><strong>Motivo:</strong> ${escapeHtml(attention.chiefComplaint||'—')}</div><div class="field"><strong>Diagnóstico:</strong> ${escapeHtml(attention.diagnosis||'—')}</div><div class="field"><strong>Tratamiento:</strong> ${escapeHtml(attention.treatment||'—')}</div><div class="field"><strong>Indicaciones:</strong> ${escapeHtml(attention.indications||'—')}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
   popup.document.close();
 }
@@ -383,7 +397,8 @@ function configureMonthlyAttentionView() {
     consultState.periodInitialized=true;
   }
   updateAttentionViewContext();
-  const relevant=[...consultState.consultations,...specializedActivityRows()].filter(item=>!item.contraceptiveControl&&!item.contraceptiveSchedule);
+  // Incluir anticonceptivos reales en filtros por servicio/mes; Agenda permanece separada.
+  const relevant=[...consultState.consultations,...specializedActivityRows()].filter(item=>!item.contraceptiveSchedule&&!item.scheduledOnly);
   const services=[...new Set(relevant.map(item=>item.serviceType).filter(Boolean))].sort();
   const responsible=[...new Set(relevant.map(item=>item.procedureResponsible||item.scheduledProfessional||item.registeredBy).filter(Boolean))].sort();const months=[...new Set([...relevant.map(item=>String(item.date||'').slice(5,7)).filter(Boolean),current.date.slice(5,7)])].sort();const years=[...new Set([...relevant.map(item=>String(item.date||'').slice(0,4)).filter(Boolean),current.date.slice(0,4)])].sort((a,b)=>b.localeCompare(a));
   document.getElementById('monthlyAttentionService').innerHTML='<option value="">Todos los servicios</option>'+services.map(value=>`<option>${escapeHtml(value)}</option>`).join('');

@@ -122,7 +122,7 @@ test('a stuck synchronization falls back after the bounded timeout and ignores l
 });
 
 test('the service worker installs the new startup module and replaces the prior cache', () => {
-  assert.match(serviceWorker, /medsolution-pwa-v26/);
+  assert.match(serviceWorker, /medsolution-pwa-v27/);
   assert.match(serviceWorker, /'\/assets\/js\/login-startup\.js'/);
   assert.match(serviceWorker, /self\.skipWaiting\(\)/);
   assert.match(serviceWorker, /self\.clients\.claim\(\)/);

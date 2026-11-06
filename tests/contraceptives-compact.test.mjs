@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const js = await readFile(new URL('../assets/js/contraceptives.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../pages/contraceptives.html', import.meta.url), 'utf8');
-const helpers = js.slice(js.indexOf('function latestPatientControl('),js.indexOf('function contraceptiveService()'));
+const helpers = js.slice(js.indexOf('function newerContraceptiveRecord('),js.indexOf('function contraceptiveService()'));
 const samples = [
   { id:1, patientId:1, applicationDate:'2026-04-05', nextApplicationDate:'2026-05-05', contraceptiveType:'Mensual' },
   { id:2, patientId:1, applicationDate:'2026-10-05', nextApplicationDate:'2026-11-05', contraceptiveType:'Mensual' },
