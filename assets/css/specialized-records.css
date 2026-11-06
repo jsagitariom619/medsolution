@@ -89,3 +89,19 @@
   .specialized-stats-dashboard .specialized-followups{overflow-x:auto}
   .specialized-stats-dashboard .specialized-table{min-width:640px}
 }
+
+/* Medicamentos y tratamientos adicionales opcionales de tirzepatida */
+.specialized-complements{display:grid;gap:10px;min-width:0}
+.specialized-complement-section{border:1px solid #d7e3e7;border-radius:12px;background:#f9fcfc;padding:12px}
+.specialized-complement-section summary{cursor:pointer;font-weight:700;color:#154e59}
+.specialized-complement-section summary small{font-weight:400;font-size:.78rem;color:#667a82;margin-left:7px}
+.specialized-complement-section>p{font-size:.81rem;color:#657b83;margin:8px 0 12px}
+.specialized-complement-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;margin:8px 0;border:1px solid #deebec;border-radius:10px;background:white;min-width:0}
+.specialized-complement-row .full{grid-column:1/-1}
+.specialized-complement-row input,.specialized-complement-row textarea{max-width:100%;box-sizing:border-box}
+.specialized-complement-remove{grid-column:1/-1;justify-self:end;border:1px solid #dfb1b9;border-radius:8px;background:transparent;color:#a63249;padding:6px 10px;cursor:pointer;font:inherit;font-size:.8rem}
+.specialized-complement-summary{font-size:.77rem;line-height:1.45;margin:5px 0;min-width:0;text-align:left}
+.specialized-complement-summary summary{color:#126873;cursor:pointer;font-weight:600;white-space:normal;overflow-wrap:anywhere}
+.specialized-complement-summary>div{margin-top:6px;overflow-wrap:anywhere}
+.specialized-complement-summary ul{margin:3px 0 6px;padding-left:17px}
+@media(max-width:620px){.specialized-complement-row{grid-template-columns:minmax(0,1fr)}}
